@@ -1,3 +1,12 @@
 #test {
   color: aliceblue;
 }
+body {
+  background-color: white;
+}
+#box {
+  width: 500px;
+  height: 500px;
+  color: aliceblue;
+  background: #000;
+}

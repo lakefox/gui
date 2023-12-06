@@ -2,7 +2,6 @@ package document
 
 import (
 	"bufio"
-	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -18,11 +17,9 @@ type Doc struct {
 	DOM         *html.Node
 }
 
-func Parse(path string) Doc {
+func Write(path string) Doc {
 	file, err := os.Open(path)
-	if err != nil {
-		fmt.Println("Error opening file:", err)
-	}
+	check(err)
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
@@ -32,29 +29,14 @@ func Parse(path string) Doc {
 		htmlContent += scanner.Text() + "\n"
 	}
 
-	if err := scanner.Err(); err != nil {
-		fmt.Println("Error reading file:", err)
-	}
+	check(scanner.Err())
 
 	doc, err := dom.FastParse(strings.NewReader(htmlContent))
-	if err != nil {
-		fmt.Println("Error parsing HTML:", err)
-	}
+	check(err)
 
 	// Extract stylesheet link tags and style tags
 	stylesheets := extractStylesheets(doc, filepath.Dir(path))
 	styleTags := extractStyleTags(doc)
-
-	// Print the results
-	fmt.Println("Stylesheet Links:")
-	for _, link := range stylesheets {
-		fmt.Println(link)
-	}
-
-	fmt.Println("\nStyle Tags:")
-	for _, style := range styleTags {
-		fmt.Println(style)
-	}
 
 	d := Doc{
 		StyleSheets: stylesheets,
@@ -137,4 +119,10 @@ func localizePath(rootPath, filePath string) string {
 	}
 
 	return "./" + absPath
+}
+
+func check(e error) {
+	if e != nil {
+		panic(e)
+	}
 }
