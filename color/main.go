@@ -387,7 +387,7 @@ func CalculateBackgroundColor(styles map[string]string) (Color, error) {
 func Background(styles map[string]string) Color {
 	backgroundColor, err := CalculateBackgroundColor(styles)
 	if err != nil {
-		return Color{255, 255, 255, 255}
+		return Color{255, 255, 255, 0}
 	}
 	return backgroundColor
 }

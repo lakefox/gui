@@ -5,6 +5,7 @@ import (
 	"gui/parser"
 	"math/rand"
 	"os"
+	"strconv"
 
 	"gui/utils"
 
@@ -73,12 +74,14 @@ func (c *CSS) Map(doc *html.Node) Mapped {
 	}
 
 	// Inherit CSS styles from parent
+	println("inherit")
 	inherit(doc, styleMap)
 	// Calculate the width and height
-	fmt.Printf("123 %f %f\n", c.Width, c.Height)
+	println("size")
 	size(doc, styleMap, c.Width, c.Height)
 	// Calculate the X and Y values
-	position(doc, styleMap, 0, 0, c.Width, c.Height, c.Width, c.Height)
+	println("position")
+	position(doc, styleMap, 0, 0, c.Width, c.Height)
 
 	renderLine := flatten(doc)
 
@@ -108,43 +111,50 @@ func flatten(n *html.Node) []Node {
 	return nodes
 }
 
-func position(n *html.Node, styleMap map[string]map[string]string, x1, y1, x2, y2, windowWidth, windowHeight float32) (float32, float32, float32, float32) {
+func position(n *html.Node, styleMap map[string]map[string]string, x1, y1, windowWidth, windowHeight float32) (float32, float32) {
 	id := dom.GetAttribute(n, "DOMNODEID")
+	println(dom.TagName(n))
 	if len(id) == 0 {
 		id = dom.TagName(n) + fmt.Sprint(rand.Int63())
 		dom.SetAttribute(n, "DOMNODEID", id)
 	}
 
-	width, _ := utils.ConvertToPixels(styleMap[id]["width"], windowWidth)
-	height, _ := utils.ConvertToPixels(styleMap[id]["height"], windowHeight)
+	fs := utils.GetFontSize(styleMap[id])
 
-	x2 = width
-	y2 = height
+	rawWidth, _ := strconv.ParseFloat(styleMap[id]["width"], 32)
+	rawHeight, _ := strconv.ParseFloat(styleMap[id]["height"], 32)
+	width := float32(rawWidth)
+	height := float32(rawHeight)
+
+	x2 := x1 + width
+	y2 := y1 + height
+
+	var btmOS float32 = 0
 
 	if styleMap[id]["margin-left"] != "" {
-		v, _ := utils.ConvertToPixels(styleMap[id]["margin-left"], windowWidth)
+		v, _ := utils.ConvertToPixels(styleMap[id]["margin-left"], float32(fs), windowWidth)
 		x1 += v
-	}
-	if styleMap[id]["margin-top"] != "" {
-		v, _ := utils.ConvertToPixels(styleMap[id]["margin-top"], windowHeight)
-		y1 += v
-	}
-
-	if styleMap[id]["margin-right"] != "" {
-		v, _ := utils.ConvertToPixels(styleMap[id]["margin-left"], windowWidth)
 		x2 += v
 	}
-	if styleMap[id]["margin-bottom"] != "" {
-		v, _ := utils.ConvertToPixels(styleMap[id]["margin-top"], windowHeight)
+	if styleMap[id]["margin-top"] != "" {
+		v, _ := utils.ConvertToPixels(styleMap[id]["margin-top"], float32(fs), windowHeight)
+		y1 += v
 		y2 += v
+		btmOS += v
+	}
+
+	if styleMap[id]["margin-bottom"] != "" {
+		v, _ := utils.ConvertToPixels(styleMap[id]["margin-top"], float32(fs), windowHeight)
+		btmOS += v
 	}
 
 	children := dom.Children(n)
-
+	oY := btmOS
 	if len(children) > 0 {
 		for _, ch := range children {
-			_, b, _, d := position(ch, styleMap, x1, y1, x2, y2, width, height)
-			y1 += b + d
+			_, h := position(ch, styleMap, x1, y1+oY, width, height)
+
+			oY += h
 		}
 	}
 	if styleMap[id] == nil {
@@ -152,42 +162,40 @@ func position(n *html.Node, styleMap map[string]map[string]string, x1, y1, x2, y
 	}
 	styleMap[id]["x"] = fmt.Sprintf("%g", x1)
 	styleMap[id]["y"] = fmt.Sprintf("%g", y1)
-	return x1, y1, x2, y2
+	return x2 - x1, (y2 + btmOS) - y1
 }
 
 func size(n *html.Node, styleMap map[string]map[string]string, windowWidth, windowHeight float32) (float32, float32) {
-	fmt.Printf("%f %f\n", windowWidth, windowHeight)
 	id := dom.GetAttribute(n, "DOMNODEID")
+	println(dom.TagName(n))
 	if len(id) == 0 {
 		id = dom.TagName(n) + fmt.Sprint(rand.Int63())
 		dom.SetAttribute(n, "DOMNODEID", id)
 	}
+
+	fs := utils.GetFontSize(styleMap[id])
+
 	var width, height float32
 
 	if styleMap[id]["width"] != "" {
-		width, _ = utils.ConvertToPixels(styleMap[id]["width"], windowWidth)
-		fmt.Printf("%f %f %s %s\n", width, windowWidth, dom.TagName(n), styleMap[id]["width"])
-		fmt.Printf("%s\n", styleMap[id])
-		t, _ := utils.ConvertToPixels("50%", 100)
-		fmt.Printf("%s\n", t)
+		width, _ = utils.ConvertToPixels(styleMap[id]["width"], float32(fs), windowWidth)
 	}
 
 	if styleMap[id]["height"] != "" {
-		height, _ = utils.ConvertToPixels(styleMap[id]["height"], windowHeight)
+		height, _ = utils.ConvertToPixels(styleMap[id]["height"], float32(fs), windowHeight)
 	}
 
 	children := dom.Children(n)
 	if len(children) > 0 {
 		for _, ch := range children {
-			if width == 0 {
-				width = windowWidth
+			var wW, wH float32 = width, height
+			if n.Type != html.ElementNode {
+				wW = windowWidth
+				wH = windowHeight
 			}
-			if height == 0 {
-				height = windowHeight
-			}
-			w, h := size(ch, styleMap, width, height)
+			w, h := size(ch, styleMap, wW, wH)
 
-			width = utils.Max(w, width)
+			width = utils.Max(width, w)
 
 			height += h
 
@@ -198,25 +206,52 @@ func size(n *html.Node, styleMap map[string]map[string]string, windowWidth, wind
 			if styleMap[id]["font-size"] == "" {
 				styleMap[id]["font-size"] = "1em"
 			}
-			fs, _ := utils.ConvertToPixels(styleMap[id]["font-size"], width)
-			w, h := utils.GetTextBounds(text, fs, width, height)
+			fs2, _ := utils.ConvertToPixels(styleMap[id]["font-size"], fs, width)
 
-			width = w
+			_, h := utils.GetTextBounds(text, fs2, width, height)
 
 			height = h
 
 		}
 
 	}
+	var (
+		wMarginWidth  float32
+		wMarginHeight float32
+	)
 
-	width, height = utils.AddMarginAndPadding(styleMap, id, width, height)
+	utils.SetMP(id, styleMap)
+
+	width, height, wMarginWidth, wMarginHeight = utils.AddMarginAndPadding(styleMap, id, width, height)
 
 	if styleMap[id] == nil {
 		styleMap[id] = make(map[string]string)
 	}
-	styleMap[id]["width"] = fmt.Sprintf("%g", width)
+
+	_, right, _, left := utils.GetMarginOffset(n, styleMap, windowWidth, windowHeight)
+
+	styleMap[id]["width"] = fmt.Sprintf("%g", width-(left+right))
 	styleMap[id]["height"] = fmt.Sprintf("%g", height)
-	return width, height
+	return wMarginWidth, wMarginHeight
+}
+
+var inheritedProps = []string{
+	"color",
+	"cursor",
+	"font",
+	"font-family",
+	"font-size",
+	"font-style",
+	"font-weight",
+	"letter-spacing",
+	"line-height",
+	"text-align",
+	"text-indent",
+	"text-justify",
+	"text-shadow",
+	"text-transform",
+	"visibility",
+	"word-spacing",
 }
 
 func inherit(n *html.Node, styleMap map[string]map[string]string) {
@@ -234,7 +269,12 @@ func inherit(n *html.Node, styleMap map[string]map[string]string) {
 			if styleMap[pId] == nil {
 				styleMap[pId] = make(map[string]string)
 			}
-			styleMap[id] = utils.ExMerge(styleMap[id], styleMap[pId])
+
+			for _, v := range inheritedProps {
+				if styleMap[id][v] == "" && styleMap[pId][v] != "" {
+					styleMap[id][v] = styleMap[pId][v]
+				}
+			}
 		}
 	}
 

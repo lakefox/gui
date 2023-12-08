@@ -3,6 +3,7 @@
 }
 html {
   display: block;
+  height: 100%;
 }
 head {
   display: none;

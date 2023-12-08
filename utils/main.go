@@ -6,6 +6,9 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/go-shiori/dom"
+	"golang.org/x/net/html"
 )
 
 func check(e error) {
@@ -14,49 +17,90 @@ func check(e error) {
 	}
 }
 
-func AddMarginAndPadding(styleMap map[string]map[string]string, id string, width, height float32) (float32, float32) {
-	setMP(id, styleMap)
-	if styleMap[id]["margin-left"] != "" || styleMap[id]["margin-right"] != "" {
-		l, _ := ConvertToPixels(styleMap[id]["margin-left"], width)
-		r, _ := ConvertToPixels(styleMap[id]["margin-right"], width)
-		width += l
-		width += r
-	}
-	if styleMap[id]["margin-top"] != "" || styleMap[id]["margin-bottom"] != "" {
-		t, _ := ConvertToPixels(styleMap[id]["margin-top"], height)
-		b, _ := ConvertToPixels(styleMap[id]["margin-bottom"], height)
-		height += t
-		height += b
-	}
+func AddMarginAndPadding(styleMap map[string]map[string]string, id string, width, height float32) (float32, float32, float32, float32) {
+	fs := GetFontSize(styleMap[id])
 	if styleMap[id]["padding-left"] != "" || styleMap[id]["padding-right"] != "" {
-		l, _ := ConvertToPixels(styleMap[id]["padding-left"], width)
-		r, _ := ConvertToPixels(styleMap[id]["padding-right"], width)
+		l, _ := ConvertToPixels(styleMap[id]["padding-left"], fs, width)
+		r, _ := ConvertToPixels(styleMap[id]["padding-right"], fs, width)
 		width += l
 		width += r
 	}
 	if styleMap[id]["padding-top"] != "" || styleMap[id]["padding-bottom"] != "" {
-		t, _ := ConvertToPixels(styleMap[id]["padding-top"], height)
-		b, _ := ConvertToPixels(styleMap[id]["padding-bottom"], height)
+		t, _ := ConvertToPixels(styleMap[id]["padding-top"], fs, height)
+		b, _ := ConvertToPixels(styleMap[id]["padding-bottom"], fs, height)
 		height += t
 		height += b
 	}
-	return width, height
+
+	var marginWidth, marginHeight float32 = width, height
+
+	if styleMap[id]["margin-left"] != "" || styleMap[id]["margin-right"] != "" {
+		l, _ := ConvertToPixels(styleMap[id]["margin-left"], fs, width)
+		r, _ := ConvertToPixels(styleMap[id]["margin-right"], fs, width)
+		marginWidth += l
+		marginWidth += r
+	}
+	if styleMap[id]["margin-top"] != "" || styleMap[id]["margin-bottom"] != "" {
+		t, _ := ConvertToPixels(styleMap[id]["margin-top"], fs, height)
+		b, _ := ConvertToPixels(styleMap[id]["margin-bottom"], fs, height)
+		marginHeight += t
+		marginHeight += b
+	}
+	return width, height, marginWidth, marginHeight
 }
 
-func setMP(id string, styleMap map[string]map[string]string) {
+func SetMP(id string, styleMap map[string]map[string]string) {
 	if styleMap[id]["margin"] != "" {
 		left, right, top, bottom := convertMarginToIndividualProperties(styleMap[id]["margin"])
-		styleMap[id]["margin-left"] = left
-		styleMap[id]["margin-right"] = right
-		styleMap[id]["margin-top"] = top
-		styleMap[id]["margin-bottom"] = bottom
+		if styleMap[id]["margin-left"] == "" {
+			styleMap[id]["margin-left"] = left
+		}
+		if styleMap[id]["margin-right"] == "" {
+			styleMap[id]["margin-right"] = right
+		}
+		if styleMap[id]["margin-top"] == "" {
+			styleMap[id]["margin-top"] = top
+		}
+		if styleMap[id]["margin-bottom"] == "" {
+			styleMap[id]["margin-bottom"] = bottom
+		}
 	}
 	if styleMap[id]["padding"] != "" {
-		left, right, top, bottom := convertMarginToIndividualProperties(styleMap[id]["margin"])
-		styleMap[id]["padding-left"] = left
-		styleMap[id]["padding-right"] = right
-		styleMap[id]["padding-top"] = top
-		styleMap[id]["padding-bottom"] = bottom
+		left, right, top, bottom := convertMarginToIndividualProperties(styleMap[id]["padding"])
+		if styleMap[id]["padding-left"] == "" {
+			styleMap[id]["padding-left"] = left
+		}
+		if styleMap[id]["padding-right"] == "" {
+			styleMap[id]["padding-right"] = right
+		}
+		if styleMap[id]["padding-top"] == "" {
+			styleMap[id]["padding-top"] = top
+		}
+		if styleMap[id]["padding-bottom"] == "" {
+			styleMap[id]["padding-bottom"] = bottom
+		}
+	}
+}
+
+func GetMarginOffset(n *html.Node, styleMap map[string]map[string]string, width, height float32) (float32, float32, float32, float32) {
+
+	id := dom.GetAttribute(n, "DOMNODEID")
+
+	fs := GetFontSize(styleMap[id])
+
+	l, _ := ConvertToPixels(styleMap[id]["margin-left"], fs, width)
+	r, _ := ConvertToPixels(styleMap[id]["margin-right"], fs, width)
+	t, _ := ConvertToPixels(styleMap[id]["margin-top"], fs, height)
+	b, _ := ConvertToPixels(styleMap[id]["margin-bottom"], fs, height)
+
+	if n.Parent != nil {
+
+		nT, nR, nB, nL := GetMarginOffset(n.Parent, styleMap, width, height)
+
+		return t + nT, r + nR, b + nB, l + nL
+
+	} else {
+		return t, r, b, l
 	}
 }
 
@@ -104,16 +148,16 @@ func convertMarginToIndividualProperties(margin string) (string, string, string,
 }
 
 // ConvertToPixels converts a CSS measurement to pixels.
-func ConvertToPixels(value string, max float32) (float32, error) {
+func ConvertToPixels(value string, em, max float32) (float32, error) {
 	// Define conversion factors for different units
 	unitFactors := map[string]float32{
 		"px": 1,
-		"em": 16,    // Assuming 1em = 16px (typical default font size in browsers)
+		"em": em,    // Assuming 1em = 16px (typical default font size in browsers)
 		"pt": 1.33,  // Assuming 1pt = 1.33px (typical conversion)
 		"pc": 16.89, // Assuming 1pc = 16.89px (typical conversion)
 		"%":  max / 100,
-		// "vw": c.Width / 100,
-		// "vh": c.Height / 100,
+		"vw": max / 100,
+		"vh": max / 100,
 	}
 
 	// Extract numeric value and unit using regular expression
@@ -188,4 +232,19 @@ func Max(a, b float32) float32 {
 	} else {
 		return b
 	}
+}
+
+func GetFontSize(css map[string]string) float32 {
+	fL := len(css["font-size"])
+
+	var fs float32 = 16
+
+	if fL > 0 {
+		if css["font-size"][fL-2:] == "px" {
+			fs64, _ := strconv.ParseFloat(css["font-size"][0:fL-2], 32)
+			fs = float32(fs64)
+		}
+	}
+
+	return fs
 }
