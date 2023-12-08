@@ -15,6 +15,7 @@ type Doc struct {
 	StyleSheets []string
 	StyleTags   []string
 	DOM         *html.Node
+	Title       string
 }
 
 func Write(path string) Doc {
@@ -42,6 +43,7 @@ func Write(path string) Doc {
 		StyleSheets: stylesheets,
 		StyleTags:   styleTags,
 		DOM:         doc,
+		Title:       dom.InnerText(dom.GetElementsByTagName(doc, "title")[0]),
 	}
 
 	return d
