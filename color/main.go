@@ -391,3 +391,14 @@ func Background(styles map[string]string) Color {
 	}
 	return backgroundColor
 }
+
+func Font(styles map[string]string) (Color, error) {
+	// Extract the "background-color" or "background" property from the styles
+	fontColor, ok := styles["color"]
+	if !ok {
+		fontColor = "rgba(0,0,0,1)"
+	}
+
+	// Parse the background color and return the result
+	return ParseRGBA(fontColor)
+}

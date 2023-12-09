@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"gui/font"
 	"math"
 	"regexp"
 	"strconv"
@@ -18,7 +19,7 @@ func check(e error) {
 }
 
 func AddMarginAndPadding(styleMap map[string]map[string]string, id string, width, height float32) (float32, float32, float32, float32) {
-	fs := GetFontSize(styleMap[id])
+	fs := font.GetFontSize(styleMap[id])
 	if styleMap[id]["padding-left"] != "" || styleMap[id]["padding-right"] != "" {
 		l, _ := ConvertToPixels(styleMap[id]["padding-left"], fs, width)
 		r, _ := ConvertToPixels(styleMap[id]["padding-right"], fs, width)
@@ -85,8 +86,9 @@ func SetMP(id string, styleMap map[string]map[string]string) {
 func GetMarginOffset(n *html.Node, styleMap map[string]map[string]string, width, height float32) (float32, float32, float32, float32) {
 
 	id := dom.GetAttribute(n, "DOMNODEID")
+	SetMP(id, styleMap)
 
-	fs := GetFontSize(styleMap[id])
+	fs := font.GetFontSize(styleMap[id])
 
 	l, _ := ConvertToPixels(styleMap[id]["margin-left"], fs, width)
 	r, _ := ConvertToPixels(styleMap[id]["margin-right"], fs, width)
@@ -94,12 +96,16 @@ func GetMarginOffset(n *html.Node, styleMap map[string]map[string]string, width,
 	b, _ := ConvertToPixels(styleMap[id]["margin-bottom"], fs, height)
 
 	if n.Parent != nil {
-
+		println("HERE")
 		nT, nR, nB, nL := GetMarginOffset(n.Parent, styleMap, width, height)
+
+		fmt.Printf("%f %f %f %f\n", nT, nR, nB, nL)
+		// fmt.Printf("%f %f %f %f\n", t, r, b, l)
 
 		return t + nT, r + nR, b + nB, l + nL
 
 	} else {
+		println("END")
 		return t, r, b, l
 	}
 }
@@ -234,17 +240,22 @@ func Max(a, b float32) float32 {
 	}
 }
 
-func GetFontSize(css map[string]string) float32 {
-	fL := len(css["font-size"])
+func FindRelative(n *html.Node, styleMap map[string]map[string]string) (float32, float32) {
 
-	var fs float32 = 16
+	id := dom.GetAttribute(n, "DOMNODEID")
 
-	if fL > 0 {
-		if css["font-size"][fL-2:] == "px" {
-			fs64, _ := strconv.ParseFloat(css["font-size"][0:fL-2], 32)
-			fs = float32(fs64)
+	pos := styleMap[id]["position"]
+
+	if pos == "relative" {
+		x, _ := strconv.ParseFloat(styleMap[id]["x"], 32)
+		y, _ := strconv.ParseFloat(styleMap[id]["y"], 32)
+		return float32(x), float32(y)
+	} else {
+		if n.Parent != nil {
+			x, y := FindRelative(n.Parent, styleMap)
+			return x, y
+		} else {
+			return 0, 0
 		}
 	}
-
-	return fs
 }

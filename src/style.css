@@ -27,3 +27,15 @@ html {
   background-color: orange;
   /* padding: 20px; */
 }
+#cont {
+  position: relative;
+}
+
+#inset {
+  position: absolute;
+  top: 10px;
+  left: 100px;
+  width: 100px;
+  height: 100px;
+  background-color: azure;
+}

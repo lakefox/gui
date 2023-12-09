@@ -2,6 +2,7 @@ package cstyle
 
 import (
 	"fmt"
+	"gui/font"
 	"gui/parser"
 	"math/rand"
 	"os"
@@ -119,7 +120,7 @@ func position(n *html.Node, styleMap map[string]map[string]string, x1, y1, windo
 		dom.SetAttribute(n, "DOMNODEID", id)
 	}
 
-	fs := utils.GetFontSize(styleMap[id])
+	fs := font.GetFontSize(styleMap[id])
 
 	rawWidth, _ := strconv.ParseFloat(styleMap[id]["width"], 32)
 	rawHeight, _ := strconv.ParseFloat(styleMap[id]["height"], 32)
@@ -128,6 +129,38 @@ func position(n *html.Node, styleMap map[string]map[string]string, x1, y1, windo
 
 	x2 := x1 + width
 	y2 := y1 + height
+
+	if styleMap[id]["position"] == "absolute" {
+		println("ABSOLUTE")
+
+		if styleMap[id]["top"] != "" {
+			v, _ := utils.ConvertToPixels(styleMap[id]["top"], float32(fs), windowWidth)
+			x1 = v
+		}
+		if styleMap[id]["left"] != "" {
+			v, _ := utils.ConvertToPixels(styleMap[id]["left"], float32(fs), windowWidth)
+			y1 = v
+		}
+		if styleMap[id]["right"] != "" {
+			v, _ := utils.ConvertToPixels(styleMap[id]["right"], float32(fs), windowWidth)
+			x1 = (windowWidth - width) - v
+		}
+		if styleMap[id]["bottom"] != "" {
+			v, _ := utils.ConvertToPixels(styleMap[id]["bottom"], float32(fs), windowWidth)
+			y1 = (windowHeight - height) - v
+		}
+
+		relX, relY := utils.FindRelative(n, styleMap)
+
+		if relX != 0 && relY != 0 {
+			fmt.Println(relX, relY)
+			x1 += relX
+			y1 += relY
+		}
+
+		x2 = x1 + width
+		y2 = y1 + height
+	}
 
 	var btmOS float32 = 0
 
@@ -148,6 +181,13 @@ func position(n *html.Node, styleMap map[string]map[string]string, x1, y1, windo
 		btmOS += v
 	}
 
+	// Set the position before calling children so they can see where the parent is
+	if styleMap[id] == nil {
+		styleMap[id] = make(map[string]string)
+	}
+	styleMap[id]["x"] = fmt.Sprintf("%g", x1)
+	styleMap[id]["y"] = fmt.Sprintf("%g", y1)
+
 	children := dom.Children(n)
 	oY := btmOS
 	if len(children) > 0 {
@@ -157,23 +197,18 @@ func position(n *html.Node, styleMap map[string]map[string]string, x1, y1, windo
 			oY += h
 		}
 	}
-	if styleMap[id] == nil {
-		styleMap[id] = make(map[string]string)
-	}
-	styleMap[id]["x"] = fmt.Sprintf("%g", x1)
-	styleMap[id]["y"] = fmt.Sprintf("%g", y1)
+
 	return x2 - x1, (y2 + btmOS) - y1
 }
 
 func size(n *html.Node, styleMap map[string]map[string]string, windowWidth, windowHeight float32) (float32, float32) {
 	id := dom.GetAttribute(n, "DOMNODEID")
-	println(dom.TagName(n))
 	if len(id) == 0 {
 		id = dom.TagName(n) + fmt.Sprint(rand.Int63())
 		dom.SetAttribute(n, "DOMNODEID", id)
 	}
 
-	fs := utils.GetFontSize(styleMap[id])
+	fs := font.GetFontSize(styleMap[id])
 
 	var width, height float32
 
@@ -207,6 +242,7 @@ func size(n *html.Node, styleMap map[string]map[string]string, windowWidth, wind
 				styleMap[id]["font-size"] = "1em"
 			}
 			fs2, _ := utils.ConvertToPixels(styleMap[id]["font-size"], fs, width)
+			styleMap[id]["fontSize"] = fmt.Sprintf("%f", fs2)
 
 			_, h := utils.GetTextBounds(text, fs2, width, height)
 
