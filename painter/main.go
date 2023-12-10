@@ -21,7 +21,7 @@ type Text struct {
 
 // WindowManager manages the window and rectangles
 type WindowManager struct {
-	rectangles []Rect
+	nodes      []Rect
 	Fonts      map[string]rl.Font
 	FPS        bool
 	FPSCounter fps.FPSCounter
@@ -51,36 +51,34 @@ func (wm *WindowManager) CloseWindow() {
 }
 
 // AddRectangle adds a rectangle to the window
-func (wm *WindowManager) AddRectangle(rect Rect) {
-	wm.rectangles = append(wm.rectangles, rect)
+func (wm *WindowManager) AddNode(rect Rect) {
+	wm.nodes = append(wm.nodes, rect)
 }
 
-// RemoveAllRectangles removes all rectangles from the window
-func (wm *WindowManager) RemoveAllRectangles() {
-	wm.rectangles = nil
+// RemoveAllNods removes all nodes from the window
+func (wm *WindowManager) RemoveAllNodes() {
+	wm.nodes = nil
 }
 
-// DrawRectangles draws all rectangles on the window
-func (wm *WindowManager) DrawRectangles() {
-	rl.BeginDrawing()
-	rl.ClearBackground(rl.RayWhite)
+// Draw draws all nodes on the window
+func (wm *WindowManager) Draw() {
 
-	for _, pair := range wm.rectangles {
-		rl.DrawRectangleRec(pair.Node, pair.Color)
-		if pair.Text.Value != "" {
+	for _, node := range wm.nodes {
+		rl.DrawRectangleRec(node.Node, node.Color)
+		if node.Text.Value != "" {
 			// Draw text inside the rectangle
-			textHeight := pair.Text.Size
-			textX := pair.Node.X
-			textY := pair.Node.Y + (pair.Node.Height-float32(textHeight))/2
+			textHeight := node.Text.Size
+			textX := node.Node.X
+			textY := node.Node.Y + (node.Node.Height-float32(textHeight))/2
 
-			font := wm.Fonts[pair.Text.Font]
+			font := wm.Fonts[node.Text.Font]
 
 			if font.Texture.ID == 0 {
-				font := rl.LoadFont(pair.Text.Font)
-				wm.Fonts[pair.Text.Font] = font
+				font := rl.LoadFont(node.Text.Font)
+				wm.Fonts[node.Text.Font] = font
 			}
 
-			rl.DrawTextEx(font, pair.Text.Value, rl.NewVector2(textX, textY), pair.Text.Size, 2, pair.Text.Color)
+			rl.DrawTextEx(font, node.Text.Value, rl.NewVector2(textX, textY), node.Text.Size, 2, node.Text.Color)
 		}
 	}
 
@@ -88,8 +86,6 @@ func (wm *WindowManager) DrawRectangles() {
 		wm.FPSCounter.Update()
 		wm.FPSCounter.Draw(10, 10, 10, rl.DarkGray)
 	}
-
-	rl.EndDrawing()
 }
 
 // WindowShouldClose returns true if the window should close

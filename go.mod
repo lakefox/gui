@@ -17,6 +17,7 @@ require (
 
 require (
 	github.com/andybalholm/cascadia v1.3.2 // indirect
+	github.com/gen2brain/raylib-go/raygui v0.0.0-20231123174446-48309e2407b7
 	github.com/gen2brain/raylib-go/raylib v0.0.0-20231123174446-48309e2407b7
 	github.com/gogs/chardet v0.0.0-20211120154057-b7413eaefb8f // indirect
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0

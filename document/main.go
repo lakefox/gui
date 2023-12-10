@@ -6,6 +6,7 @@ import (
 	"gui/cstyle"
 	"gui/font"
 	"gui/painter"
+	"gui/utils"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -52,31 +53,64 @@ func Open(index string) {
 		css.StyleTag(v)
 	}
 
-	render(css, d, wm)
+	// 	// Create vertical scrollbar
+	// verticalScrollBar := scroll.NewScrollBar(screenHeight, screenHeight, true)
+
+	// 	// Create horizontal scrollbar
+	// horizontalScrollBar := scroll.NewScrollBar(screenWidth, screenWidth, false)
+
+	rl.BeginDrawing()
+	rl.ClearBackground(rl.RayWhite)
+
+	var vO, hO float32
+	// var maxWidth, maxHeight int32
+
+	render(css, d, wm, screenWidth, screenHeight, 0, 0)
+	rl.EndDrawing()
 
 	// Main game loop
 	for !wm.WindowShouldClose() {
+		rl.BeginDrawing()
+		rl.ClearBackground(rl.RayWhite)
 		// Check if the window size has changed
 		newWidth := int32(rl.GetScreenWidth())
 		newHeight := int32(rl.GetScreenHeight())
 
+		// vO1 := verticalScrollBar.Update(screenHeight, int32(maxHeight))
+		// hO1 := horizontalScrollBar.Update(screenWidth, int32(maxWidth))
+
 		if newWidth != screenWidth || newHeight != screenHeight {
+			// if newWidth != screenWidth || newHeight != screenHeight || vO1 != vO || hO1 != hO {
 			// Window has been resized, handle the event
 			screenWidth = newWidth
 			screenHeight = newHeight
 
 			css.Width = float32(screenWidth)
 			css.Height = float32(screenHeight)
-			render(css, d, wm)
+			// screenWidth, maxWidth, screenHeight, maxHeight = render(css, d, wm, screenWidth, screenHeight, vO, hO)
+			render(css, d, wm, screenWidth, screenHeight, vO, hO)
 		}
 
+		// vO = vO1
+		// hO = hO1
+
 		// Draw rectangles
-		wm.DrawRectangles()
+		wm.Draw()
+		// Draw vertical scrollbar
+		// verticalScrollBar.Draw()
+
+		// Draw horizontal scrollbar
+		// horizontalScrollBar.Draw()
+
+		rl.EndDrawing()
 	}
 }
 
-func render(css cstyle.CSS, d Doc, wm *painter.WindowManager) {
+func render(css cstyle.CSS, d Doc, wm *painter.WindowManager, screenWidth, screenHeight int32, offsetY, offsetX float32) (int32, int32, int32, int32) {
 	p := css.Map(d.DOM)
+
+	maxWidth := 0
+	maxHeight := 0
 
 	for _, v := range p.Render {
 		styles := p.StyleMap[v.Id]
@@ -85,6 +119,14 @@ func render(css cstyle.CSS, d Doc, wm *painter.WindowManager) {
 		y, _ := strconv.ParseFloat(styles["y"], 32)
 		width, _ := strconv.ParseFloat(styles["width"], 32)
 		height, _ := strconv.ParseFloat(styles["height"], 32)
+
+		maxWidth = int(utils.Max(float32(x+width), float32(maxWidth)))
+		maxHeight = int(utils.Max(float32(y+height), float32(maxHeight)))
+
+		x += float64(offsetX)
+		y += float64(offsetY)
+		width += float64(offsetX)
+		height += float64(offsetY)
 
 		if height == 0 {
 			continue
@@ -114,8 +156,9 @@ func render(css cstyle.CSS, d Doc, wm *painter.WindowManager) {
 			Text:  text,
 		}
 
-		wm.AddRectangle(node)
+		wm.AddNode(node)
 	}
+	return screenWidth, int32(maxWidth), screenHeight, int32(maxHeight)
 }
 
 func Parse(path string) Doc {
