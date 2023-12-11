@@ -114,6 +114,10 @@ func convertMarginToIndividualProperties(margin string) (string, string, string,
 	// Remove extra whitespace
 	margin = strings.TrimSpace(margin)
 
+	if margin == "" {
+		return "0px", "0px", "0px", "0px"
+	}
+
 	// Regular expression to match values with optional units
 	re := regexp.MustCompile(`(-?\d+(\.\d+)?)(\w*|\%)?`)
 
@@ -258,4 +262,15 @@ func FindRelative(n *html.Node, styleMap map[string]map[string]string) (float32,
 			return 0, 0
 		}
 	}
+}
+
+func ParseFloat(str string, def float32) float32 {
+	var a float32
+	if str == "" {
+		a = 0
+	} else {
+		v, _ := strconv.ParseFloat(str, 32)
+		a = float32(v)
+	}
+	return a
 }

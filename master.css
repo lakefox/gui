@@ -4,6 +4,7 @@
 html {
   display: block;
   height: 100%;
+  position: relative;
 }
 head {
   display: none;
