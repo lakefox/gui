@@ -1,4 +1,4 @@
-package painter
+package window
 
 import (
 	"gui/fps"

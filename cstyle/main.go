@@ -1,5 +1,9 @@
 package cstyle
 
+// package aui/goldie
+// https://pkg.go.dev/automated.sh/goldie
+// https://pkg.go.dev/automated.sh/aui
+
 import (
 	"fmt"
 	"gui/font"
@@ -141,7 +145,8 @@ func (c *CSS) Map(doc *html.Node) Mapped {
 	fmt.Printf("%#v\n", node.Id)
 	initNodes(&node, styleMap)
 
-	ComputeNodeStyle(node)
+	node = ComputeNodeStyle(node)
+
 	Print(&node, 0)
 
 	renderLine := flatten(&node)
@@ -154,7 +159,7 @@ func (c *CSS) Map(doc *html.Node) Mapped {
 	return d
 }
 
-func ComputeNodeStyle(n Node) {
+func ComputeNodeStyle(n Node) Node {
 	// Need to make a function that builds a Node tree from a *html.Node
 	// Kind of a chicken and the egg problem.. I need to have these styles to make the Node
 	// Maybe make this function a function like inherit (circular i know lol) but just go ahead
@@ -166,11 +171,8 @@ func ComputeNodeStyle(n Node) {
 
 	styleMap := n.Styles
 
+	width, height := n.Width, n.Height
 	x, y := n.Parent.X, n.Parent.Y
-
-	width, _ := utils.ConvertToPixels(styleMap["width"], n.EM, n.Parent.Width)
-	height, _ := utils.ConvertToPixels(styleMap["height"], n.EM, n.Parent.Width)
-	println(n.Id, width, height)
 
 	var top, left, right, bottom bool = false, false, false, false
 
@@ -220,6 +222,23 @@ func ComputeNodeStyle(n Node) {
 		y -= n.Margin.Bottom
 	}
 
+	// Display
+
+	if styleMap["display"] == "block" {
+		// If the element is display block and the width is unset then make it 100%
+		if styleMap["width"] == "" {
+			width, _ = utils.ConvertToPixels("100%", n.EM, n.Parent.Width)
+		}
+	}
+
+	// The element is empty, need to calculate the height of the element
+	// the only case where this would happen is a text node
+
+	// NOTE: other elements can have text...
+	if len(n.Children) == 0 {
+		// text := dom.InnerText(n.Node)
+	}
+
 	n.X = x
 	n.Y = y
 	n.Width = width
@@ -227,9 +246,11 @@ func ComputeNodeStyle(n Node) {
 
 	// Call children here
 
-	for _, v := range n.Children {
-		ComputeNodeStyle(v)
+	for i, v := range n.Children {
+		v.Parent = &n
+		n.Children[i] = ComputeNodeStyle(v)
 	}
+	return n
 }
 
 var inheritedProps = []string{
@@ -249,6 +270,7 @@ var inheritedProps = []string{
 	"text-transform",
 	"visibility",
 	"word-spacing",
+	"display",
 }
 
 func inherit(n *html.Node, styleMap map[string]map[string]string) {
@@ -282,8 +304,6 @@ func inherit(n *html.Node, styleMap map[string]map[string]string) {
 }
 
 func initNodes(n *Node, styleMap map[string]map[string]string) {
-	println("###$$$####")
-	println(n.Id)
 	border, err := CompleteBorder(n.Styles)
 	if err == nil {
 		n.Border = border
@@ -314,10 +334,15 @@ func initNodes(n *Node, styleMap map[string]map[string]string) {
 		Left:   pl,
 	}
 
+	width, _ := utils.ConvertToPixels(n.Styles["width"], n.EM, n.Parent.Width)
+	height, _ := utils.ConvertToPixels(n.Styles["height"], n.EM, n.Parent.Height)
+
+	n.Width = width
+	n.Height = height
+
 	for _, c := range dom.ChildNodes(n.Node) {
 		if c.Type == html.ElementNode {
 			id := dom.GetAttribute(c, "DOMNODEID")
-			println(id)
 			node := Node{
 				Node:   c,
 				Parent: n,

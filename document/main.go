@@ -3,7 +3,7 @@ package document
 import (
 	"bufio"
 	"gui/cstyle"
-	"gui/painter"
+	"gui/window"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -24,7 +24,7 @@ type Doc struct {
 func Open(index string) {
 	d := Parse(index)
 
-	wm := painter.NewWindowManager()
+	wm := window.NewWindowManager()
 	wm.FPS = true
 
 	// Initialization
