@@ -6,6 +6,7 @@ package cstyle
 
 import (
 	"fmt"
+	"gui/color"
 	"gui/font"
 	"gui/parser"
 	"gui/utils"
@@ -50,6 +51,8 @@ type Node struct {
 	Padding  Padding
 	Border   Border
 	EM       float32
+	Text     font.Text
+	Colors   color.Colors
 }
 
 type Margin struct {
@@ -130,6 +133,7 @@ func (c *CSS) Map(doc *html.Node) Mapped {
 			Y:      0,
 			Width:  c.Width,
 			Height: c.Height,
+			EM:     16,
 			Styles: map[string]string{
 				"width":  strconv.FormatFloat(float64(c.Width), 'f', -1, 32) + "px",
 				"height": strconv.FormatFloat(float64(c.Height), 'f', -1, 32) + "px",
@@ -183,12 +187,12 @@ func ComputeNodeStyle(n Node) Node {
 
 		if styleMap["top"] != "" {
 			v, _ := utils.ConvertToPixels(styleMap["top"], float32(n.EM), n.Parent.Width)
-			x = v + base.X
+			y = v + base.Y
 			top = true
 		}
 		if styleMap["left"] != "" {
 			v, _ := utils.ConvertToPixels(styleMap["left"], float32(n.EM), n.Parent.Width)
-			y = v + base.Y
+			x = v + base.X
 			left = true
 		}
 		if styleMap["right"] != "" {
@@ -201,9 +205,16 @@ func ComputeNodeStyle(n Node) Node {
 			y = (base.Height - height) - v
 			bottom = true
 		}
+	} else {
+		for _, v := range n.Parent.Children {
+			if v.Id == n.Id {
+				break
+			} else {
+				println(n.Id, v.Id, y, v.Height)
+				y += v.Height
+			}
+		}
 	}
-
-	// Make a Node.Color that the color library can use to output node.Color.Background node.Color.Border.Left etc including font
 
 	// Display modes need to be calculated here
 
@@ -228,6 +239,7 @@ func ComputeNodeStyle(n Node) Node {
 		// If the element is display block and the width is unset then make it 100%
 		if styleMap["width"] == "" {
 			width, _ = utils.ConvertToPixels("100%", n.EM, n.Parent.Width)
+			width -= n.Margin.Right + n.Margin.Left
 		}
 	}
 
@@ -236,7 +248,24 @@ func ComputeNodeStyle(n Node) Node {
 
 	// NOTE: other elements can have text...
 	if len(n.Children) == 0 {
-		// text := dom.InnerText(n.Node)
+		text := dom.InnerText(n.Node)
+		// Confirm text exists
+		if styleMap["width"] == "" {
+			if len(text) > 0 {
+				height = n.EM
+
+				f, _ := font.LoadFont(styleMap["font-family"], int(n.EM))
+
+				width = utils.Max(width, float32(font.MeasureText(f, text)))
+				c, _ := color.Font(styleMap)
+				n.Text = font.Text{
+					Text:  text,
+					Font:  f,
+					Color: c,
+				}
+				n.Text.Render()
+			}
+		}
 	}
 
 	n.X = x
@@ -249,7 +278,27 @@ func ComputeNodeStyle(n Node) Node {
 	for i, v := range n.Children {
 		v.Parent = &n
 		n.Children[i] = ComputeNodeStyle(v)
+		if styleMap["height"] == "" {
+			n.Height += n.Children[i].Height
+			n.Height += n.Children[i].Margin.Top
+			n.Height += n.Children[i].Margin.Bottom
+		}
 	}
+
+	if styleMap["position"] == "relative" {
+		w, h := n.X+n.Width, n.Y+n.Height
+		for _, v := range n.Children {
+			w = utils.Max(v.X+v.Width, w)
+			h = utils.Max(v.Y+v.Height, h)
+		}
+		if w > n.Width {
+			n.Width = w - n.X
+		}
+		if h > n.Height {
+			n.Height = h - n.Y
+		}
+	}
+
 	return n
 }
 
@@ -309,7 +358,7 @@ func initNodes(n *Node, styleMap map[string]map[string]string) {
 		n.Border = border
 	}
 
-	fs := font.GetFontSize(n.Styles)
+	fs, _ := utils.ConvertToPixels(n.Styles["font-size"], n.Parent.EM, n.Parent.Width)
 	n.EM = fs
 
 	mt, _ := utils.ConvertToPixels(n.Styles["margin-top"], n.EM, n.Parent.Width)
@@ -339,6 +388,8 @@ func initNodes(n *Node, styleMap map[string]map[string]string) {
 
 	n.Width = width
 	n.Height = height
+
+	n.Colors = color.Parse(n.Styles)
 
 	for _, c := range dom.ChildNodes(n.Node) {
 		if c.Type == html.ElementNode {
@@ -490,6 +541,9 @@ func Print(n *Node, indent int) {
 	fmt.Printf(pre+"-- Parent: %d\n", n.Parent.Id)
 	fmt.Printf(pre+"\t-- Width: %f\n", n.Parent.Width)
 	fmt.Printf(pre+"\t-- Height: %f\n", n.Parent.Height)
+	fmt.Printf(pre + "-- Colors:\n")
+	fmt.Printf(pre+"\t-- Font: %f\n", n.Colors.Font)
+	fmt.Printf(pre+"\t-- Background: %f\n", n.Colors.Background)
 	fmt.Printf(pre+"-- Children: %d\n", len(n.Children))
 	fmt.Printf(pre+"-- EM: %f\n", n.EM)
 	fmt.Printf(pre+"-- X: %f\n", n.X)

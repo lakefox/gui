@@ -49,51 +49,33 @@ func Open(index string) {
 		css.StyleTag(v)
 	}
 
-	css.Map(d.DOM)
+	nodes := css.Map(d.DOM)
+	wm.Draw(nodes.Render)
 
 	// Main game loop
 	for !wm.WindowShouldClose() {
 		rl.BeginDrawing()
-		rl.ClearBackground(rl.RayWhite)
+		// rl.ClearBackground(rl.RayWhite)
 		// Check if the window size has changed
 		newWidth := int32(rl.GetScreenWidth())
 		newHeight := int32(rl.GetScreenHeight())
 
 		if newWidth != screenWidth || newHeight != screenHeight {
+			rl.ClearBackground(rl.RayWhite)
 			// Window has been resized, handle the event
 			screenWidth = newWidth
 			screenHeight = newHeight
 
 			css.Width = float32(screenWidth)
 			css.Height = float32(screenHeight)
-			// styles := css.Map(d.DOM)
-			css.Map(d.DOM)
-			// parent := cstyle.Node{
-			// 	X:      0,
-			// 	Y:      0,
-			// 	Width:  float32(screenWidth),
-			// 	Height: float32(screenHeight),
-			// }
-			// render(styles, styles.Document, wm, parent)
-		}
+			nodes = css.Map(d.DOM)
 
-		// Draw rectangles
-		wm.Draw()
+		}
+		wm.Draw(nodes.Render)
 
 		rl.EndDrawing()
 	}
 }
-
-// func render(m cstyle.Mapped, n *html.Node, wm *painter.WindowManager, parent cstyle.Node) {
-// 	id := dom.GetAttribute(n, "DOMNODEID")
-// 	fs := font.GetFontSize(m.StyleMap[id])
-
-// 	x, y := m.Position(n, parent)
-
-// 	width, _ := utils.ConvertToPixels(m.InheritProp(n, "width"), fs, float32(parent.Width))
-// 	height, _ := utils.ConvertToPixels(m.InheritProp(n, "height"), fs, float32(parent.Height))
-
-// }
 
 func Parse(path string) Doc {
 	file, err := os.Open(path)

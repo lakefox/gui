@@ -2,17 +2,19 @@ package color
 
 import (
 	"fmt"
+	ic "image/color"
 	"strconv"
 	"strings"
 )
 
 // Color represents an RGBA color
-type Color struct {
-	R, G, B, A uint8
+type Colors struct {
+	Background ic.RGBA
+	Font       ic.RGBA
 }
 
 // ParseRGBA parses a CSS color string and returns an RGBA color
-func ParseRGBA(color string) (Color, error) {
+func ParseRGBA(color string) (ic.RGBA, error) {
 	color = strings.TrimSpace(strings.ToLower(color))
 
 	// Named color
@@ -25,7 +27,7 @@ func ParseRGBA(color string) (Color, error) {
 		hexValue := strings.TrimPrefix(color, "#")
 		rgb, err := strconv.ParseUint(hexValue, 16, 32)
 		if err != nil {
-			return Color{}, fmt.Errorf("error parsing hex color: %s", color)
+			return ic.RGBA{}, fmt.Errorf("error parsing hex color: %s", color)
 		}
 
 		// Check if it's #RRGGBB or #RRGGBBAA
@@ -34,7 +36,7 @@ func ParseRGBA(color string) (Color, error) {
 			alpha = uint8(rgb >> 24)
 		}
 
-		return Color{uint8(rgb >> 16), uint8((rgb >> 8) & 0xFF), uint8(rgb & 0xFF), alpha}, nil
+		return ic.RGBA{uint8(rgb >> 16), uint8((rgb >> 8) & 0xFF), uint8(rgb & 0xFF), alpha}, nil
 	}
 
 	// RGB or RGBA color format: rgb(255, 0, 0) or rgba(255, 0, 0, 0.5)
@@ -51,124 +53,124 @@ func ParseRGBA(color string) (Color, error) {
 		return parseHSLA(color)
 	}
 
-	return Color{}, fmt.Errorf("unknown color format: %s", color)
+	return ic.RGBA{}, fmt.Errorf("unknown color format: %s", color)
 }
 
-func parseRGB(rgb string) (Color, error) {
+func parseRGB(rgb string) (ic.RGBA, error) {
 	rgbValues := strings.TrimSuffix(strings.TrimPrefix(rgb, "rgb("), ")")
 	rgbParts := strings.Split(rgbValues, ",")
 
 	if len(rgbParts) != 3 {
-		return Color{}, fmt.Errorf("invalid RGB color format: %s", rgb)
+		return ic.RGBA{}, fmt.Errorf("invalid RGB color format: %s", rgb)
 	}
 
 	r, err := strconv.Atoi(strings.TrimSpace(rgbParts[0]))
 	if err != nil {
-		return Color{}, fmt.Errorf("invalid red component: %s", rgbParts[0])
+		return ic.RGBA{}, fmt.Errorf("invalid red component: %s", rgbParts[0])
 	}
 
 	g, err := strconv.Atoi(strings.TrimSpace(rgbParts[1]))
 	if err != nil {
-		return Color{}, fmt.Errorf("invalid green component: %s", rgbParts[1])
+		return ic.RGBA{}, fmt.Errorf("invalid green component: %s", rgbParts[1])
 	}
 
 	b, err := strconv.Atoi(strings.TrimSpace(rgbParts[2]))
 	if err != nil {
-		return Color{}, fmt.Errorf("invalid blue component: %s", rgbParts[2])
+		return ic.RGBA{}, fmt.Errorf("invalid blue component: %s", rgbParts[2])
 	}
 
-	return Color{uint8(r), uint8(g), uint8(b), 255}, nil
+	return ic.RGBA{uint8(r), uint8(g), uint8(b), 255}, nil
 }
 
-func parseRGBA(rgba string) (Color, error) {
+func parseRGBA(rgba string) (ic.RGBA, error) {
 	rgbaValues := strings.TrimSuffix(strings.TrimPrefix(rgba, "rgba("), ")")
 	rgbaParts := strings.Split(rgbaValues, ",")
 
 	if len(rgbaParts) != 4 {
-		return Color{}, fmt.Errorf("invalid RGBA color format: %s", rgba)
+		return ic.RGBA{}, fmt.Errorf("invalid RGBA color format: %s", rgba)
 	}
 
 	r, err := strconv.Atoi(strings.TrimSpace(rgbaParts[0]))
 	if err != nil {
-		return Color{}, fmt.Errorf("invalid red component: %s", rgbaParts[0])
+		return ic.RGBA{}, fmt.Errorf("invalid red component: %s", rgbaParts[0])
 	}
 
 	g, err := strconv.Atoi(strings.TrimSpace(rgbaParts[1]))
 	if err != nil {
-		return Color{}, fmt.Errorf("invalid green component: %s", rgbaParts[1])
+		return ic.RGBA{}, fmt.Errorf("invalid green component: %s", rgbaParts[1])
 	}
 
 	b, err := strconv.Atoi(strings.TrimSpace(rgbaParts[2]))
 	if err != nil {
-		return Color{}, fmt.Errorf("invalid blue component: %s", rgbaParts[2])
+		return ic.RGBA{}, fmt.Errorf("invalid blue component: %s", rgbaParts[2])
 	}
 
 	alpha, err := strconv.ParseFloat(strings.TrimSpace(rgbaParts[3]), 64)
 	if err != nil {
-		return Color{}, fmt.Errorf("invalid alpha component: %s", rgbaParts[3])
+		return ic.RGBA{}, fmt.Errorf("invalid alpha component: %s", rgbaParts[3])
 	}
 
-	return Color{uint8(r), uint8(g), uint8(b), uint8(alpha * 255)}, nil
+	return ic.RGBA{uint8(r), uint8(g), uint8(b), uint8(alpha * 255)}, nil
 }
 
-func parseHSL(hsl string) (Color, error) {
+func parseHSL(hsl string) (ic.RGBA, error) {
 	hslValues := strings.TrimSuffix(strings.TrimPrefix(hsl, "hsl("), ")")
 	hslParts := strings.Split(hslValues, ",")
 
 	if len(hslParts) != 3 {
-		return Color{}, fmt.Errorf("invalid HSL color format: %s", hsl)
+		return ic.RGBA{}, fmt.Errorf("invalid HSL color format: %s", hsl)
 	}
 
 	h, err := strconv.Atoi(strings.TrimSpace(hslParts[0]))
 	if err != nil {
-		return Color{}, fmt.Errorf("invalid hue component: %s", hslParts[0])
+		return ic.RGBA{}, fmt.Errorf("invalid hue component: %s", hslParts[0])
 	}
 
 	s, err := strconv.Atoi(strings.TrimSpace(strings.TrimSuffix(hslParts[1], "%")))
 	if err != nil {
-		return Color{}, fmt.Errorf("invalid saturation component: %s", hslParts[1])
+		return ic.RGBA{}, fmt.Errorf("invalid saturation component: %s", hslParts[1])
 	}
 
 	l, err := strconv.Atoi(strings.TrimSpace(strings.TrimSuffix(hslParts[2], "%")))
 	if err != nil {
-		return Color{}, fmt.Errorf("invalid lightness component: %s", hslParts[2])
+		return ic.RGBA{}, fmt.Errorf("invalid lightness component: %s", hslParts[2])
 	}
 
 	return hslToRGB(uint16(h), float64(s)/100, float64(l)/100), nil
 }
 
-func parseHSLA(hsla string) (Color, error) {
+func parseHSLA(hsla string) (ic.RGBA, error) {
 	hslaValues := strings.TrimSuffix(strings.TrimPrefix(hsla, "hsla("), ")")
 	hslaParts := strings.Split(hslaValues, ",")
 
 	if len(hslaParts) != 4 {
-		return Color{}, fmt.Errorf("invalid HSLA color format: %s", hsla)
+		return ic.RGBA{}, fmt.Errorf("invalid HSLA color format: %s", hsla)
 	}
 
 	h, err := strconv.Atoi(strings.TrimSpace(hslaParts[0]))
 	if err != nil {
-		return Color{}, fmt.Errorf("invalid hue component: %s", hslaParts[0])
+		return ic.RGBA{}, fmt.Errorf("invalid hue component: %s", hslaParts[0])
 	}
 
 	s, err := strconv.Atoi(strings.TrimSpace(strings.TrimSuffix(hslaParts[1], "%")))
 	if err != nil {
-		return Color{}, fmt.Errorf("invalid saturation component: %s", hslaParts[1])
+		return ic.RGBA{}, fmt.Errorf("invalid saturation component: %s", hslaParts[1])
 	}
 
 	l, err := strconv.Atoi(strings.TrimSpace(strings.TrimSuffix(hslaParts[2], "%")))
 	if err != nil {
-		return Color{}, fmt.Errorf("invalid lightness component: %s", hslaParts[2])
+		return ic.RGBA{}, fmt.Errorf("invalid lightness component: %s", hslaParts[2])
 	}
 
 	alpha, err := strconv.ParseFloat(strings.TrimSpace(hslaParts[3]), 64)
 	if err != nil {
-		return Color{}, fmt.Errorf("invalid alpha component: %s", hslaParts[3])
+		return ic.RGBA{}, fmt.Errorf("invalid alpha component: %s", hslaParts[3])
 	}
 
 	return hslToRGB(uint16(h), float64(s)/100, float64(l)/100, alpha), nil
 }
 
-func hslToRGB(hue uint16, saturation, lightness float64, alpha ...float64) Color {
+func hslToRGB(hue uint16, saturation, lightness float64, alpha ...float64) ic.RGBA {
 	var r, g, b float64
 
 	if saturation == 0 {
@@ -224,10 +226,10 @@ func hslToRGB(hue uint16, saturation, lightness float64, alpha ...float64) Color
 		alphaValue = uint8(alpha[0] * 255)
 	}
 
-	return Color{uint8(r), uint8(g), uint8(b), alphaValue}
+	return ic.RGBA{uint8(r), uint8(g), uint8(b), alphaValue}
 }
 
-var namedColors = map[string]Color{
+var namedColors = map[string]ic.RGBA{
 	"aliceblue":            {240, 248, 255, 255},
 	"antiquewhite":         {250, 235, 215, 255},
 	"aqua":                 {0, 255, 255, 255},
@@ -370,13 +372,13 @@ var namedColors = map[string]Color{
 	"yellowgreen":          {154, 205, 50, 255},
 }
 
-func CalculateBackgroundColor(styles map[string]string) (Color, error) {
+func CalculateBackgroundColor(styles map[string]string) (ic.RGBA, error) {
 	// Extract the "background-color" or "background" property from the styles
 	backgroundColor, ok := styles["background-color"]
 	if !ok {
 		backgroundColor, ok = styles["background"]
 		if !ok {
-			return Color{}, fmt.Errorf("background-color or background not specified in the styles")
+			return ic.RGBA{}, fmt.Errorf("background-color or background not specified in the styles")
 		}
 	}
 
@@ -384,15 +386,22 @@ func CalculateBackgroundColor(styles map[string]string) (Color, error) {
 	return ParseRGBA(backgroundColor)
 }
 
-func Background(styles map[string]string) Color {
+func Parse(styles map[string]string) Colors {
+	fontColor, err := ParseRGBA(styles["color"])
+	if err != nil {
+		fontColor = ic.RGBA{0, 0, 0, 1}
+	}
 	backgroundColor, err := CalculateBackgroundColor(styles)
 	if err != nil {
-		return Color{255, 255, 255, 0}
+		backgroundColor = ic.RGBA{255, 255, 255, 0}
 	}
-	return backgroundColor
+	return Colors{
+		Background: backgroundColor,
+		Font:       fontColor,
+	}
 }
 
-func Font(styles map[string]string) (Color, error) {
+func Font(styles map[string]string) (ic.RGBA, error) {
 	// Extract the "background-color" or "background" property from the styles
 	fontColor, ok := styles["color"]
 	if !ok {
