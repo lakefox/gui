@@ -50,6 +50,7 @@ func Open(index string) {
 	}
 
 	nodes := css.Map(d.DOM)
+	wm.LoadTextures(nodes.Render)
 	wm.Draw(nodes.Render)
 
 	// Main game loop
@@ -69,7 +70,7 @@ func Open(index string) {
 			css.Width = float32(screenWidth)
 			css.Height = float32(screenHeight)
 			nodes = css.Map(d.DOM)
-
+			wm.LoadTextures(nodes.Render)
 		}
 		wm.Draw(nodes.Render)
 

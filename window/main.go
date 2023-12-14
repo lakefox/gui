@@ -27,6 +27,7 @@ type WindowManager struct {
 	Fonts      map[string]rl.Font
 	FPS        bool
 	FPSCounter fps.FPSCounter
+	Textures   []rl.Texture2D
 }
 
 // NewWindowManager creates a new WindowManager instance
@@ -42,7 +43,7 @@ func NewWindowManager() *WindowManager {
 // OpenWindow opens the window
 func (wm *WindowManager) OpenWindow(title string, width, height int32) {
 	rl.InitWindow(width, height, title)
-	rl.SetTargetFPS(60)
+	rl.SetTargetFPS(30)
 	// Enable window resizing
 	rl.SetWindowState(rl.FlagWindowResizable)
 }
@@ -52,17 +53,24 @@ func (wm *WindowManager) CloseWindow() {
 	rl.CloseWindow()
 }
 
+func (wm *WindowManager) LoadTextures(nodes []cstyle.Node) {
+	wm.Textures = make([]rl.Texture2D, len(nodes))
+	for i, node := range nodes {
+		if node.Text.Image != nil {
+			texture := rl.LoadTextureFromImage(rl.NewImageFromImage(node.Text.Image))
+			wm.Textures[i] = texture
+		}
+	}
+}
+
 // Draw draws all nodes on the window
 func (wm *WindowManager) Draw(nodes []cstyle.Node) {
 
-	for _, node := range nodes {
+	for i, node := range nodes {
 		rl.DrawRectangle(int32(node.X), int32(node.Y), int32(node.Width), int32(node.Height), node.Colors.Background)
-
 		if node.Text.Image != nil {
-			texture := rl.LoadTextureFromImage(rl.NewImageFromImage(node.Text.Image))
 			r, g, b, a := node.Text.Color.RGBA()
-			println(r, g, b, a)
-			rl.DrawTexture(texture, int32(node.X), int32(node.Y), color.RGBA{uint8(r), uint8(g), uint8(b), 255})
+			rl.DrawTexture(wm.Textures[i], int32(node.X), int32(node.Y), color.RGBA{uint8(r), uint8(g), uint8(b), uint8(a)})
 		}
 	}
 

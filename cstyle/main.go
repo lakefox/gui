@@ -175,6 +175,14 @@ func ComputeNodeStyle(n Node) Node {
 
 	styleMap := n.Styles
 
+	if styleMap["display"] == "none" {
+		n.X = 0
+		n.Y = 0
+		n.Width = 0
+		n.Height = 0
+		return n
+	}
+
 	width, height := n.Width, n.Height
 	x, y := n.Parent.X, n.Parent.Y
 
@@ -205,12 +213,11 @@ func ComputeNodeStyle(n Node) Node {
 			y = (base.Height - height) - v
 			bottom = true
 		}
-	} else {
+	} else if styleMap["display"] != "inline" {
 		for _, v := range n.Parent.Children {
 			if v.Id == n.Id {
 				break
 			} else {
-				println(n.Id, v.Id, y, v.Height)
 				y += v.Height
 			}
 		}
@@ -241,6 +248,14 @@ func ComputeNodeStyle(n Node) Node {
 			width, _ = utils.ConvertToPixels("100%", n.EM, n.Parent.Width)
 			width -= n.Margin.Right + n.Margin.Left
 		}
+	} else if styleMap["display"] == "inline" {
+		for _, v := range n.Parent.Children {
+			if v.Id == n.Id {
+				break
+			} else {
+				x += v.Width
+			}
+		}
 	}
 
 	// The element is empty, need to calculate the height of the element
@@ -254,7 +269,17 @@ func ComputeNodeStyle(n Node) Node {
 			if len(text) > 0 {
 				height = n.EM
 
-				f, _ := font.LoadFont(styleMap["font-family"], int(n.EM))
+				bold, italic := false, false
+
+				if styleMap["font-weight"] == "bold" {
+					bold = true
+				}
+
+				if styleMap["font-style"] == "italic" {
+					italic = true
+				}
+
+				f, _ := font.LoadFont(styleMap["font-family"], int(n.EM), bold, italic)
 
 				width = utils.Max(width, float32(font.MeasureText(f, text)))
 				c, _ := color.Font(styleMap)
@@ -279,23 +304,12 @@ func ComputeNodeStyle(n Node) Node {
 		v.Parent = &n
 		n.Children[i] = ComputeNodeStyle(v)
 		if styleMap["height"] == "" {
-			n.Height += n.Children[i].Height
-			n.Height += n.Children[i].Margin.Top
-			n.Height += n.Children[i].Margin.Bottom
-		}
-	}
+			if n.Children[i].Styles["position"] != "absolute" {
+				n.Height += n.Children[i].Height
+				n.Height += n.Children[i].Margin.Top
+				n.Height += n.Children[i].Margin.Bottom
+			}
 
-	if styleMap["position"] == "relative" {
-		w, h := n.X+n.Width, n.Y+n.Height
-		for _, v := range n.Children {
-			w = utils.Max(v.X+v.Width, w)
-			h = utils.Max(v.Y+v.Height, h)
-		}
-		if w > n.Width {
-			n.Width = w - n.X
-		}
-		if h > n.Height {
-			n.Height = h - n.Y
 		}
 	}
 

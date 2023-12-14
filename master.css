@@ -458,10 +458,12 @@ meter {
 u,
 ins {
   text-decoration: underline;
+  display: inline;
 }
 strong,
 b {
   font-weight: bold;
+  display: inline;
 }
 i,
 cite,
@@ -470,6 +472,7 @@ var,
 address,
 dfn {
   font-style: italic;
+  display: inline;
 }
 tt,
 code,
