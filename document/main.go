@@ -207,7 +207,7 @@ func matchFactory(re *regexp.Regexp) func(string) string {
 
 		// Process submatches
 		if len(removeWhitespace(submatches[2])) > 0 {
-			return submatches[1] + "<notaspan>" + submatches[2] + "</notaspan>" + submatches[3]
+			return submatches[1] + "<span>" + submatches[2] + "</span>" + submatches[3]
 		} else {
 			return match
 		}

@@ -243,7 +243,7 @@ func (t *Text) Render() {
 	height := t.Font.Metrics().Height.Round()
 
 	// Use fully transparent color for the background
-	img := image.NewRGBA(image.Rect(0, 0, width, height))
+	img := image.NewRGBA(image.Rect(0, 0, width, height*2))
 
 	r, g, b, a := t.Color.RGBA()
 

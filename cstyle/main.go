@@ -4,6 +4,11 @@ package cstyle
 // https://pkg.go.dev/automated.sh/goldie
 // https://pkg.go.dev/automated.sh/aui
 
+// The font loading needs to be opomised, rn it loads new
+// stuff for each one even if they use the same font
+// Everything should be one file or at least the rendering pipeline
+// Dom needs to be a custom impleamentation for speed and size
+
 import (
 	"fmt"
 	"gui/color"
@@ -123,6 +128,9 @@ func (c *CSS) Map(doc *html.Node) Mapped {
 	// Inherit CSS styles from parent
 	println("inherit")
 	inherit(doc, styleMap)
+	for i, v := range styleMap {
+		fmt.Printf("%s\n%#v\n", i, v)
+	}
 	println(c.Width, c.Height)
 	fId := dom.GetAttribute(doc.FirstChild, "DOMNODEID")
 	node := Node{
@@ -164,14 +172,6 @@ func (c *CSS) Map(doc *html.Node) Mapped {
 }
 
 func ComputeNodeStyle(n Node) Node {
-	// Need to make a function that builds a Node tree from a *html.Node
-	// Kind of a chicken and the egg problem.. I need to have these styles to make the Node
-	// Maybe make this function a function like inherit (circular i know lol) but just go ahead
-	// and compute all styles so it can be passed directly to the renderer
-	// but
-	// its still the same issue. I need the Node tree to make compute the styles
-	// unless the tree I create basic child nodes that have the parent node mapped and computed???
-	// anything above should already be computed so it should work
 
 	styleMap := n.Styles
 
@@ -355,29 +355,30 @@ var inheritedProps = []string{
 
 func inherit(n *html.Node, styleMap map[string]map[string]string) {
 	if n.Type == html.ElementNode {
-		if dom.TagName(n) != "notaspan" || len(dom.InnerText(n)) != 0 {
-			id := dom.GetAttribute(n, "DOMNODEID")
-			if len(id) == 0 {
-				id = dom.TagName(n) + fmt.Sprint(rand.Int63())
-				dom.SetAttribute(n, "DOMNODEID", id)
-			}
-			pId := dom.GetAttribute(n.Parent, "DOMNODEID")
-			if len(pId) > 0 {
-				if styleMap[id] == nil {
-					styleMap[id] = make(map[string]string)
-				}
-				if styleMap[pId] == nil {
-					styleMap[pId] = make(map[string]string)
-				}
-
-				for _, v := range inheritedProps {
-					if styleMap[id][v] == "" && styleMap[pId][v] != "" {
-						styleMap[id][v] = styleMap[pId][v]
-					}
-				}
-			}
-			utils.SetMP(id, styleMap)
+		id := dom.GetAttribute(n, "DOMNODEID")
+		if len(id) == 0 {
+			id = dom.TagName(n) + fmt.Sprint(rand.Int63())
+			dom.SetAttribute(n, "DOMNODEID", id)
 		}
+		pId := dom.GetAttribute(n.Parent, "DOMNODEID")
+		if len(pId) > 0 {
+			if styleMap[id] == nil {
+				styleMap[id] = make(map[string]string)
+			}
+			if styleMap[pId] == nil {
+				styleMap[pId] = make(map[string]string)
+			}
+
+			inline := parser.ParseStyleAttribute(dom.GetAttribute(n, "style") + ";")
+			styleMap[id] = utils.Merge(styleMap[id], inline)
+
+			for _, v := range inheritedProps {
+				if styleMap[id][v] == "" && styleMap[pId][v] != "" {
+					styleMap[id][v] = styleMap[pId][v]
+				}
+			}
+		}
+		utils.SetMP(id, styleMap)
 	}
 
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
@@ -386,8 +387,6 @@ func inherit(n *html.Node, styleMap map[string]map[string]string) {
 }
 
 func initNodes(n *Node, styleMap map[string]map[string]string) {
-	inline := parser.ParseStyleAttribute(dom.GetAttribute(n.Node, "style") + ";")
-	styleMap[n.Id] = utils.Merge(styleMap[n.Id], inline)
 	n.Styles = styleMap[n.Id]
 
 	border, err := CompleteBorder(n.Styles)
@@ -429,6 +428,7 @@ func initNodes(n *Node, styleMap map[string]map[string]string) {
 	n.Colors = color.Parse(n.Styles)
 
 	for _, c := range dom.ChildNodes(n.Node) {
+
 		if c.Type == html.ElementNode {
 			id := dom.GetAttribute(c, "DOMNODEID")
 			node := Node{
@@ -591,36 +591,6 @@ func Print(n *Node, indent int) {
 
 	for _, v := range n.Children {
 		Print(&v, indent+1)
-	}
-}
-
-func InheritProp(n *Node, prop string) string {
-	value := n.Styles[prop]
-
-	if value != "" {
-		return value
-	} else {
-		if n.Parent.Node != nil {
-			v := InheritProp(n.Parent, prop)
-			return v
-		} else {
-			return ""
-		}
-	}
-}
-
-func InheritPropWithNode(n *Node, prop string) (string, *Node) {
-	value := n.Styles[prop]
-
-	if value != "" {
-		return value, n
-	} else {
-		if n.Parent != nil {
-			v, p := InheritPropWithNode(n.Parent, prop)
-			return v, p
-		} else {
-			return "", &Node{}
-		}
 	}
 }
 
