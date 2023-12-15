@@ -114,6 +114,8 @@ func MeasureText(face font.Face, text string) int {
 	dot := fixed.Point26_6{}
 	var width fixed.Int26_6
 
+	text += " "
+
 	for _, runeValue := range text {
 		adv, ok := face.GlyphAdvance(runeValue)
 		if !ok {
@@ -124,7 +126,7 @@ func MeasureText(face font.Face, text string) int {
 		bounds, _, _ := face.GlyphBounds(runeValue)
 
 		// Update the total width with the glyph advance and bounds
-		width += adv + bounds.Max.X - bounds.Min.X
+		width += adv + bounds.Min.X
 		dot.X += adv
 	}
 

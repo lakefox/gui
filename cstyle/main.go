@@ -213,14 +213,26 @@ func ComputeNodeStyle(n Node) Node {
 			y = (base.Height - height) - v
 			bottom = true
 		}
-	} else if styleMap["display"] != "inline" {
-		for _, v := range n.Parent.Children {
+	} else {
+		for i, v := range n.Parent.Children {
 			if v.Id == n.Id {
+				if i-1 > 0 {
+					sibling := n.Parent.Children[i-1]
+					if styleMap["display"] == "inline" {
+						if sibling.Styles["display"] == "inline" {
+							y = sibling.Y
+						} else {
+							y = sibling.Y + sibling.Height
+						}
+					} else {
+						y = sibling.Y + sibling.Height
+					}
+				}
 				break
-			} else {
-				y += v.Height
 			}
+
 		}
+
 	}
 
 	// Display modes need to be calculated here
@@ -247,14 +259,6 @@ func ComputeNodeStyle(n Node) Node {
 		if styleMap["width"] == "" {
 			width, _ = utils.ConvertToPixels("100%", n.EM, n.Parent.Width)
 			width -= n.Margin.Right + n.Margin.Left
-		}
-	} else if styleMap["display"] == "inline" {
-		for _, v := range n.Parent.Children {
-			if v.Id == n.Id {
-				break
-			} else {
-				x += v.Width
-			}
 		}
 	}
 
@@ -289,6 +293,19 @@ func ComputeNodeStyle(n Node) Node {
 					Color: c,
 				}
 				n.Text.Render()
+			}
+		}
+	}
+
+	if styleMap["display"] == "inline" {
+		copyOfX := x
+		for _, v := range n.Parent.Children {
+			if v.Id == n.Id {
+				break
+			} else if v.Styles["display"] == "inline" {
+				x += v.Width
+			} else {
+				x = copyOfX
 			}
 		}
 	}
@@ -338,27 +355,29 @@ var inheritedProps = []string{
 
 func inherit(n *html.Node, styleMap map[string]map[string]string) {
 	if n.Type == html.ElementNode {
-		id := dom.GetAttribute(n, "DOMNODEID")
-		if len(id) == 0 {
-			id = dom.TagName(n) + fmt.Sprint(rand.Int63())
-			dom.SetAttribute(n, "DOMNODEID", id)
-		}
-		pId := dom.GetAttribute(n.Parent, "DOMNODEID")
-		if len(pId) > 0 {
-			if styleMap[id] == nil {
-				styleMap[id] = make(map[string]string)
+		if dom.TagName(n) != "notaspan" || len(dom.InnerText(n)) != 0 {
+			id := dom.GetAttribute(n, "DOMNODEID")
+			if len(id) == 0 {
+				id = dom.TagName(n) + fmt.Sprint(rand.Int63())
+				dom.SetAttribute(n, "DOMNODEID", id)
 			}
-			if styleMap[pId] == nil {
-				styleMap[pId] = make(map[string]string)
-			}
+			pId := dom.GetAttribute(n.Parent, "DOMNODEID")
+			if len(pId) > 0 {
+				if styleMap[id] == nil {
+					styleMap[id] = make(map[string]string)
+				}
+				if styleMap[pId] == nil {
+					styleMap[pId] = make(map[string]string)
+				}
 
-			for _, v := range inheritedProps {
-				if styleMap[id][v] == "" && styleMap[pId][v] != "" {
-					styleMap[id][v] = styleMap[pId][v]
+				for _, v := range inheritedProps {
+					if styleMap[id][v] == "" && styleMap[pId][v] != "" {
+						styleMap[id][v] = styleMap[pId][v]
+					}
 				}
 			}
+			utils.SetMP(id, styleMap)
 		}
-		utils.SetMP(id, styleMap)
 	}
 
 	for c := n.FirstChild; c != nil; c = c.NextSibling {
@@ -367,6 +386,10 @@ func inherit(n *html.Node, styleMap map[string]map[string]string) {
 }
 
 func initNodes(n *Node, styleMap map[string]map[string]string) {
+	inline := parser.ParseStyleAttribute(dom.GetAttribute(n.Node, "style") + ";")
+	styleMap[n.Id] = utils.Merge(styleMap[n.Id], inline)
+	n.Styles = styleMap[n.Id]
+
 	border, err := CompleteBorder(n.Styles)
 	if err == nil {
 		n.Border = border

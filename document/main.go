@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -92,7 +93,7 @@ func Parse(path string) Doc {
 
 	check(scanner.Err())
 
-	doc, err := dom.FastParse(strings.NewReader(htmlContent))
+	doc, err := dom.FastParse(strings.NewReader(encapsulateText(htmlContent)))
 	check(err)
 
 	// Extract stylesheet link tags and style tags
@@ -181,6 +182,51 @@ func localizePath(rootPath, filePath string) string {
 	}
 
 	return "./" + absPath
+}
+
+func encapsulateText(htmlString string) string {
+	htmlString = removeHTMLComments(htmlString)
+	openClose := regexp.MustCompile(`(?s)(<\w+(?:\s+\w+="[^"]*")*>)([^<]+)(<\w+\s*(?:\s+\w+="[^"]*")*>)`)
+	closeOpen := regexp.MustCompile(`(?s)(</\w+(?:\s+\w+="[^"]*")*>)([^<]+)(<\w+\s*(?:\s+\w+="[^"]*")*>)`)
+	closeClose := regexp.MustCompile(`(?s)(</\w+(?:\s+\w+="[^"]*")*>)([^<]+)(</\w+\s*(?:\s+\w+="[^"]*")*>)`)
+	a := matchFactory(openClose)
+	t := openClose.ReplaceAllStringFunc(htmlString, a)
+	b := matchFactory(closeOpen)
+	u := closeOpen.ReplaceAllStringFunc(t, b)
+	c := matchFactory(closeClose)
+	v := closeClose.ReplaceAllStringFunc(u, c)
+	return v
+}
+
+func matchFactory(re *regexp.Regexp) func(string) string {
+	return func(match string) string {
+		submatches := re.FindStringSubmatch(match)
+		if len(submatches) != 4 {
+			return match
+		}
+
+		// Process submatches
+		if len(removeWhitespace(submatches[2])) > 0 {
+			return submatches[1] + "<notaspan>" + submatches[2] + "</notaspan>" + submatches[3]
+		} else {
+			return match
+		}
+	}
+}
+func removeWhitespace(htmlString string) string {
+	// Remove extra white space
+	reSpaces := regexp.MustCompile(`\s+`)
+	htmlString = reSpaces.ReplaceAllString(htmlString, " ")
+
+	// Trim leading and trailing white space
+	htmlString = strings.TrimSpace(htmlString)
+
+	return htmlString
+}
+
+func removeHTMLComments(htmlString string) string {
+	re := regexp.MustCompile(`<!--(.*?)-->`)
+	return re.ReplaceAllString(htmlString, "")
 }
 
 func check(e error) {

@@ -455,6 +455,9 @@ meter {
   width: 5em;
   vertical-align: -0.2em;
 }
+notaspan {
+  display: inline;
+}
 u,
 ins {
   text-decoration: underline;
