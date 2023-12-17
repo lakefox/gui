@@ -29,6 +29,9 @@ html {
 }
 .a {
   background-color: orange;
+  line-height: 100px;
+  border: 10px solid blue;
+  border-radius: 10px;
   /* padding: 20px; */
 }
 #cont {

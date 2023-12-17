@@ -393,7 +393,7 @@ func Parse(styles map[string]string) Colors {
 	}
 	backgroundColor, err := CalculateBackgroundColor(styles)
 	if err != nil {
-		backgroundColor = ic.RGBA{255, 255, 255, 0}
+		backgroundColor = ic.RGBA{255, 255, 255, 123}
 	}
 	return Colors{
 		Background: backgroundColor,

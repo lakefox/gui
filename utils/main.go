@@ -96,16 +96,10 @@ func GetMarginOffset(n *html.Node, styleMap map[string]map[string]string, width,
 	b, _ := ConvertToPixels(styleMap[id]["margin-bottom"], fs, height)
 
 	if n.Parent != nil {
-		println("HERE")
 		nT, nR, nB, nL := GetMarginOffset(n.Parent, styleMap, width, height)
-
-		fmt.Printf("%f %f %f %f\n", nT, nR, nB, nL)
-		// fmt.Printf("%f %f %f %f\n", t, r, b, l)
-
 		return t + nT, r + nR, b + nB, l + nL
 
 	} else {
-		println("END")
 		return t, r, b, l
 	}
 }
@@ -168,6 +162,7 @@ func ConvertToPixels(value string, em, max float32) (float32, error) {
 		"%":  max / 100,
 		"vw": max / 100,
 		"vh": max / 100,
+		"cm": 37.79527559,
 	}
 
 	// Extract numeric value and unit using regular expression

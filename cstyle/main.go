@@ -159,7 +159,7 @@ func (c *CSS) Map(doc *html.Node) Mapped {
 
 	node = ComputeNodeStyle(node)
 
-	Print(&node, 0)
+	// Print(&node, 0)
 
 	renderLine := flatten(&node)
 
@@ -170,6 +170,10 @@ func (c *CSS) Map(doc *html.Node) Mapped {
 	}
 	return d
 }
+
+// make a way of breaking each section out into it's own module so people can add their own.
+// this should cover the main parts of html but if some one wants for example drop shadows they
+// can make a plug in for it
 
 func ComputeNodeStyle(n Node) Node {
 
@@ -267,33 +271,10 @@ func ComputeNodeStyle(n Node) Node {
 
 	// NOTE: other elements can have text...
 	if len(n.Children) == 0 {
-		text := dom.InnerText(n.Node)
+		text := dom.TextContent(n.Node)
 		// Confirm text exists
-		if styleMap["width"] == "" {
-			if len(text) > 0 {
-				height = n.EM
-
-				bold, italic := false, false
-
-				if styleMap["font-weight"] == "bold" {
-					bold = true
-				}
-
-				if styleMap["font-style"] == "italic" {
-					italic = true
-				}
-
-				f, _ := font.LoadFont(styleMap["font-family"], int(n.EM), bold, italic)
-
-				width = utils.Max(width, float32(font.MeasureText(f, text)))
-				c, _ := color.Font(styleMap)
-				n.Text = font.Text{
-					Text:  text,
-					Font:  f,
-					Color: c,
-				}
-				n.Text.Render()
-			}
+		if len(text) > 0 {
+			genTextNode(&n, &text, &width, &height)
 		}
 	}
 
@@ -303,7 +284,7 @@ func ComputeNodeStyle(n Node) Node {
 			if v.Id == n.Id {
 				break
 			} else if v.Styles["display"] == "inline" {
-				x += v.Width
+				x += v.Width + float32(n.Text.WordSpacing)
 			} else {
 				x = copyOfX
 			}
@@ -606,4 +587,64 @@ func flatten(n *Node) []Node {
 		}
 	}
 	return nodes
+}
+
+func genTextNode(n *Node, text *string, width, height *float32) {
+	bold, italic := false, false
+
+	if n.Styles["font-weight"] == "bold" {
+		bold = true
+	}
+
+	if n.Styles["font-style"] == "italic" {
+		italic = true
+	}
+
+	wb := " "
+
+	if n.Styles["word-wrap"] == "break-word" {
+		wb = ""
+	}
+
+	if n.Styles["text-wrap"] == "wrap" || n.Styles["text-wrap"] == "balance" {
+		wb = ""
+	}
+
+	letterSpacing, _ := utils.ConvertToPixels(n.Styles["letter-spacing"], n.EM, *width)
+	lineHeight, _ := utils.ConvertToPixels(n.Styles["line-height"], n.EM, *width)
+	wordSpacing, _ := utils.ConvertToPixels(n.Styles["word-spacing"], n.EM, *width)
+
+	if n.Styles["line-height"] == "" {
+		lineHeight = n.EM
+	}
+
+	f, _ := font.LoadFont(n.Styles["font-family"], int(n.EM), bold, italic)
+
+	c, _ := color.Font(n.Styles)
+	n.Text = font.Text{
+		Text:          *text,
+		Font:          f,
+		Color:         c,
+		Align:         n.Styles["text-align"],
+		WordBreak:     wb,
+		WordSpacing:   int(wordSpacing),
+		LetterSpacing: int(letterSpacing),
+		LineHeight:    int(lineHeight),
+		WhiteSpace:    n.Styles["white-space"],
+	}
+
+	if n.Styles["word-spacing"] == "" {
+		n.Text.WordSpacing = font.MeasureSpace(&n.Text)
+	}
+
+	if n.Parent.Width != 0 && n.Styles["display"] != "inline" && n.Styles["width"] == "" {
+		*width = n.Parent.Width
+	} else if n.Styles["width"] == "" {
+		*width = utils.Max(*width, float32(font.MeasureText(&n.Text, *text)))
+	} else if n.Styles["width"] != "" {
+		*width, _ = utils.ConvertToPixels(n.Styles["width"], n.EM, n.Parent.Width)
+	}
+	n.Text.Width = int(*width)
+
+	*height = n.Text.Render()
 }
