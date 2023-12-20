@@ -3,6 +3,7 @@ package window
 import (
 	"gui/cstyle"
 	"gui/fps"
+	"gui/utils"
 	"image/color"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -67,10 +68,21 @@ func (wm *WindowManager) LoadTextures(nodes []cstyle.Node) {
 func (wm *WindowManager) Draw(nodes []cstyle.Node) {
 
 	for i, node := range nodes {
-		rl.DrawRectangle(int32(node.X), int32(node.Y), int32(node.Width), int32(node.Height+node.Padding.Top+node.Padding.Bottom), node.Colors.Background)
+		bw, _ := utils.ConvertToPixels(node.Border.Width, node.EM, node.Width)
+		rad, _ := utils.ConvertToPixels(node.Border.Radius, node.EM, node.Width)
+
+		rect := rl.NewRectangle(node.X+bw,
+			node.Y+bw,
+			node.Width-(bw+bw),
+			(node.Height+(node.Padding.Top+node.Padding.Bottom))-(bw+bw),
+		)
+
+		rl.DrawRectangleRoundedLines(rect, rad/200, 1000, bw, node.Border.Color)
+		rl.DrawRectangleRounded(rect, rad/200, 1000, node.Colors.Background)
+
 		if node.Text.Image != nil {
 			r, g, b, a := node.Text.Color.RGBA()
-			rl.DrawTexture(wm.Textures[i], int32(node.X+node.Padding.Left), int32(node.Y+node.Padding.Top), color.RGBA{uint8(r), uint8(g), uint8(b), uint8(a)})
+			rl.DrawTexture(wm.Textures[i], int32(node.X+node.Padding.Left+bw), int32(node.Y+node.Padding.Top), color.RGBA{uint8(r), uint8(g), uint8(b), uint8(a)})
 		}
 	}
 

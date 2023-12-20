@@ -15,6 +15,7 @@ import (
 	"gui/font"
 	"gui/parser"
 	"gui/utils"
+	ic "image/color"
 	"math/rand"
 	"os"
 	"strconv"
@@ -75,17 +76,10 @@ type Padding struct {
 }
 
 type Border struct {
-	Top    BorderSide
-	Right  BorderSide
-	Bottom BorderSide
-	Left   BorderSide
-}
-
-type BorderSide struct {
-	Width  float32
+	Width  string
 	Style  string
-	Color  string
-	Radius float32
+	Color  ic.RGBA
+	Radius string
 }
 
 func (c *CSS) StyleSheet(path string) {
@@ -126,7 +120,6 @@ func (c *CSS) Map(doc *html.Node) Mapped {
 	}
 
 	// Inherit CSS styles from parent
-	println("inherit")
 	inherit(doc, styleMap)
 	fId := dom.GetAttribute(doc.FirstChild, "DOMNODEID")
 	node := Node{
@@ -256,6 +249,8 @@ func ComputeNodeStyle(n Node) Node {
 		if styleMap["width"] == "" {
 			width, _ = utils.ConvertToPixels("100%", n.EM, n.Parent.Width)
 			width -= n.Margin.Right + n.Margin.Left
+		} else {
+			width += n.Padding.Right + n.Padding.Left
 		}
 	}
 
@@ -263,11 +258,10 @@ func ComputeNodeStyle(n Node) Node {
 		text := dom.TextContent(n.Node)
 		// Confirm text exists
 		if len(text) > 0 {
-			innerWidth := width - n.Padding.Left - n.Padding.Right
+			innerWidth := width
 			innerHeight := height
 			genTextNode(&n, &text, &innerWidth, &innerHeight)
-			fmt.Printf("F: %f %f\n", height, innerHeight)
-			width = innerWidth
+			width = innerWidth + n.Padding.Left + n.Padding.Right
 			height = innerHeight
 		}
 	}
@@ -292,11 +286,14 @@ func ComputeNodeStyle(n Node) Node {
 
 	// Call children here
 
+	var childYOffset float32
+
 	for i, v := range n.Children {
 		v.Parent = &n
 		n.Children[i] = ComputeNodeStyle(v)
 		if styleMap["height"] == "" {
-			if n.Children[i].Styles["position"] != "absolute" {
+			if n.Children[i].Styles["position"] != "absolute" && n.Children[i].Y > childYOffset {
+				childYOffset = n.Children[i].Y
 				n.Height += n.Children[i].Height
 				n.Height += n.Children[i].Margin.Top
 				n.Height += n.Children[i].Margin.Bottom
@@ -369,6 +366,8 @@ func initNodes(n *Node, styleMap map[string]map[string]string) {
 	border, err := CompleteBorder(n.Styles)
 	if err == nil {
 		n.Border = border
+		println(n.Id)
+		fmt.Printf("HAS BORDER: %#v\n\n", n.Border)
 	}
 
 	fs, _ := utils.ConvertToPixels(n.Styles["font-size"], n.Parent.EM, n.Parent.Width)
@@ -434,7 +433,7 @@ func GetPositionOffsetNode(n *Node) *Node {
 	}
 }
 
-func parseBorderShorthand(borderShorthand string) (BorderSide, error) {
+func parseBorderShorthand(borderShorthand string) (Border, error) {
 	// Split the shorthand into components
 	borderComponents := strings.Fields(borderShorthand)
 
@@ -442,13 +441,11 @@ func parseBorderShorthand(borderShorthand string) (BorderSide, error) {
 	if len(borderComponents) >= 1 {
 		width := "0px" // Default width
 		style := "solid"
-		color := "#000000" // Default color
+		borderColor := "#000000" // Default color
 
-		// Extract numeric part for width
-		if strings.ContainsAny(borderComponents[0], "0123456789") {
-			width = strings.TrimRightFunc(borderComponents[0], func(r rune) bool {
-				return !strings.ContainsRune("0123456789.", r)
-			})
+		// Extract style and color if available
+		if len(borderComponents) >= 1 {
+			width = borderComponents[0]
 		}
 
 		// Extract style and color if available
@@ -456,97 +453,27 @@ func parseBorderShorthand(borderShorthand string) (BorderSide, error) {
 			style = borderComponents[1]
 		}
 		if len(borderComponents) >= 3 {
-			color = borderComponents[2]
+			borderColor = borderComponents[2]
 		}
 
-		// Parse width to float
-		widthFloat, err := strconv.ParseFloat(width, 32)
-		if err != nil {
-			return BorderSide{}, fmt.Errorf("failed to parse border width: %v", err)
-		}
+		parsedColor, _ := color.Color(borderColor)
 
-		return BorderSide{
-			Width:  float32(widthFloat),
+		return Border{
+			Width:  width,
 			Style:  style,
-			Color:  color,
-			Radius: 0.0, // Default radius
+			Color:  parsedColor,
+			Radius: "", // Default radius
 		}, nil
 	}
 
-	return BorderSide{}, fmt.Errorf("invalid border shorthand format")
+	return Border{}, fmt.Errorf("invalid border shorthand format")
 }
 
 func CompleteBorder(cssProperties map[string]string) (Border, error) {
-	borderShorthand, hasBorder := cssProperties["border"]
+	border, err := parseBorderShorthand(cssProperties["border"])
+	border.Radius = cssProperties["border-radius"]
 
-	var border Border
-
-	if hasBorder {
-		side, err := parseBorderShorthand(borderShorthand)
-		if err != nil {
-			return Border{}, err
-		}
-
-		border.Top = side
-		border.Right = side
-		border.Bottom = side
-		border.Left = side
-
-		// Remove the shorthand border property from the map
-		delete(cssProperties, "border")
-	}
-
-	// Map individual border properties
-	borderProperties := map[string]string{
-		"top":    "border-top",
-		"right":  "border-right",
-		"bottom": "border-bottom",
-		"left":   "border-left",
-	}
-
-	for side, property := range borderProperties {
-		width := cssProperties[property+"-width"]
-		style := cssProperties[property+"-style"]
-		color := cssProperties[property+"-color"]
-
-		if width == "" {
-			width = "1px" // Default width
-		}
-
-		if style == "" {
-			style = "solid" // Default style
-		}
-
-		if color == "" {
-			color = "#000000" // Default color
-		}
-
-		radius := cssProperties[property+"-radius"]
-		radiusValue, err := strconv.ParseFloat(radius, 32)
-		if err != nil || radius == "" {
-			radiusValue = 0.0 // Default radius
-		}
-
-		borderSide, err := parseBorderShorthand(fmt.Sprintf("%s %s %s", width, style, color))
-		if err != nil {
-			return Border{}, err
-		}
-
-		borderSide.Radius = float32(radiusValue)
-
-		switch side {
-		case "top":
-			border.Top = borderSide
-		case "right":
-			border.Right = borderSide
-		case "bottom":
-			border.Bottom = borderSide
-		case "left":
-			border.Left = borderSide
-		}
-	}
-
-	return border, nil
+	return border, err
 }
 
 func Print(n *Node, indent int) {
@@ -564,6 +491,7 @@ func Print(n *Node, indent int) {
 	fmt.Printf(pre+"-- Y: %f\n", n.Y)
 	fmt.Printf(pre+"-- Width: %f\n", n.Width)
 	fmt.Printf(pre+"-- Height: %f\n", n.Height)
+	fmt.Printf(pre+"-- Border: %#v\n", n.Border)
 	fmt.Printf(pre+"-- Styles: %#v\n", n.Styles)
 
 	for _, v := range n.Children {
@@ -586,6 +514,7 @@ func flatten(n *Node) []Node {
 }
 
 func genTextNode(n *Node, text *string, width, height *float32) {
+	println(n.Id)
 	bold, italic := false, false
 
 	if n.Styles["font-weight"] == "bold" {
@@ -622,8 +551,6 @@ func genTextNode(n *Node, text *string, width, height *float32) {
 
 	c, _ := color.Font(n.Styles)
 
-	fmt.Printf("HHH: %s %f\n", *text, lineHeight)
-
 	n.Text = font.Text{
 		Text:                *text,
 		Font:                f,
@@ -647,17 +574,18 @@ func genTextNode(n *Node, text *string, width, height *float32) {
 	}
 
 	if n.Parent.Width != 0 && n.Styles["display"] != "inline" && n.Styles["width"] == "" {
-		*width = n.Parent.Width
+		*width = (n.Parent.Width - n.Padding.Right) - n.Padding.Left
 	} else if n.Styles["width"] == "" {
 		lines := n.Text.GetLines()
 		*width = utils.Max(*width, float32(font.MeasureText(&n.Text, findLongestLine(lines))))
+
 	} else if n.Styles["width"] != "" {
 		*width, _ = utils.ConvertToPixels(n.Styles["width"], n.EM, n.Parent.Width)
+
 	}
 	n.Text.Width = int(*width)
 
 	*height = n.Text.Render()
-	fmt.Printf("H: %f\n", *height)
 }
 
 func findLongestLine(lines []string) string {

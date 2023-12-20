@@ -251,7 +251,6 @@ func (t *Text) Render() float32 {
 	lines := t.GetLines()
 	shiftText := false
 	if t.LineHeight == 0 {
-		println("EMPTY")
 		t.LineHeight = t.EM + 3
 	} else {
 		shiftText = true
@@ -311,7 +310,6 @@ func (t *Text) Render() float32 {
 		}
 		dr.Dot.Y += fh
 	}
-	fmt.Printf("L: %d \n", t.LineHeight*len(lines))
 	return float32(t.LineHeight * len(lines))
 }
 

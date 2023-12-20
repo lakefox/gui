@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gui/font"
 	"math"
+	"reflect"
 	"regexp"
 	"strconv"
 	"strings"
@@ -268,4 +269,24 @@ func ParseFloat(str string, def float32) float32 {
 		a = float32(v)
 	}
 	return a
+}
+
+// getStructField uses reflection to get the value of a struct field by name
+func GetStructField(data interface{}, fieldName string) (interface{}, error) {
+	val := reflect.ValueOf(data)
+
+	// Make sure we have a pointer to a struct
+	if val.Kind() != reflect.Ptr || val.Elem().Kind() != reflect.Struct {
+		return nil, fmt.Errorf("Expected a pointer to a struct")
+	}
+
+	// Get the struct field by name
+	field := val.Elem().FieldByName(fieldName)
+
+	// Check if the field exists
+	if !field.IsValid() {
+		return nil, fmt.Errorf("Field not found: %s", fieldName)
+	}
+
+	return field.Interface(), nil
 }

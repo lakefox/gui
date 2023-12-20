@@ -418,3 +418,12 @@ func Font(styles map[string]string) (ic.RGBA, error) {
 	// Parse the background color and return the result
 	return ParseRGBA(fontColor)
 }
+
+func Color(color string) (ic.RGBA, error) {
+	if color == "" {
+		color = "rgba(0,0,0,1)"
+	}
+
+	// Parse the background color and return the result
+	return ParseRGBA(color)
+}
