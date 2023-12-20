@@ -9,8 +9,9 @@ import (
 
 // Color represents an RGBA color
 type Colors struct {
-	Background ic.RGBA
-	Font       ic.RGBA
+	Background     ic.RGBA
+	Font           ic.RGBA
+	TextDecoration ic.RGBA
 }
 
 // ParseRGBA parses a CSS color string and returns an RGBA color
@@ -388,16 +389,22 @@ func CalculateBackgroundColor(styles map[string]string) (ic.RGBA, error) {
 
 func Parse(styles map[string]string) Colors {
 	fontColor, err := ParseRGBA(styles["color"])
+	textDec := fontColor
 	if err != nil {
 		fontColor = ic.RGBA{0, 0, 0, 1}
+	}
+	textDec, err = ParseRGBA(styles["text-decoration-color"])
+	if err != nil {
+		textDec = ic.RGBA{0, 0, 0, 1}
 	}
 	backgroundColor, err := CalculateBackgroundColor(styles)
 	if err != nil {
 		backgroundColor = ic.RGBA{255, 255, 255, 123}
 	}
 	return Colors{
-		Background: backgroundColor,
-		Font:       fontColor,
+		Background:     backgroundColor,
+		Font:           fontColor,
+		TextDecoration: textDec,
 	}
 }
 

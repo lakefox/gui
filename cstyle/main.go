@@ -131,7 +131,6 @@ func (c *CSS) Map(doc *html.Node) Mapped {
 	for i, v := range styleMap {
 		fmt.Printf("%s\n%#v\n", i, v)
 	}
-	println(c.Width, c.Height)
 	fId := dom.GetAttribute(doc.FirstChild, "DOMNODEID")
 	node := Node{
 		Node: doc.FirstChild,
@@ -154,7 +153,6 @@ func (c *CSS) Map(doc *html.Node) Mapped {
 		Height: c.Height,
 		Styles: styleMap[fId],
 	}
-	fmt.Printf("%#v\n", node.Id)
 	initNodes(&node, styleMap)
 
 	node = ComputeNodeStyle(node)
@@ -193,8 +191,6 @@ func ComputeNodeStyle(n Node) Node {
 	var top, left, right, bottom bool = false, false, false, false
 
 	if styleMap["position"] == "absolute" {
-		println("ABSOLUTE")
-
 		base := GetPositionOffsetNode(&n)
 
 		if styleMap["top"] != "" {
@@ -226,10 +222,10 @@ func ComputeNodeStyle(n Node) Node {
 						if sibling.Styles["display"] == "inline" {
 							y = sibling.Y
 						} else {
-							y = sibling.Y + sibling.Height
+							y = sibling.Y + sibling.Height + sibling.Padding.Top + sibling.Padding.Bottom
 						}
 					} else {
-						y = sibling.Y + sibling.Height
+						y = sibling.Y + sibling.Height + sibling.Padding.Top + sibling.Padding.Bottom
 					}
 				}
 				break
@@ -256,8 +252,6 @@ func ComputeNodeStyle(n Node) Node {
 		y -= n.Margin.Bottom
 	}
 
-	// Display
-
 	if styleMap["display"] == "block" {
 		// If the element is display block and the width is unset then make it 100%
 		if styleMap["width"] == "" {
@@ -266,15 +260,15 @@ func ComputeNodeStyle(n Node) Node {
 		}
 	}
 
-	// The element is empty, need to calculate the height of the element
-	// the only case where this would happen is a text node
-
-	// NOTE: other elements can have text...
 	if len(n.Children) == 0 {
 		text := dom.TextContent(n.Node)
 		// Confirm text exists
 		if len(text) > 0 {
-			genTextNode(&n, &text, &width, &height)
+			innerWidth := width - n.Padding.Left - n.Padding.Right
+			innerHeight := height
+			genTextNode(&n, &text, &innerWidth, &innerHeight)
+			width = innerWidth + n.Padding.Left + n.Padding.Right
+			height = innerHeight + n.Padding.Top + n.Padding.Bottom
 		}
 	}
 
@@ -284,7 +278,7 @@ func ComputeNodeStyle(n Node) Node {
 			if v.Id == n.Id {
 				break
 			} else if v.Styles["display"] == "inline" {
-				x += v.Width + float32(n.Text.WordSpacing)
+				x += v.Width
 			} else {
 				x = copyOfX
 			}
@@ -306,6 +300,8 @@ func ComputeNodeStyle(n Node) Node {
 				n.Height += n.Children[i].Height
 				n.Height += n.Children[i].Margin.Top
 				n.Height += n.Children[i].Margin.Bottom
+				n.Height += n.Children[i].Padding.Top
+				n.Height += n.Children[i].Padding.Bottom //
 			}
 
 		}
@@ -615,22 +611,36 @@ func genTextNode(n *Node, text *string, width, height *float32) {
 	wordSpacing, _ := utils.ConvertToPixels(n.Styles["word-spacing"], n.EM, *width)
 
 	if n.Styles["line-height"] == "" {
-		lineHeight = n.EM
+		lineHeight = n.EM + 3
+	}
+
+	var dt float32
+
+	if n.Styles["text-decoration-thickness"] == "auto" || n.Styles["text-decoration-thickness"] == "" {
+		dt = 2
+	} else {
+		dt, _ = utils.ConvertToPixels(n.Styles["text-decoration-thickness"], n.EM, *width)
 	}
 
 	f, _ := font.LoadFont(n.Styles["font-family"], int(n.EM), bold, italic)
 
 	c, _ := color.Font(n.Styles)
+
 	n.Text = font.Text{
-		Text:          *text,
-		Font:          f,
-		Color:         c,
-		Align:         n.Styles["text-align"],
-		WordBreak:     wb,
-		WordSpacing:   int(wordSpacing),
-		LetterSpacing: int(letterSpacing),
-		LineHeight:    int(lineHeight),
-		WhiteSpace:    n.Styles["white-space"],
+		Text:                *text,
+		Font:                f,
+		Color:               c,
+		Align:               n.Styles["text-align"],
+		WordBreak:           wb,
+		WordSpacing:         int(wordSpacing),
+		LetterSpacing:       int(letterSpacing),
+		LineHeight:          int(lineHeight),
+		WhiteSpace:          n.Styles["white-space"],
+		DecorationColor:     n.Colors.TextDecoration,
+		DecorationThickness: int(dt),
+		Overlined:           n.Styles["text-decoration"] == "overline",
+		Underlined:          n.Styles["text-decoration"] == "underline",
+		LineThrough:         n.Styles["text-decoration"] == "linethrough",
 	}
 
 	if n.Styles["word-spacing"] == "" {
@@ -640,11 +650,27 @@ func genTextNode(n *Node, text *string, width, height *float32) {
 	if n.Parent.Width != 0 && n.Styles["display"] != "inline" && n.Styles["width"] == "" {
 		*width = n.Parent.Width
 	} else if n.Styles["width"] == "" {
-		*width = utils.Max(*width, float32(font.MeasureText(&n.Text, *text)))
+		lines := n.Text.GetLines()
+		*width = utils.Max(*width, float32(font.MeasureText(&n.Text, findLongestLine(lines))))
 	} else if n.Styles["width"] != "" {
 		*width, _ = utils.ConvertToPixels(n.Styles["width"], n.EM, n.Parent.Width)
 	}
 	n.Text.Width = int(*width)
 
 	*height = n.Text.Render()
+}
+
+func findLongestLine(lines []string) string {
+	var longestLine string
+	maxLength := 0
+
+	for _, line := range lines {
+		length := len(line)
+		if length > maxLength {
+			maxLength = length
+			longestLine = line
+		}
+	}
+
+	return longestLine
 }

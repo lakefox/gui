@@ -87,7 +87,6 @@ func GetFontSize(css map[string]string) float32 {
 func LoadFont(fontName string, fontSize int, bold, italic bool) (font.Face, error) {
 	// Use a TrueType font file for the specified font name
 	fontFile := GetFontPath(fontName, bold, italic)
-	println(fontFile)
 
 	// Read the font file
 	fontData, err := os.ReadFile(fontFile)
@@ -112,7 +111,6 @@ func LoadFont(fontName string, fontSize int, bold, italic bool) (font.Face, erro
 }
 
 func MeasureText(t *Text, text string) int {
-	dot := fixed.Point26_6{}
 	var width fixed.Int26_6
 
 	for _, runeValue := range text {
@@ -125,12 +123,8 @@ func MeasureText(t *Text, text string) int {
 				continue
 			}
 
-			// Calculate the glyph bounds
-			bounds, _, _ := t.Font.GlyphBounds(runeValue)
-
 			// Update the total width with the glyph advance and bounds
-			width += adv + bounds.Min.X + fixed.I(t.LetterSpacing)
-			dot.X += adv
+			width += adv + fixed.I(t.LetterSpacing)
 		}
 	}
 
@@ -138,19 +132,8 @@ func MeasureText(t *Text, text string) int {
 }
 
 func MeasureSpace(t *Text) int {
-	dot := fixed.Point26_6{}
-	var width fixed.Int26_6
-
 	adv, _ := t.Font.GlyphAdvance(' ')
-
-	// Calculate the glyph bounds
-	bounds, _, _ := t.Font.GlyphBounds(' ')
-
-	// Update the total width with the glyph advance and bounds
-	width += adv + bounds.Min.X
-	dot.X += adv
-
-	return width.Round()
+	return adv.Round()
 }
 
 func getSystemFonts() ([]string, error) {
@@ -236,23 +219,24 @@ func getFontsRecursively(dir string, fontPaths *[]string) {
 }
 
 type Text struct {
-	Text            string
-	Font            font.Face
-	Color           color.Color
-	Image           *image.RGBA
-	Underlined      bool   // need
-	Overlined       bool   // need
-	LineThrough     bool   // need
-	DecorationColor string // need
-	Align           string
-	Indent          int // very low priority
-	LetterSpacing   int
-	LineHeight      int
-	WordSpacing     int
-	WhiteSpace      string
-	Shadows         []Shadow // need
-	Width           int
-	WordBreak       string
+	Text                string
+	Font                font.Face
+	Color               color.Color
+	Image               *image.RGBA
+	Underlined          bool
+	Overlined           bool
+	LineThrough         bool
+	DecorationColor     color.Color
+	DecorationThickness int
+	Align               string
+	Indent              int // very low priority
+	LetterSpacing       int
+	LineHeight          int
+	WordSpacing         int
+	WhiteSpace          string
+	Shadows             []Shadow // need
+	Width               int
+	WordBreak           string
 }
 
 type Shadow struct {
@@ -263,30 +247,7 @@ type Shadow struct {
 }
 
 func (t *Text) Render() float32 {
-	var lines []string
-	if t.WhiteSpace == "nowrap" {
-		re := regexp.MustCompile(`\s+`)
-		t.Text = re.ReplaceAllString(t.Text, " ")
-		lines = t.wrap("<br>", false)
-	} else {
-		if t.WhiteSpace == "pre" {
-			re := regexp.MustCompile("\t")
-			t.Text = re.ReplaceAllString(t.Text, "     ")
-			nl := regexp.MustCompile(`[\r\n]+`)
-			lines = nl.Split(t.Text, -1)
-		} else if t.WhiteSpace == "pre-line" {
-			re := regexp.MustCompile(`\s+`)
-			t.Text = re.ReplaceAllString(t.Text, " ")
-			lines = t.wrap(" ", true)
-		} else if t.WhiteSpace == "pre-wrap" {
-			lines = t.wrap(" ", true)
-		} else {
-			re := regexp.MustCompile(`\s+`)
-			t.Text = re.ReplaceAllString(t.Text, " ")
-			lines = t.wrap(t.WordBreak, false)
-		}
-	}
-
+	lines := t.GetLines()
 	// Use fully transparent color for the background
 	img := image.NewRGBA(image.Rect(0, 0, t.Width, t.LineHeight*(len(lines)+2)))
 
@@ -302,6 +263,7 @@ func (t *Text) Render() float32 {
 		Face: t.Font,
 		Dot:  dot,
 	}
+	t.Image = img
 
 	fh := fixed.I(t.LineHeight)
 	for _, v := range lines {
@@ -338,11 +300,11 @@ func (t *Text) Render() float32 {
 		dr.Dot.Y += fh
 	}
 
-	t.Image = img
 	return float32(t.LineHeight * len(lines))
 }
 
 func (t *Text) DrawString(dr *font.Drawer, v string) {
+	underlinePosition := dr.Dot
 	for _, ch := range v {
 		if ch == ' ' {
 			// Handle spaces separately, add word spacing
@@ -350,6 +312,24 @@ func (t *Text) DrawString(dr *font.Drawer, v string) {
 		} else {
 			dr.DrawString(string(ch))
 			dr.Dot.X += fixed.I(t.LetterSpacing)
+		}
+	}
+	if t.Underlined || t.Overlined || t.LineThrough {
+
+		underlinePosition.X = 0
+		baseLineY := underlinePosition.Y
+
+		if t.Underlined {
+			underlinePosition.Y = baseLineY + t.Font.Metrics().Descent
+			drawLine(t.Image, underlinePosition, dr.Dot.X, t.DecorationThickness, t.DecorationColor)
+		}
+		if t.LineThrough {
+			underlinePosition.Y = baseLineY - (t.Font.Metrics().Descent)
+			drawLine(t.Image, underlinePosition, dr.Dot.X, t.DecorationThickness, t.DecorationColor)
+		}
+		if t.Overlined {
+			underlinePosition.Y = baseLineY - t.Font.Metrics().Descent*3
+			drawLine(t.Image, underlinePosition, dr.Dot.X, t.DecorationThickness, t.DecorationColor)
 		}
 	}
 }
@@ -385,13 +365,11 @@ func (t *Text) wrap(breaker string, breakNewLines bool) []string {
 	return strngs
 }
 
-func drawLine(img draw.Image, start, end fixed.Point26_6, col color.Color) {
-	// Draw a line from start to end
-	drawLineToImage(img, start.X.Floor(), start.Y.Floor(), end.X.Floor(), end.Y.Floor(), col)
-}
-
-func drawLineToImage(img draw.Image, x0, y0, x1, y1 int, col color.Color) {
+func drawLine(img draw.Image, start fixed.Point26_6, width fixed.Int26_6, thickness int, col color.Color) {
 	// Bresenham's line algorithm
+	x0, y0 := start.X.Round(), start.Y.Round()
+	x1 := x0 + int(width)
+	y1 := y0
 	dx := abs(x1 - x0)
 	dy := abs(y1 - y0)
 	sx, sy := 1, 1
@@ -406,7 +384,9 @@ func drawLineToImage(img draw.Image, x0, y0, x1, y1 int, col color.Color) {
 	err := dx - dy
 
 	for {
-		img.Set(x0, y0, col)
+		for i := 0; i < thickness; i++ {
+			img.Set(x0, (y0-(thickness/2))+i, col)
+		}
 
 		if x0 == x1 && y0 == y1 {
 			break
@@ -429,4 +409,38 @@ func abs(x int) int {
 		return -x
 	}
 	return x
+}
+
+func (t *Text) GetLines() []string {
+	var lines []string
+	if t.WhiteSpace == "nowrap" {
+		re := regexp.MustCompile(`\s+`)
+		t.Text = re.ReplaceAllString(t.Text, " ")
+		lines = t.wrap("<br>", false)
+	} else {
+		if t.WhiteSpace == "pre" {
+			re := regexp.MustCompile("\t")
+			t.Text = re.ReplaceAllString(t.Text, "     ")
+			nl := regexp.MustCompile(`[\r\n]+`)
+			lines = nl.Split(t.Text, -1)
+		} else if t.WhiteSpace == "pre-line" {
+			re := regexp.MustCompile(`\s+`)
+			t.Text = re.ReplaceAllString(t.Text, " ")
+			lines = t.wrap(" ", true)
+		} else if t.WhiteSpace == "pre-wrap" {
+			lines = t.wrap(" ", true)
+		} else {
+			re := regexp.MustCompile(`\s+`)
+			t.Text = re.ReplaceAllString(t.Text, " ")
+			nl := regexp.MustCompile(`[\r\n]+`)
+			t.Text = nl.ReplaceAllString(t.Text, "")
+			t.Text = strings.TrimSpace(t.Text)
+			lines = t.wrap(t.WordBreak, false)
+		}
+		for i, v := range lines {
+			lines[i] = v + t.WordBreak
+		}
+	}
+
+	return lines
 }

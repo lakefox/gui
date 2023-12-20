@@ -19,7 +19,8 @@ div#box {
 }
 div#test > h1 {
   font-size: 100px;
-  background-color: aqua;
+  background-color: rgba(0, 174, 255, 0.5);
+  padding: 50px;
 }
 div#text {
   background-color: blueviolet;
