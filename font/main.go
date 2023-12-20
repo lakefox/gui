@@ -237,6 +237,7 @@ type Text struct {
 	Shadows             []Shadow // need
 	Width               int
 	WordBreak           string
+	EM                  int
 }
 
 type Shadow struct {
@@ -248,8 +249,15 @@ type Shadow struct {
 
 func (t *Text) Render() float32 {
 	lines := t.GetLines()
+	shiftText := false
+	if t.LineHeight == 0 {
+		println("EMPTY")
+		t.LineHeight = t.EM + 3
+	} else {
+		shiftText = true
+	}
 	// Use fully transparent color for the background
-	img := image.NewRGBA(image.Rect(0, 0, t.Width, t.LineHeight*(len(lines)+2)))
+	img := image.NewRGBA(image.Rect(0, 0, t.Width, t.LineHeight*(len(lines))))
 
 	r, g, b, a := t.Color.RGBA()
 
@@ -266,6 +274,10 @@ func (t *Text) Render() float32 {
 	t.Image = img
 
 	fh := fixed.I(t.LineHeight)
+	if shiftText {
+		dr.Dot.Y += fh / 3
+	}
+
 	for _, v := range lines {
 		if t.Align == "justify" {
 			dr.Dot.X = 0
@@ -299,7 +311,7 @@ func (t *Text) Render() float32 {
 		}
 		dr.Dot.Y += fh
 	}
-
+	fmt.Printf("L: %d \n", t.LineHeight*len(lines))
 	return float32(t.LineHeight * len(lines))
 }
 
@@ -416,7 +428,7 @@ func (t *Text) GetLines() []string {
 	if t.WhiteSpace == "nowrap" {
 		re := regexp.MustCompile(`\s+`)
 		t.Text = re.ReplaceAllString(t.Text, " ")
-		lines = t.wrap("<br>", false)
+		lines = t.wrap("<br />", false)
 	} else {
 		if t.WhiteSpace == "pre" {
 			re := regexp.MustCompile("\t")

@@ -128,9 +128,6 @@ func (c *CSS) Map(doc *html.Node) Mapped {
 	// Inherit CSS styles from parent
 	println("inherit")
 	inherit(doc, styleMap)
-	for i, v := range styleMap {
-		fmt.Printf("%s\n%#v\n", i, v)
-	}
 	fId := dom.GetAttribute(doc.FirstChild, "DOMNODEID")
 	node := Node{
 		Node: doc.FirstChild,
@@ -222,13 +219,15 @@ func ComputeNodeStyle(n Node) Node {
 						if sibling.Styles["display"] == "inline" {
 							y = sibling.Y
 						} else {
-							y = sibling.Y + sibling.Height + sibling.Padding.Top + sibling.Padding.Bottom
+							y = sibling.Y + sibling.Height
 						}
 					} else {
-						y = sibling.Y + sibling.Height + sibling.Padding.Top + sibling.Padding.Bottom
+						y = sibling.Y + sibling.Height
 					}
 				}
 				break
+			} else if styleMap["display"] != "inline" {
+				y += v.Margin.Top + v.Margin.Bottom + v.Padding.Top + v.Padding.Bottom + v.Height
 			}
 
 		}
@@ -267,8 +266,9 @@ func ComputeNodeStyle(n Node) Node {
 			innerWidth := width - n.Padding.Left - n.Padding.Right
 			innerHeight := height
 			genTextNode(&n, &text, &innerWidth, &innerHeight)
-			width = innerWidth + n.Padding.Left + n.Padding.Right
-			height = innerHeight + n.Padding.Top + n.Padding.Bottom
+			fmt.Printf("F: %f %f\n", height, innerHeight)
+			width = innerWidth
+			height = innerHeight
 		}
 	}
 
@@ -301,7 +301,7 @@ func ComputeNodeStyle(n Node) Node {
 				n.Height += n.Children[i].Margin.Top
 				n.Height += n.Children[i].Margin.Bottom
 				n.Height += n.Children[i].Padding.Top
-				n.Height += n.Children[i].Padding.Bottom //
+				n.Height += n.Children[i].Padding.Bottom
 			}
 
 		}
@@ -610,10 +610,6 @@ func genTextNode(n *Node, text *string, width, height *float32) {
 	lineHeight, _ := utils.ConvertToPixels(n.Styles["line-height"], n.EM, *width)
 	wordSpacing, _ := utils.ConvertToPixels(n.Styles["word-spacing"], n.EM, *width)
 
-	if n.Styles["line-height"] == "" {
-		lineHeight = n.EM + 3
-	}
-
 	var dt float32
 
 	if n.Styles["text-decoration-thickness"] == "auto" || n.Styles["text-decoration-thickness"] == "" {
@@ -625,6 +621,8 @@ func genTextNode(n *Node, text *string, width, height *float32) {
 	f, _ := font.LoadFont(n.Styles["font-family"], int(n.EM), bold, italic)
 
 	c, _ := color.Font(n.Styles)
+
+	fmt.Printf("HHH: %s %f\n", *text, lineHeight)
 
 	n.Text = font.Text{
 		Text:                *text,
@@ -641,6 +639,7 @@ func genTextNode(n *Node, text *string, width, height *float32) {
 		Overlined:           n.Styles["text-decoration"] == "overline",
 		Underlined:          n.Styles["text-decoration"] == "underline",
 		LineThrough:         n.Styles["text-decoration"] == "linethrough",
+		EM:                  int(n.EM),
 	}
 
 	if n.Styles["word-spacing"] == "" {
@@ -658,6 +657,7 @@ func genTextNode(n *Node, text *string, width, height *float32) {
 	n.Text.Width = int(*width)
 
 	*height = n.Text.Render()
+	fmt.Printf("H: %f\n", *height)
 }
 
 func findLongestLine(lines []string) string {
