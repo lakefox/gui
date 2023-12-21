@@ -28,6 +28,9 @@ script {
 span {
   display: inline;
 }
+notaspan {
+  display: inline;
+}
 body {
   display: block;
   margin: 8px;
