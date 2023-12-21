@@ -1,7 +1,7 @@
 package window
 
 import (
-	"gui/cstyle"
+	"gui/element"
 	"gui/fps"
 	"gui/utils"
 	"image/color"
@@ -24,7 +24,6 @@ type Text struct {
 
 // WindowManager manages the window and rectangles
 type WindowManager struct {
-	nodes      []Rect
 	Fonts      map[string]rl.Font
 	FPS        bool
 	FPSCounter fps.FPSCounter
@@ -54,8 +53,9 @@ func (wm *WindowManager) CloseWindow() {
 	rl.CloseWindow()
 }
 
-func (wm *WindowManager) LoadTextures(nodes []cstyle.Node) {
+func (wm *WindowManager) LoadTextures(nodes []element.Node) {
 	wm.Textures = make([]rl.Texture2D, len(nodes))
+	println("NODES: ", len(nodes))
 	for i, node := range nodes {
 		if node.Text.Image != nil {
 			texture := rl.LoadTextureFromImage(rl.NewImageFromImage(node.Text.Image))
@@ -65,7 +65,7 @@ func (wm *WindowManager) LoadTextures(nodes []cstyle.Node) {
 }
 
 // Draw draws all nodes on the window
-func (wm *WindowManager) Draw(nodes []cstyle.Node) {
+func (wm *WindowManager) Draw(nodes []element.Node) {
 
 	for i, node := range nodes {
 		bw, _ := utils.ConvertToPixels(node.Border.Width, node.EM, node.Width)

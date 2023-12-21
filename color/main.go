@@ -2,17 +2,11 @@ package color
 
 import (
 	"fmt"
+	"gui/element"
 	ic "image/color"
 	"strconv"
 	"strings"
 )
-
-// Color represents an RGBA color
-type Colors struct {
-	Background     ic.RGBA
-	Font           ic.RGBA
-	TextDecoration ic.RGBA
-}
 
 // ParseRGBA parses a CSS color string and returns an RGBA color
 func ParseRGBA(color string) (ic.RGBA, error) {
@@ -387,7 +381,7 @@ func CalculateBackgroundColor(styles map[string]string) (ic.RGBA, error) {
 	return ParseRGBA(backgroundColor)
 }
 
-func Parse(styles map[string]string) Colors {
+func Parse(styles map[string]string) element.Colors {
 	fontColor, err := ParseRGBA(styles["color"])
 	textDec := fontColor
 	if err != nil {
@@ -401,7 +395,7 @@ func Parse(styles map[string]string) Colors {
 	if err != nil {
 		backgroundColor = ic.RGBA{255, 255, 255, 0}
 	}
-	return Colors{
+	return element.Colors{
 		Background:     backgroundColor,
 		Font:           fontColor,
 		TextDecoration: textDec,

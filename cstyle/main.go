@@ -12,10 +12,10 @@ package cstyle
 import (
 	"fmt"
 	"gui/color"
+	"gui/element"
 	"gui/font"
 	"gui/parser"
 	"gui/utils"
-	ic "image/color"
 	"math/rand"
 	"os"
 	"strconv"
@@ -38,48 +38,9 @@ type CSS struct {
 }
 
 type Mapped struct {
-	Document *Node
+	Document *element.Node
 	StyleMap map[string]map[string]string
-	Render   []Node
-}
-
-type Node struct {
-	Node     *html.Node
-	Parent   *Node
-	Children []Node
-	Styles   map[string]string
-	Id       string
-	X        float32
-	Y        float32
-	Width    float32
-	Height   float32
-	Margin   Margin
-	Padding  Padding
-	Border   Border
-	EM       float32
-	Text     font.Text
-	Colors   color.Colors
-}
-
-type Margin struct {
-	Top    float32
-	Right  float32
-	Bottom float32
-	Left   float32
-}
-
-type Padding struct {
-	Top    float32
-	Right  float32
-	Bottom float32
-	Left   float32
-}
-
-type Border struct {
-	Width  string
-	Style  string
-	Color  ic.RGBA
-	Radius string
+	Render   []element.Node
 }
 
 func (c *CSS) StyleSheet(path string) {
@@ -122,9 +83,9 @@ func (c *CSS) Map(doc *html.Node) Mapped {
 	// Inherit CSS styles from parent
 	inherit(doc, styleMap)
 	fId := dom.GetAttribute(doc.FirstChild, "DOMNODEID")
-	node := Node{
+	node := element.Node{
 		Node: doc.FirstChild,
-		Parent: &Node{
+		Parent: &element.Node{
 			Id:     "ROOT",
 			X:      0,
 			Y:      0,
@@ -163,7 +124,7 @@ func (c *CSS) Map(doc *html.Node) Mapped {
 // this should cover the main parts of html but if some one wants for example drop shadows they
 // can make a plug in for it
 
-func ComputeNodeStyle(n Node) Node {
+func ComputeNodeStyle(n element.Node) element.Node {
 
 	styleMap := n.Styles
 
@@ -260,6 +221,7 @@ func ComputeNodeStyle(n Node) Node {
 		if len(text) > 0 {
 			innerWidth := width
 			innerHeight := height
+			println(text)
 			genTextNode(&n, &text, &innerWidth, &innerHeight)
 			width = innerWidth + n.Padding.Left + n.Padding.Right
 			height = innerHeight
@@ -360,7 +322,7 @@ func inherit(n *html.Node, styleMap map[string]map[string]string) {
 	}
 }
 
-func initNodes(n *Node, styleMap map[string]map[string]string) {
+func initNodes(n *element.Node, styleMap map[string]map[string]string) {
 	n.Styles = styleMap[n.Id]
 
 	border, err := CompleteBorder(n.Styles)
@@ -377,7 +339,7 @@ func initNodes(n *Node, styleMap map[string]map[string]string) {
 	mr, _ := utils.ConvertToPixels(n.Styles["margin-right"], n.EM, n.Parent.Width)
 	mb, _ := utils.ConvertToPixels(n.Styles["margin-bottom"], n.EM, n.Parent.Width)
 	ml, _ := utils.ConvertToPixels(n.Styles["margin-left"], n.EM, n.Parent.Width)
-	n.Margin = Margin{
+	n.Margin = element.Margin{
 		Top:    mt,
 		Right:  mr,
 		Bottom: mb,
@@ -388,7 +350,7 @@ func initNodes(n *Node, styleMap map[string]map[string]string) {
 	pr, _ := utils.ConvertToPixels(n.Styles["padding-right"], n.EM, n.Parent.Width)
 	pb, _ := utils.ConvertToPixels(n.Styles["padding-bottom"], n.EM, n.Parent.Width)
 	pl, _ := utils.ConvertToPixels(n.Styles["padding-left"], n.EM, n.Parent.Width)
-	n.Padding = Padding{
+	n.Padding = element.Padding{
 		Top:    pt,
 		Right:  pr,
 		Bottom: pb,
@@ -407,7 +369,7 @@ func initNodes(n *Node, styleMap map[string]map[string]string) {
 
 		if c.Type == html.ElementNode {
 			id := dom.GetAttribute(c, "DOMNODEID")
-			node := Node{
+			node := element.Node{
 				Node:   c,
 				Parent: n,
 				Id:     id,
@@ -419,7 +381,7 @@ func initNodes(n *Node, styleMap map[string]map[string]string) {
 	}
 }
 
-func GetPositionOffsetNode(n *Node) *Node {
+func GetPositionOffsetNode(n *element.Node) *element.Node {
 	pos := n.Styles["position"]
 
 	if pos == "relative" {
@@ -433,7 +395,7 @@ func GetPositionOffsetNode(n *Node) *Node {
 	}
 }
 
-func parseBorderShorthand(borderShorthand string) (Border, error) {
+func parseBorderShorthand(borderShorthand string) (element.Border, error) {
 	// Split the shorthand into components
 	borderComponents := strings.Fields(borderShorthand)
 
@@ -458,7 +420,7 @@ func parseBorderShorthand(borderShorthand string) (Border, error) {
 
 		parsedColor, _ := color.Color(borderColor)
 
-		return Border{
+		return element.Border{
 			Width:  width,
 			Style:  style,
 			Color:  parsedColor,
@@ -466,17 +428,17 @@ func parseBorderShorthand(borderShorthand string) (Border, error) {
 		}, nil
 	}
 
-	return Border{}, fmt.Errorf("invalid border shorthand format")
+	return element.Border{}, fmt.Errorf("invalid border shorthand format")
 }
 
-func CompleteBorder(cssProperties map[string]string) (Border, error) {
+func CompleteBorder(cssProperties map[string]string) (element.Border, error) {
 	border, err := parseBorderShorthand(cssProperties["border"])
 	border.Radius = cssProperties["border-radius"]
 
 	return border, err
 }
 
-func Print(n *Node, indent int) {
+func Print(n *element.Node, indent int) {
 	pre := strings.Repeat("\t", indent)
 	fmt.Printf(pre+"%s\n", n.Id)
 	fmt.Printf(pre+"-- Parent: %d\n", n.Parent.Id)
@@ -499,8 +461,8 @@ func Print(n *Node, indent int) {
 	}
 }
 
-func flatten(n *Node) []Node {
-	var nodes []Node
+func flatten(n *element.Node) []element.Node {
+	var nodes []element.Node
 	nodes = append(nodes, *n)
 
 	children := n.Children
@@ -513,7 +475,7 @@ func flatten(n *Node) []Node {
 	return nodes
 }
 
-func genTextNode(n *Node, text *string, width, height *float32) {
+func genTextNode(n *element.Node, text *string, width, height *float32) {
 	println(n.Id)
 	bold, italic := false, false
 
@@ -551,7 +513,7 @@ func genTextNode(n *Node, text *string, width, height *float32) {
 
 	c, _ := color.Font(n.Styles)
 
-	n.Text = font.Text{
+	n.Text = element.Text{
 		Text:                *text,
 		Font:                f,
 		Color:               c,
@@ -576,7 +538,7 @@ func genTextNode(n *Node, text *string, width, height *float32) {
 	if n.Parent.Width != 0 && n.Styles["display"] != "inline" && n.Styles["width"] == "" {
 		*width = (n.Parent.Width - n.Padding.Right) - n.Padding.Left
 	} else if n.Styles["width"] == "" {
-		lines := n.Text.GetLines()
+		lines := font.GetLines(n.Text)
 		*width = utils.Max(*width, float32(font.MeasureText(&n.Text, findLongestLine(lines))))
 
 	} else if n.Styles["width"] != "" {
@@ -584,8 +546,7 @@ func genTextNode(n *Node, text *string, width, height *float32) {
 
 	}
 	n.Text.Width = int(*width)
-
-	*height = n.Text.Render()
+	*height = font.Render(n)
 }
 
 func findLongestLine(lines []string) string {

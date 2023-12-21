@@ -2,6 +2,7 @@ package font
 
 import (
 	"fmt"
+	"gui/element"
 	"image"
 	"image/color"
 	"image/draw"
@@ -110,7 +111,7 @@ func LoadFont(fontName string, fontSize int, bold, italic bool) (font.Face, erro
 	return truetype.NewFace(fnt, &options), nil
 }
 
-func MeasureText(t *Text, text string) int {
+func MeasureText(t *element.Text, text string) int {
 	var width fixed.Int26_6
 
 	for _, runeValue := range text {
@@ -131,7 +132,7 @@ func MeasureText(t *Text, text string) int {
 	return width.Round()
 }
 
-func MeasureSpace(t *Text) int {
+func MeasureSpace(t *element.Text) int {
 	adv, _ := t.Font.GlyphAdvance(' ')
 	return adv.Round()
 }
@@ -218,37 +219,9 @@ func getFontsRecursively(dir string, fontPaths *[]string) {
 	}
 }
 
-type Text struct {
-	Text                string
-	Font                font.Face
-	Color               color.Color
-	Image               *image.RGBA
-	Underlined          bool
-	Overlined           bool
-	LineThrough         bool
-	DecorationColor     color.Color
-	DecorationThickness int
-	Align               string
-	Indent              int // very low priority
-	LetterSpacing       int
-	LineHeight          int
-	WordSpacing         int
-	WhiteSpace          string
-	Shadows             []Shadow // need
-	Width               int
-	WordBreak           string
-	EM                  int
-}
-
-type Shadow struct {
-	X     int
-	Y     int
-	Blur  int
-	Color color.Color
-}
-
-func (t *Text) Render() float32 {
-	lines := t.GetLines()
+func Render(n *element.Node) float32 {
+	t := &n.Text
+	lines := GetLines(*t)
 	shiftText := false
 	if t.LineHeight == 0 {
 		t.LineHeight = t.EM + 3
@@ -291,11 +264,11 @@ func (t *Text) Render() float32 {
 					}
 				} else {
 					dr.Dot.X = 0
-					t.DrawString(dr, v)
+					drawString(*t, dr, v)
 				}
 			} else {
 				dr.Dot.X = 0
-				t.DrawString(dr, v)
+				drawString(*t, dr, v)
 			}
 
 		} else {
@@ -306,14 +279,14 @@ func (t *Text) Render() float32 {
 			} else if t.Align == "right" {
 				dr.Dot.X = fixed.I(t.Width - MeasureText(t, v))
 			}
-			t.DrawString(dr, v)
+			drawString(*t, dr, v)
 		}
 		dr.Dot.Y += fh
 	}
 	return float32(t.LineHeight * len(lines))
 }
 
-func (t *Text) DrawString(dr *font.Drawer, v string) {
+func drawString(t element.Text, dr *font.Drawer, v string) {
 	underlinePosition := dr.Dot
 	for _, ch := range v {
 		if ch == ' ' {
@@ -344,7 +317,7 @@ func (t *Text) DrawString(dr *font.Drawer, v string) {
 	}
 }
 
-func (t *Text) wrap(breaker string, breakNewLines bool) []string {
+func wrap(t element.Text, breaker string, breakNewLines bool) []string {
 	var start int = 0
 	strngs := []string{}
 	var text []string
@@ -362,7 +335,7 @@ func (t *Text) wrap(breaker string, breakNewLines bool) []string {
 	}
 	for i := 0; i < len(text)-1; i++ {
 		seg := strings.Join(text[start:i], breaker)
-		if MeasureText(t, seg+breaker+text[i+1]) > t.Width {
+		if MeasureText(&t, seg+breaker+text[i+1]) > t.Width {
 			strngs = append(strngs, seg)
 			start = i
 		}
@@ -421,12 +394,12 @@ func abs(x int) int {
 	return x
 }
 
-func (t *Text) GetLines() []string {
+func GetLines(t element.Text) []string {
 	var lines []string
 	if t.WhiteSpace == "nowrap" {
 		re := regexp.MustCompile(`\s+`)
 		t.Text = re.ReplaceAllString(t.Text, " ")
-		lines = t.wrap("<br />", false)
+		lines = wrap(t, "<br />", false)
 	} else {
 		if t.WhiteSpace == "pre" {
 			re := regexp.MustCompile("\t")
@@ -436,16 +409,16 @@ func (t *Text) GetLines() []string {
 		} else if t.WhiteSpace == "pre-line" {
 			re := regexp.MustCompile(`\s+`)
 			t.Text = re.ReplaceAllString(t.Text, " ")
-			lines = t.wrap(" ", true)
+			lines = wrap(t, " ", true)
 		} else if t.WhiteSpace == "pre-wrap" {
-			lines = t.wrap(" ", true)
+			lines = wrap(t, " ", true)
 		} else {
 			re := regexp.MustCompile(`\s+`)
 			t.Text = re.ReplaceAllString(t.Text, " ")
 			nl := regexp.MustCompile(`[\r\n]+`)
 			t.Text = nl.ReplaceAllString(t.Text, "")
 			t.Text = strings.TrimSpace(t.Text)
-			lines = t.wrap(t.WordBreak, false)
+			lines = wrap(t, t.WordBreak, false)
 		}
 		for i, v := range lines {
 			lines[i] = v + t.WordBreak
