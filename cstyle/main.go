@@ -183,9 +183,7 @@ func ComputeNodeStyle(n element.Node) element.Node {
 			} else if styleMap["display"] != "inline" {
 				y += v.Margin.Top + v.Margin.Bottom + v.Padding.Top + v.Padding.Bottom + v.Height
 			}
-
 		}
-
 	}
 
 	// Display modes need to be calculated here
@@ -216,13 +214,12 @@ func ComputeNodeStyle(n element.Node) element.Node {
 	}
 
 	if len(n.Children) == 0 {
-		text := dom.TextContent(n.Node)
+
 		// Confirm text exists
-		if len(text) > 0 {
+		if len(n.Text.Text) > 0 {
 			innerWidth := width
 			innerHeight := height
-			println(text)
-			genTextNode(&n, &text, &innerWidth, &innerHeight)
+			genTextNode(&n, &innerWidth, &innerHeight)
 			width = innerWidth + n.Padding.Left + n.Padding.Right
 			height = innerHeight
 		}
@@ -239,6 +236,7 @@ func ComputeNodeStyle(n element.Node) element.Node {
 				x = copyOfX
 			}
 		}
+
 	}
 
 	n.X = x
@@ -263,6 +261,28 @@ func ComputeNodeStyle(n element.Node) element.Node {
 				n.Height += n.Children[i].Padding.Bottom
 			}
 
+		}
+	}
+
+	if styleMap["text-align"] == "center" || styleMap["text-align"] == "right" {
+		pos := float32(1)
+		if styleMap["text-align"] == "center" {
+			pos = 2
+		}
+		offset := n.Width / pos
+		for i, v := range n.Children {
+			if v.Styles["display"] == "inline" {
+				offset -= v.Width / pos
+			} else {
+				for j := i - 1; j >= 0; j-- {
+					if n.Children[j].Styles["display"] != "inline" {
+						break
+					} else {
+						n.Children[j].X += offset
+					}
+				}
+				offset = n.Width / pos
+			}
 		}
 	}
 
@@ -328,8 +348,6 @@ func initNodes(n *element.Node, styleMap map[string]map[string]string) {
 	border, err := CompleteBorder(n.Styles)
 	if err == nil {
 		n.Border = border
-		println(n.Id)
-		fmt.Printf("HAS BORDER: %#v\n\n", n.Border)
 	}
 
 	fs, _ := utils.ConvertToPixels(n.Styles["font-size"], n.Parent.EM, n.Parent.Width)
@@ -362,6 +380,25 @@ func initNodes(n *element.Node, styleMap map[string]map[string]string) {
 
 	n.Width = width
 	n.Height = height
+
+	bold, italic := false, false
+
+	if n.Styles["font-weight"] == "bold" {
+		bold = true
+	}
+
+	if n.Styles["font-style"] == "italic" {
+		italic = true
+	}
+
+	f, _ := font.LoadFont(n.Styles["font-family"], int(n.EM), bold, italic)
+	letterSpacing, _ := utils.ConvertToPixels(n.Styles["letter-spacing"], n.EM, width)
+	wordSpacing, _ := utils.ConvertToPixels(n.Styles["word-spacing"], n.EM, width)
+
+	n.Text.Text = dom.TextContent(n.Node)
+	n.Text.Font = f
+	n.Text.WordSpacing = int(wordSpacing)
+	n.Text.LetterSpacing = int(letterSpacing)
 
 	n.Colors = color.Parse(n.Styles)
 
@@ -475,17 +512,7 @@ func flatten(n *element.Node) []element.Node {
 	return nodes
 }
 
-func genTextNode(n *element.Node, text *string, width, height *float32) {
-	println(n.Id)
-	bold, italic := false, false
-
-	if n.Styles["font-weight"] == "bold" {
-		bold = true
-	}
-
-	if n.Styles["font-style"] == "italic" {
-		italic = true
-	}
+func genTextNode(n *element.Node, width, height *float32) {
 
 	wb := " "
 
@@ -509,27 +536,21 @@ func genTextNode(n *element.Node, text *string, width, height *float32) {
 		dt, _ = utils.ConvertToPixels(n.Styles["text-decoration-thickness"], n.EM, *width)
 	}
 
-	f, _ := font.LoadFont(n.Styles["font-family"], int(n.EM), bold, italic)
-
 	c, _ := color.Font(n.Styles)
 
-	n.Text = element.Text{
-		Text:                *text,
-		Font:                f,
-		Color:               c,
-		Align:               n.Styles["text-align"],
-		WordBreak:           wb,
-		WordSpacing:         int(wordSpacing),
-		LetterSpacing:       int(letterSpacing),
-		LineHeight:          int(lineHeight),
-		WhiteSpace:          n.Styles["white-space"],
-		DecorationColor:     n.Colors.TextDecoration,
-		DecorationThickness: int(dt),
-		Overlined:           n.Styles["text-decoration"] == "overline",
-		Underlined:          n.Styles["text-decoration"] == "underline",
-		LineThrough:         n.Styles["text-decoration"] == "linethrough",
-		EM:                  int(n.EM),
-	}
+	n.Text.Color = c
+	n.Text.Align = n.Styles["text-align"]
+	n.Text.WordBreak = wb
+	n.Text.WordSpacing = int(wordSpacing)
+	n.Text.LetterSpacing = int(letterSpacing)
+	n.Text.LineHeight = int(lineHeight)
+	n.Text.WhiteSpace = n.Styles["white-space"]
+	n.Text.DecorationColor = n.Colors.TextDecoration
+	n.Text.DecorationThickness = int(dt)
+	n.Text.Overlined = n.Styles["text-decoration"] == "overline"
+	n.Text.Underlined = n.Styles["text-decoration"] == "underline"
+	n.Text.LineThrough = n.Styles["text-decoration"] == "linethrough"
+	n.Text.EM = int(n.EM)
 
 	if n.Styles["word-spacing"] == "" {
 		n.Text.WordSpacing = font.MeasureSpace(&n.Text)

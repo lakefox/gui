@@ -88,7 +88,7 @@ func (wm *WindowManager) Draw(nodes []element.Node) {
 
 	if wm.FPS {
 		wm.FPSCounter.Update()
-		wm.FPSCounter.Draw(10, 10, 10, rl.DarkGray)
+		// wm.FPSCounter.Draw(10, 10, 10, rl.DarkGray)
 	}
 }
 

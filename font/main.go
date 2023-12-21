@@ -111,6 +111,24 @@ func LoadFont(fontName string, fontSize int, bold, italic bool) (font.Face, erro
 	return truetype.NewFace(fnt, &options), nil
 }
 
+func MeasureLine(n *element.Node) (int, int) {
+	passed := false
+	lineOffset, nodeOffset := 0, 0
+	for _, v := range n.Parent.Children {
+		l := MeasureText(&v.Text, v.Text.Text)
+		if v.Id == n.Id {
+			passed = true
+			lineOffset += l
+		} else {
+			if !passed {
+				nodeOffset += l
+			}
+			lineOffset += l
+		}
+	}
+	return lineOffset, nodeOffset
+}
+
 func MeasureText(t *element.Text, text string) int {
 	var width fixed.Int26_6
 
@@ -279,6 +297,7 @@ func Render(n *element.Node) float32 {
 			} else if t.Align == "right" {
 				dr.Dot.X = fixed.I(t.Width - MeasureText(t, v))
 			}
+			// dr.Dot.X = 0
 			drawString(*t, dr, v)
 		}
 		dr.Dot.Y += fh
