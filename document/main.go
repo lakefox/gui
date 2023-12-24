@@ -73,6 +73,7 @@ func Open(index string) {
 			nodes = css.Map(d.DOM)
 			wm.LoadTextures(nodes.Render)
 		}
+
 		wm.Draw(nodes.Render)
 
 		rl.EndDrawing()
@@ -92,7 +93,7 @@ func Parse(path string) Doc {
 	}
 
 	check(scanner.Err())
-
+	// println(encapsulateText(htmlContent))
 	doc, err := dom.FastParse(strings.NewReader(encapsulateText(htmlContent)))
 	check(err)
 
@@ -186,11 +187,11 @@ func localizePath(rootPath, filePath string) string {
 
 func encapsulateText(htmlString string) string {
 	htmlString = removeHTMLComments(htmlString)
-	openClose := regexp.MustCompile(`(?s)(<\w+(?:\s+\w+="[^"]*")*>)([^<]+)(<\w+\s*(?:\s+\w+="[^"]*")*>)`)
-	closeOpen := regexp.MustCompile(`(?s)(</\w+(?:\s+\w+="[^"]*")*>)([^<]+)(<\w+\s*(?:\s+\w+="[^"]*")*>)`)
-	closeClose := regexp.MustCompile(`(?s)(</\w+(?:\s+\w+="[^"]*")*>)([^<]+)(</\w+\s*(?:\s+\w+="[^"]*")*>)`)
-	a := matchFactory(openClose)
-	t := openClose.ReplaceAllStringFunc(htmlString, a)
+	openOpen := regexp.MustCompile(`(<\w+[^>]*>)([^<]+)(<\w+[^>]*>)`)
+	closeOpen := regexp.MustCompile(`(</\w+[^>]*>)([^<]+)(<\w+[^>]*>)`)
+	closeClose := regexp.MustCompile(`(</\w+[^>]*>)([^<]+)(</\w+[^>]*>)`)
+	a := matchFactory(openOpen)
+	t := openOpen.ReplaceAllStringFunc(htmlString, a)
 	b := matchFactory(closeOpen)
 	u := closeOpen.ReplaceAllStringFunc(t, b)
 	c := matchFactory(closeClose)

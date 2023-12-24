@@ -55,7 +55,6 @@ func (wm *WindowManager) CloseWindow() {
 
 func (wm *WindowManager) LoadTextures(nodes []element.Node) {
 	wm.Textures = make([]rl.Texture2D, len(nodes))
-	println("NODES: ", len(nodes))
 	for i, node := range nodes {
 		if node.Text.Image != nil {
 			texture := rl.LoadTextureFromImage(rl.NewImageFromImage(node.Text.Image))

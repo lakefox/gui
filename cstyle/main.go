@@ -227,17 +227,28 @@ func ComputeNodeStyle(n element.Node) element.Node {
 
 	if styleMap["display"] == "inline" {
 		copyOfX := x
+		xAcume := float32(0)
 		for _, v := range n.Parent.Children {
 			if v.Id == n.Id {
 				break
 			} else if v.Styles["display"] == "inline" {
-				x += v.Width
+				fmt.Println(x+xAcume+n.Width, n.Parent.Width, x, y)
+				if x+xAcume+n.Width > n.Parent.Width {
+					y += float32(n.Text.LineHeight)
+					n.Parent.Height += float32(n.Text.LineHeight)
+					x = copyOfX
+					xAcume = 0
+				} else {
+					x += v.Width
+				}
 			} else {
 				x = copyOfX
 			}
+			xAcume += v.X + v.Width
 		}
 
 	}
+	fmt.Println(x, y)
 
 	n.X = x
 	n.Y = y
@@ -566,6 +577,7 @@ func genTextNode(n *element.Node, width, height *float32) {
 		*width, _ = utils.ConvertToPixels(n.Styles["width"], n.EM, n.Parent.Width)
 
 	}
+
 	n.Text.Width = int(*width)
 	*height = font.Render(n)
 }

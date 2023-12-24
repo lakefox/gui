@@ -443,6 +443,6 @@ func GetLines(t element.Text) []string {
 			lines[i] = v + t.WordBreak
 		}
 	}
-
+	fmt.Println(lines)
 	return lines
 }
