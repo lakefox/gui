@@ -155,6 +155,21 @@ func MeasureSpace(t *element.Text) int {
 	return adv.Round()
 }
 
+func MeasureLongest(t *element.Text) int {
+	lines := GetLines(*t)
+	var longestLine string
+	maxLength := 0
+
+	for _, line := range lines {
+		length := len(line)
+		if length > maxLength {
+			maxLength = length
+			longestLine = line
+		}
+	}
+	return MeasureText(t, longestLine)
+}
+
 func getSystemFonts() ([]string, error) {
 	var fontPaths []string
 
@@ -352,17 +367,21 @@ func wrap(t element.Text, breaker string, breakNewLines bool) []string {
 	for i := 0; i < len(text); i++ {
 		text[i] = re.ReplaceAllString(text[i], "")
 	}
-	for i := 0; i < len(text)-1; i++ {
-		seg := strings.Join(text[start:i], breaker)
-		if MeasureText(&t, seg+breaker+text[i+1]) > t.Width {
-			strngs = append(strngs, seg)
+	for i := 0; i < len(text); i++ {
+		seg := strings.Join(text[start:int(Min(float32(i+1), float32(len(text))))], breaker)
+		fmt.Println(MeasureText(&t, seg), t.Width, seg, i, len(text))
+		if MeasureText(&t, seg) > t.Width {
+			strngs = append(strngs, strings.Join(text[start:i], breaker))
 			start = i
 		}
 	}
+	fmt.Println("Current", strngs)
 	if len(strngs) > 0 {
 		strngs = append(strngs, strings.Join(text[start:], breaker))
+		fmt.Println("Added", strngs)
 	} else {
 		strngs = append(strngs, strings.Join(text[start:], breaker))
+		fmt.Println("Cant break", strngs)
 	}
 	return strngs
 }
@@ -443,6 +462,13 @@ func GetLines(t element.Text) []string {
 			lines[i] = v + t.WordBreak
 		}
 	}
-	fmt.Println(lines)
 	return lines
+}
+
+func Min(a, b float32) float32 {
+	if a < b {
+		return a
+	} else {
+		return b
+	}
 }

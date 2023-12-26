@@ -222,33 +222,30 @@ func ComputeNodeStyle(n element.Node) element.Node {
 			genTextNode(&n, &innerWidth, &innerHeight)
 			width = innerWidth + n.Padding.Left + n.Padding.Right
 			height = innerHeight
+			fmt.Println("WH: ", width, height)
 		}
 	}
 
 	if styleMap["display"] == "inline" {
 		copyOfX := x
-		xAcume := float32(0)
-		for _, v := range n.Parent.Children {
+		for i, v := range n.Parent.Children {
+			fmt.Println("######")
+			fmt.Println(v.Text.Text)
 			if v.Id == n.Id {
+				if x+width-2 > n.Parent.Width+copyOfX && i > 0 {
+					y += float32(n.Parent.Children[i-1].Height)
+					fmt.Println("LINE Y SHIFT")
+					x = copyOfX
+				}
 				break
 			} else if v.Styles["display"] == "inline" {
-				fmt.Println(x+xAcume+n.Width, n.Parent.Width, x, y)
-				if x+xAcume+n.Width > n.Parent.Width {
-					y += float32(n.Text.LineHeight)
-					n.Parent.Height += float32(n.Text.LineHeight)
-					x = copyOfX
-					xAcume = 0
-				} else {
-					x += v.Width
-				}
+				x += v.Width
 			} else {
 				x = copyOfX
 			}
-			xAcume += v.X + v.Width
-		}
 
+		}
 	}
-	fmt.Println(x, y)
 
 	n.X = x
 	n.Y = y
@@ -272,28 +269,6 @@ func ComputeNodeStyle(n element.Node) element.Node {
 				n.Height += n.Children[i].Padding.Bottom
 			}
 
-		}
-	}
-
-	if styleMap["text-align"] == "center" || styleMap["text-align"] == "right" {
-		pos := float32(1)
-		if styleMap["text-align"] == "center" {
-			pos = 2
-		}
-		offset := n.Width / pos
-		for i, v := range n.Children {
-			if v.Styles["display"] == "inline" {
-				offset -= v.Width / pos
-			} else {
-				for j := i - 1; j >= 0; j-- {
-					if n.Children[j].Styles["display"] != "inline" {
-						break
-					} else {
-						n.Children[j].X += offset
-					}
-				}
-				offset = n.Width / pos
-			}
 		}
 	}
 
@@ -524,7 +499,6 @@ func flatten(n *element.Node) []element.Node {
 }
 
 func genTextNode(n *element.Node, width, height *float32) {
-
 	wb := " "
 
 	if n.Styles["word-wrap"] == "break-word" {
@@ -562,37 +536,19 @@ func genTextNode(n *element.Node, width, height *float32) {
 	n.Text.Underlined = n.Styles["text-decoration"] == "underline"
 	n.Text.LineThrough = n.Styles["text-decoration"] == "linethrough"
 	n.Text.EM = int(n.EM)
+	n.Text.Width = int(n.Parent.Width)
 
 	if n.Styles["word-spacing"] == "" {
 		n.Text.WordSpacing = font.MeasureSpace(&n.Text)
 	}
-
 	if n.Parent.Width != 0 && n.Styles["display"] != "inline" && n.Styles["width"] == "" {
 		*width = (n.Parent.Width - n.Padding.Right) - n.Padding.Left
 	} else if n.Styles["width"] == "" {
-		lines := font.GetLines(n.Text)
-		*width = utils.Max(*width, float32(font.MeasureText(&n.Text, findLongestLine(lines))))
-
+		*width = utils.Max(*width, float32(font.MeasureLongest(&n.Text)))
 	} else if n.Styles["width"] != "" {
 		*width, _ = utils.ConvertToPixels(n.Styles["width"], n.EM, n.Parent.Width)
-
 	}
 
 	n.Text.Width = int(*width)
 	*height = font.Render(n)
-}
-
-func findLongestLine(lines []string) string {
-	var longestLine string
-	maxLength := 0
-
-	for _, line := range lines {
-		length := len(line)
-		if length > maxLength {
-			maxLength = length
-			longestLine = line
-		}
-	}
-
-	return longestLine
 }

@@ -240,6 +240,14 @@ func Max(a, b float32) float32 {
 	}
 }
 
+func Min(a, b float32) float32 {
+	if a < b {
+		return a
+	} else {
+		return b
+	}
+}
+
 func FindRelative(n *html.Node, styleMap map[string]map[string]string) (float32, float32) {
 
 	id := dom.GetAttribute(n, "DOMNODEID")
