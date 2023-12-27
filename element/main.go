@@ -68,6 +68,7 @@ type Text struct {
 	Width               int
 	WordBreak           string
 	EM                  int
+	X                   int
 }
 
 type Shadow struct {

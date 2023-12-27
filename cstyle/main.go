@@ -57,6 +57,7 @@ func (c *CSS) StyleTag(css string) {
 	c.StyleSheets = append(c.StyleSheets, styles)
 }
 
+// gen id's via a tree so they stay the same
 func (c *CSS) Map(doc *html.Node) Mapped {
 	styleMap := make(map[string]map[string]string)
 	for a := 0; a < len(c.StyleSheets); a++ {
@@ -212,7 +213,7 @@ func ComputeNodeStyle(n element.Node) element.Node {
 			width += n.Padding.Right + n.Padding.Left
 		}
 	}
-
+	fmt.Println("######")
 	if len(n.Children) == 0 {
 
 		// Confirm text exists
@@ -229,13 +230,22 @@ func ComputeNodeStyle(n element.Node) element.Node {
 	if styleMap["display"] == "inline" {
 		copyOfX := x
 		for i, v := range n.Parent.Children {
-			fmt.Println("######")
+
 			fmt.Println(v.Text.Text)
 			if v.Id == n.Id {
 				if x+width-2 > n.Parent.Width+copyOfX && i > 0 {
 					y += float32(n.Parent.Children[i-1].Height)
 					fmt.Println("LINE Y SHIFT")
 					x = copyOfX
+				}
+				if i > 0 {
+					if n.Parent.Children[i-1].Styles["display"] == "inline" {
+						if n.Parent.Children[i-1].Text.X+n.Text.Width < int(n.Parent.Children[i-1].Width) {
+							y -= float32(n.Parent.Children[i-1].Text.LineHeight)
+							x += float32(n.Parent.Children[i-1].Text.X)
+							fmt.Println("XXXXX: ", x)
+						}
+					}
 				}
 				break
 			} else if v.Styles["display"] == "inline" {
@@ -255,7 +265,6 @@ func ComputeNodeStyle(n element.Node) element.Node {
 	// Call children here
 
 	var childYOffset float32
-
 	for i, v := range n.Children {
 		v.Parent = &n
 		n.Children[i] = ComputeNodeStyle(v)
