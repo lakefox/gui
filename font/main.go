@@ -255,11 +255,9 @@ func getFontsRecursively(dir string, fontPaths *[]string) {
 func Render(n *element.Node) float32 {
 	t := &n.Text
 	lines := GetLines(*t)
-	shiftText := false
+
 	if t.LineHeight == 0 {
 		t.LineHeight = t.EM + 3
-	} else {
-		shiftText = true
 	}
 	// Use fully transparent color for the background
 	img := image.NewRGBA(image.Rect(0, 0, t.Width, t.LineHeight*(len(lines))))
@@ -279,9 +277,6 @@ func Render(n *element.Node) float32 {
 	t.Image = img
 
 	fh := fixed.I(t.LineHeight)
-	if shiftText {
-		dr.Dot.Y += fh / 3
-	}
 
 	for _, v := range lines {
 		if t.Align == "justify" {

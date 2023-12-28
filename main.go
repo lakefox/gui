@@ -11,5 +11,5 @@ func main() {
 	// 	fmt.Println(http.ListenAndServe("localhost:6060", nil))
 	// }()
 
-	document.Open("./src/index.html")
+	document.Open("./src/app.html")
 }

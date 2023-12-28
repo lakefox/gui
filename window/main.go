@@ -87,8 +87,14 @@ func (wm *WindowManager) Draw(nodes []element.Node) {
 
 	if wm.FPS {
 		wm.FPSCounter.Update()
-		// wm.FPSCounter.Draw(10, 10, 10, rl.DarkGray)
+		wm.FPSCounter.Draw(10, 10, 10, rl.DarkGray)
 	}
+	// touching := events.GetEvents(nodes)
+
+	// if touching.Id != "" {
+	// 	fmt.Println(touching.Id)
+	// }
+
 }
 
 // WindowShouldClose returns true if the window should close

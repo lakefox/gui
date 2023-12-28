@@ -10,21 +10,23 @@ import (
 )
 
 type Node struct {
-	Node     *html.Node
-	Parent   *Node
-	Children []Node
-	Styles   map[string]string
-	Id       string
-	X        float32
-	Y        float32
-	Width    float32
-	Height   float32
-	Margin   Margin
-	Padding  Padding
-	Border   Border
-	EM       float32
-	Text     Text
-	Colors   Colors
+	Node        *html.Node
+	Parent      *Node
+	Children    []Node
+	Styles      map[string]string
+	Id          string
+	X           float32
+	Y           float32
+	Width       float32
+	Height      float32
+	Margin      Margin
+	Padding     Padding
+	Border      Border
+	EM          float32
+	Text        Text
+	Colors      Colors
+	PrevSibling *Node
+	NextSibling *Node
 }
 
 type Margin struct {

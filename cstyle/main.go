@@ -109,7 +109,7 @@ func (c *CSS) Map(doc *html.Node) Mapped {
 
 	node = ComputeNodeStyle(node)
 
-	// Print(&node, 0)
+	Print(&node, 0)
 
 	renderLine := flatten(&node)
 
@@ -213,7 +213,6 @@ func ComputeNodeStyle(n element.Node) element.Node {
 			width += n.Padding.Right + n.Padding.Left
 		}
 	}
-	fmt.Println("######")
 	if len(n.Children) == 0 {
 
 		// Confirm text exists
@@ -223,19 +222,15 @@ func ComputeNodeStyle(n element.Node) element.Node {
 			genTextNode(&n, &innerWidth, &innerHeight)
 			width = innerWidth + n.Padding.Left + n.Padding.Right
 			height = innerHeight
-			fmt.Println("WH: ", width, height)
 		}
 	}
 
 	if styleMap["display"] == "inline" {
 		copyOfX := x
 		for i, v := range n.Parent.Children {
-
-			fmt.Println(v.Text.Text)
 			if v.Id == n.Id {
 				if x+width-2 > n.Parent.Width+copyOfX && i > 0 {
 					y += float32(n.Parent.Children[i-1].Height)
-					fmt.Println("LINE Y SHIFT")
 					x = copyOfX
 				}
 				if i > 0 {
@@ -243,7 +238,6 @@ func ComputeNodeStyle(n element.Node) element.Node {
 						if n.Parent.Children[i-1].Text.X+n.Text.Width < int(n.Parent.Children[i-1].Width) {
 							y -= float32(n.Parent.Children[i-1].Text.LineHeight)
 							x += float32(n.Parent.Children[i-1].Text.X)
-							fmt.Println("XXXXX: ", x)
 						}
 					}
 				}
@@ -371,7 +365,26 @@ func initNodes(n *element.Node, styleMap map[string]map[string]string) {
 	}
 
 	width, _ := utils.ConvertToPixels(n.Styles["width"], n.EM, n.Parent.Width)
+	if n.Styles["min-width"] != "" {
+		minWidth, _ := utils.ConvertToPixels(n.Styles["min-width"], n.EM, n.Parent.Width)
+		width = utils.Max(width, minWidth)
+	}
+
+	if n.Styles["max-width"] != "" {
+		maxWidth, _ := utils.ConvertToPixels(n.Styles["max-width"], n.EM, n.Parent.Width)
+		width = utils.Min(width, maxWidth)
+	}
+
 	height, _ := utils.ConvertToPixels(n.Styles["height"], n.EM, n.Parent.Height)
+	if n.Styles["min-height"] != "" {
+		minHeight, _ := utils.ConvertToPixels(n.Styles["min-height"], n.EM, n.Parent.Height)
+		height = utils.Max(height, minHeight)
+	}
+
+	if n.Styles["max-height"] != "" {
+		maxHeight, _ := utils.ConvertToPixels(n.Styles["max-height"], n.EM, n.Parent.Height)
+		height = utils.Min(height, maxHeight)
+	}
 
 	n.Width = width
 	n.Height = height
@@ -389,7 +402,12 @@ func initNodes(n *element.Node, styleMap map[string]map[string]string) {
 	f, _ := font.LoadFont(n.Styles["font-family"], int(n.EM), bold, italic)
 	letterSpacing, _ := utils.ConvertToPixels(n.Styles["letter-spacing"], n.EM, width)
 	wordSpacing, _ := utils.ConvertToPixels(n.Styles["word-spacing"], n.EM, width)
+	lineHeight, _ := utils.ConvertToPixels(n.Styles["line-height"], n.EM, width)
+	if lineHeight == 0 {
+		lineHeight = n.EM + 3
+	}
 
+	n.Text.LineHeight = int(lineHeight)
 	n.Text.Text = dom.TextContent(n.Node)
 	n.Text.Font = f
 	n.Text.WordSpacing = int(wordSpacing)
@@ -397,7 +415,8 @@ func initNodes(n *element.Node, styleMap map[string]map[string]string) {
 
 	n.Colors = color.Parse(n.Styles)
 
-	for _, c := range dom.ChildNodes(n.Node) {
+	cn := dom.ChildNodes(n.Node)
+	for _, c := range cn {
 
 		if c.Type == html.ElementNode {
 			id := dom.GetAttribute(c, "DOMNODEID")
@@ -408,6 +427,11 @@ func initNodes(n *element.Node, styleMap map[string]map[string]string) {
 				Styles: styleMap[id],
 			}
 			initNodes(&node, styleMap)
+
+			if len(n.Children) > 1 {
+				node.PrevSibling = &n.Children[len(n.Children)-1]
+				n.Children[len(n.Children)-1].NextSibling = &node
+			}
 			n.Children = append(n.Children, node)
 		}
 	}
@@ -519,7 +543,6 @@ func genTextNode(n *element.Node, width, height *float32) {
 	}
 
 	letterSpacing, _ := utils.ConvertToPixels(n.Styles["letter-spacing"], n.EM, *width)
-	lineHeight, _ := utils.ConvertToPixels(n.Styles["line-height"], n.EM, *width)
 	wordSpacing, _ := utils.ConvertToPixels(n.Styles["word-spacing"], n.EM, *width)
 
 	var dt float32
@@ -537,7 +560,6 @@ func genTextNode(n *element.Node, width, height *float32) {
 	n.Text.WordBreak = wb
 	n.Text.WordSpacing = int(wordSpacing)
 	n.Text.LetterSpacing = int(letterSpacing)
-	n.Text.LineHeight = int(lineHeight)
 	n.Text.WhiteSpace = n.Styles["white-space"]
 	n.Text.DecorationColor = n.Colors.TextDecoration
 	n.Text.DecorationThickness = int(dt)
