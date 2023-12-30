@@ -10,6 +10,9 @@ import (
 	"regexp"
 	"strings"
 
+	"gui/cstyle/plugins/block"
+	"gui/cstyle/plugins/inline"
+
 	rl "github.com/gen2brain/raylib-go/raylib"
 	"github.com/go-shiori/dom"
 	"golang.org/x/net/html"
@@ -41,6 +44,8 @@ func Open(index string) {
 		Height: 450,
 	}
 	css.StyleSheet("./master.css")
+	css.AddPlugin(inline.Init())
+	css.AddPlugin(block.Init())
 
 	for _, v := range d.StyleSheets {
 		css.StyleSheet(v)

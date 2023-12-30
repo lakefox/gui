@@ -154,36 +154,80 @@ func convertMarginToIndividualProperties(margin string) (string, string, string,
 
 // ConvertToPixels converts a CSS measurement to pixels.
 func ConvertToPixels(value string, em, max float32) (float32, error) {
-	// Define conversion factors for different units
 	unitFactors := map[string]float32{
 		"px": 1,
-		"em": em,    // Assuming 1em = 16px (typical default font size in browsers)
-		"pt": 1.33,  // Assuming 1pt = 1.33px (typical conversion)
-		"pc": 16.89, // Assuming 1pc = 16.89px (typical conversion)
+		"em": em,
+		"pt": 1.33,
+		"pc": 16.89,
 		"%":  max / 100,
 		"vw": max / 100,
 		"vh": max / 100,
 		"cm": 37.79527559,
 	}
 
-	// Extract numeric value and unit using regular expression
-	re := regexp.MustCompile(`^(\d+(?:\.\d+)?)\s*([a-zA-Z\%]+)$`)
+	re := regexp.MustCompile(`calc\(([^)]*)\)|^(\d+(?:\.\d+)?)\s*([a-zA-Z\%]+)$`)
 	match := re.FindStringSubmatch(value)
 
-	if len(match) != 3 {
-		return 0, fmt.Errorf("invalid input format")
+	if match != nil {
+		if len(match[1]) > 0 {
+			calcResult, err := evaluateCalcExpression(match[1], em, max)
+			if err != nil {
+				return 0, err
+			}
+			return calcResult, nil
+		}
+
+		if len(match[2]) > 0 && len(match[3]) > 0 {
+			numericValue, err := strconv.ParseFloat(match[2], 64)
+			if err != nil {
+				return 0, fmt.Errorf("error parsing numeric value: %v", err)
+			}
+			return float32(numericValue) * unitFactors[match[3]], nil
+		}
 	}
 
-	numericValue, err := (strconv.ParseFloat(match[1], 64))
-	numericValue32 := float32(numericValue)
-	check(err)
+	return 0, fmt.Errorf("invalid input format: %s", value)
+}
 
-	unit, ok := unitFactors[match[2]]
-	if !ok {
-		return 0, fmt.Errorf("unsupported unit: %s", match[2])
+// evaluateCalcExpression recursively evaluates 'calc()' expressions
+func evaluateCalcExpression(expression string, em, max float32) (float32, error) {
+	terms := strings.FieldsFunc(expression, func(c rune) bool {
+		return c == '+' || c == '-' || c == '*' || c == '/'
+	})
+
+	operators := strings.FieldsFunc(expression, func(c rune) bool {
+		return c != '+' && c != '-' && c != '*' && c != '/'
+	})
+
+	var result float32
+
+	for i, term := range terms {
+		value, err := ConvertToPixels(strings.TrimSpace(term), em, max)
+		if err != nil {
+			return 0, err
+		}
+
+		if i > 0 {
+			switch operators[i-1] {
+			case "+":
+				result += value
+			case "-":
+				result -= value
+			case "*":
+				result *= value
+			case "/":
+				if value != 0 {
+					result /= value
+				} else {
+					return 0, fmt.Errorf("division by zero in 'calc()' expression")
+				}
+			}
+		} else {
+			result = value
+		}
 	}
 
-	return numericValue32 * unit, nil
+	return result, nil
 }
 
 func GetTextBounds(text string, fontSize, width, height float32) (float32, float32) {

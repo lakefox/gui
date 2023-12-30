@@ -1,8 +1,11 @@
 package element
 
 import (
+	"fmt"
+	"gui/selector"
 	"image"
 	ic "image/color"
+	"strings"
 
 	"golang.org/x/image/font"
 
@@ -85,4 +88,36 @@ type Colors struct {
 	Background     ic.RGBA
 	Font           ic.RGBA
 	TextDecoration ic.RGBA
+}
+
+func (n *Node) QuerySelectorAll(selectString string) []Node {
+	results := []Node{}
+	fmt.Println(n.Id, TestSelector(selectString, n))
+	if TestSelector(selectString, n) {
+		results = append(results, *n)
+	}
+
+	for _, v := range n.Children {
+		cr := v.QuerySelectorAll(selectString)
+		if len(cr) > 0 {
+			results = append(results, cr...)
+		}
+	}
+	return results
+}
+
+func TestSelector(selectString string, n *Node) bool {
+	parts := strings.Split(selectString, ">")
+
+	selectors := selector.GetCSSSelectors(n.Node, []string{})
+
+	part := selector.SplitSelector(strings.TrimSpace(parts[len(parts)-1]))
+
+	has := selector.Contains(part, selectors)
+
+	if len(parts) == 1 || !has {
+		return has
+	} else {
+		return TestSelector(strings.Join(parts[0:len(parts)-1], ">"), n.Parent)
+	}
 }

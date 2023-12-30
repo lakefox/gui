@@ -73,6 +73,6 @@ func ParseStyleAttribute(styleValue string) map[string]string {
 }
 
 func removeComments(css string) string {
-	commentRegex := regexp.MustCompile(`/\*.*?\*/`)
+	commentRegex := regexp.MustCompile(`(?s)/\*.*?\*/`)
 	return commentRegex.ReplaceAllString(css, "")
 }

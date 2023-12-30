@@ -18,6 +18,7 @@ import (
 	"gui/utils"
 	"math/rand"
 	"os"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -31,10 +32,17 @@ func check(e error) {
 	}
 }
 
+type Plugin struct {
+	Styles  map[string]string
+	Level   int
+	Handler func(*element.Node)
+}
+
 type CSS struct {
 	Width       float32
 	Height      float32
 	StyleSheets []map[string]map[string]string
+	Plugins     []Plugin
 }
 
 type Mapped struct {
@@ -107,9 +115,15 @@ func (c *CSS) Map(doc *html.Node) Mapped {
 	}
 	initNodes(&node, styleMap)
 
-	node = ComputeNodeStyle(node)
+	node = ComputeNodeStyle(node, c.Plugins)
 
-	Print(&node, 0)
+	// Print(&node, 0)
+
+	divs := node.QuerySelectorAll("div.button")
+
+	for _, v := range divs {
+		fmt.Println(v.Id)
+	}
 
 	renderLine := flatten(&node)
 
@@ -121,11 +135,15 @@ func (c *CSS) Map(doc *html.Node) Mapped {
 	return d
 }
 
+func (c *CSS) AddPlugin(plugin Plugin) {
+	c.Plugins = append(c.Plugins, plugin)
+}
+
 // make a way of breaking each section out into it's own module so people can add their own.
 // this should cover the main parts of html but if some one wants for example drop shadows they
 // can make a plug in for it
 
-func ComputeNodeStyle(n element.Node) element.Node {
+func ComputeNodeStyle(n element.Node, plugins []Plugin) element.Node {
 
 	styleMap := n.Styles
 
@@ -204,17 +222,7 @@ func ComputeNodeStyle(n element.Node) element.Node {
 		y -= n.Margin.Bottom
 	}
 
-	if styleMap["display"] == "block" {
-		// If the element is display block and the width is unset then make it 100%
-		if styleMap["width"] == "" {
-			width, _ = utils.ConvertToPixels("100%", n.EM, n.Parent.Width)
-			width -= n.Margin.Right + n.Margin.Left
-		} else {
-			width += n.Padding.Right + n.Padding.Left
-		}
-	}
 	if len(n.Children) == 0 {
-
 		// Confirm text exists
 		if len(n.Text.Text) > 0 {
 			innerWidth := width
@@ -225,43 +233,34 @@ func ComputeNodeStyle(n element.Node) element.Node {
 		}
 	}
 
-	if styleMap["display"] == "inline" {
-		copyOfX := x
-		for i, v := range n.Parent.Children {
-			if v.Id == n.Id {
-				if x+width-2 > n.Parent.Width+copyOfX && i > 0 {
-					y += float32(n.Parent.Children[i-1].Height)
-					x = copyOfX
-				}
-				if i > 0 {
-					if n.Parent.Children[i-1].Styles["display"] == "inline" {
-						if n.Parent.Children[i-1].Text.X+n.Text.Width < int(n.Parent.Children[i-1].Width) {
-							y -= float32(n.Parent.Children[i-1].Text.LineHeight)
-							x += float32(n.Parent.Children[i-1].Text.X)
-						}
-					}
-				}
-				break
-			} else if v.Styles["display"] == "inline" {
-				x += v.Width
-			} else {
-				x = copyOfX
-			}
-
-		}
-	}
-
 	n.X = x
 	n.Y = y
 	n.Width = width
 	n.Height = height
+
+	// Sorting the array by the Level field
+	sort.Slice(plugins, func(i, j int) bool {
+		return plugins[i].Level < plugins[j].Level
+	})
+
+	for _, v := range plugins {
+		matches := true
+		for name, value := range v.Styles {
+			if styleMap[name] != value {
+				matches = false
+			}
+		}
+		if matches {
+			v.Handler(&n)
+		}
+	}
 
 	// Call children here
 
 	var childYOffset float32
 	for i, v := range n.Children {
 		v.Parent = &n
-		n.Children[i] = ComputeNodeStyle(v)
+		n.Children[i] = ComputeNodeStyle(v, plugins)
 		if styleMap["height"] == "" {
 			if n.Children[i].Styles["position"] != "absolute" && n.Children[i].Y > childYOffset {
 				childYOffset = n.Children[i].Y
@@ -581,5 +580,9 @@ func genTextNode(n *element.Node, width, height *float32) {
 	}
 
 	n.Text.Width = int(*width)
-	*height = font.Render(n)
+	h := font.Render(n)
+	if n.Styles["height"] == "" {
+		*height = h
+	}
+
 }
