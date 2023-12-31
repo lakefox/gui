@@ -119,11 +119,9 @@ func (c *CSS) Map(doc *html.Node) Mapped {
 
 	// Print(&node, 0)
 
-	divs := node.QuerySelectorAll("div.button")
+	divs := node.QuerySelector("div.button")
 
-	for _, v := range divs {
-		fmt.Println(v.Id)
-	}
+	fmt.Println(divs.Id)
 
 	renderLine := flatten(&node)
 

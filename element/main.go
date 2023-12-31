@@ -90,6 +90,32 @@ type Colors struct {
 	TextDecoration ic.RGBA
 }
 
+func (n *Node) GetAttribute(name string) string {
+	attributes := make(map[string]string)
+
+	for _, attr := range n.Node.Attr {
+		attributes[attr.Key] = attr.Val
+	}
+	return attributes[name]
+}
+
+func (n *Node) SetAttribute(key, value string) {
+	// Iterate through the attributes
+	for i, attr := range n.Node.Attr {
+		// If the attribute key matches, update its value
+		if attr.Key == key {
+			n.Node.Attr[i].Val = value
+			return
+		}
+	}
+
+	// If the attribute key was not found, add a new attribute
+	n.Node.Attr = append(n.Node.Attr, html.Attribute{
+		Key: key,
+		Val: value,
+	})
+}
+
 func (n *Node) QuerySelectorAll(selectString string) []Node {
 	results := []Node{}
 	fmt.Println(n.Id, TestSelector(selectString, n))
@@ -104,6 +130,21 @@ func (n *Node) QuerySelectorAll(selectString string) []Node {
 		}
 	}
 	return results
+}
+
+func (n *Node) QuerySelector(selectString string) Node {
+	if TestSelector(selectString, n) {
+		return *n
+	}
+
+	for _, v := range n.Children {
+		cr := v.QuerySelector(selectString)
+		if cr.Id != "" {
+			return cr
+		}
+	}
+
+	return Node{}
 }
 
 func TestSelector(selectString string, n *Node) bool {

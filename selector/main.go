@@ -20,10 +20,6 @@ func GetCSSSelectors(node *html.Node, selectors []string) []string {
 		}
 	}
 
-	for child := node.FirstChild; child != nil; child = child.NextSibling {
-		selectors = GetCSSSelectors(child, selectors)
-	}
-
 	return selectors
 }
 
