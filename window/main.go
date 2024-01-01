@@ -41,8 +41,8 @@ func NewWindowManager() *WindowManager {
 }
 
 // OpenWindow opens the window
-func (wm *WindowManager) OpenWindow(title string, width, height int32) {
-	rl.InitWindow(width, height, title)
+func (wm *WindowManager) OpenWindow(width, height int32) {
+	rl.InitWindow(width, height, "")
 	rl.SetTargetFPS(30)
 	// Enable window resizing
 	rl.SetWindowState(rl.FlagWindowResizable)

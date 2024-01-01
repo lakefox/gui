@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"gui/element"
 	"gui/font"
 	"math"
 	"reflect"
@@ -9,15 +10,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-shiori/dom"
 	"golang.org/x/net/html"
 )
-
-func check(e error) {
-	if e != nil {
-		panic(e)
-	}
-}
 
 func AddMarginAndPadding(styleMap map[string]map[string]string, id string, width, height float32) (float32, float32, float32, float32) {
 	fs := font.GetFontSize(styleMap[id])
@@ -81,27 +75,6 @@ func SetMP(id string, styleMap map[string]map[string]string) {
 		if styleMap[id]["padding-bottom"] == "" {
 			styleMap[id]["padding-bottom"] = bottom
 		}
-	}
-}
-
-func GetMarginOffset(n *html.Node, styleMap map[string]map[string]string, width, height float32) (float32, float32, float32, float32) {
-
-	id := dom.GetAttribute(n, "DOMNODEID")
-	SetMP(id, styleMap)
-
-	fs := font.GetFontSize(styleMap[id])
-
-	l, _ := ConvertToPixels(styleMap[id]["margin-left"], fs, width)
-	r, _ := ConvertToPixels(styleMap[id]["margin-right"], fs, width)
-	t, _ := ConvertToPixels(styleMap[id]["margin-top"], fs, height)
-	b, _ := ConvertToPixels(styleMap[id]["margin-bottom"], fs, height)
-
-	if n.Parent != nil {
-		nT, nR, nB, nL := GetMarginOffset(n.Parent, styleMap, width, height)
-		return t + nT, r + nR, b + nB, l + nL
-
-	} else {
-		return t, r, b, l
 	}
 }
 
@@ -292,15 +265,12 @@ func Min(a, b float32) float32 {
 	}
 }
 
-func FindRelative(n *html.Node, styleMap map[string]map[string]string) (float32, float32) {
-
-	id := dom.GetAttribute(n, "DOMNODEID")
-
-	pos := styleMap[id]["position"]
+func FindRelative(n *element.Node, styleMap map[string]map[string]string) (float32, float32) {
+	pos := styleMap[n.Id]["position"]
 
 	if pos == "relative" {
-		x, _ := strconv.ParseFloat(styleMap[id]["x"], 32)
-		y, _ := strconv.ParseFloat(styleMap[id]["y"], 32)
+		x, _ := strconv.ParseFloat(styleMap[n.Id]["x"], 32)
+		y, _ := strconv.ParseFloat(styleMap[n.Id]["y"], 32)
 		return float32(x), float32(y)
 	} else {
 		if n.Parent != nil {
@@ -341,4 +311,34 @@ func GetStructField(data interface{}, fieldName string) (interface{}, error) {
 	}
 
 	return field.Interface(), nil
+}
+
+func getAttributes(node *html.Node) map[string]string {
+	attributes := make(map[string]string)
+
+	for _, attr := range node.Attr {
+		attributes[attr.Key] = attr.Val
+	}
+
+	return attributes
+}
+
+func setAttribute(node *html.Node, key, value string) {
+	// Check if the node is an element node
+	if node.Type == html.ElementNode {
+		// Iterate through the attributes
+		for i, attr := range node.Attr {
+			// If the attribute key matches, update its value
+			if attr.Key == key {
+				node.Attr[i].Val = value
+				return
+			}
+		}
+
+		// If the attribute key was not found, add a new attribute
+		node.Attr = append(node.Attr, html.Attribute{
+			Key: key,
+			Val: value,
+		})
+	}
 }

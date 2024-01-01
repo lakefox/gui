@@ -14,7 +14,6 @@ import (
 	"gui/cstyle/plugins/inline"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
-	"github.com/go-shiori/dom"
 	"golang.org/x/net/html"
 )
 
@@ -36,7 +35,7 @@ func Open(index string) {
 	var screenHeight int32 = 450
 
 	// Open the window
-	wm.OpenWindow(d.Title, screenWidth, screenHeight)
+	wm.OpenWindow(screenWidth, screenHeight)
 	defer wm.CloseWindow()
 
 	css := cstyle.CSS{
@@ -54,8 +53,8 @@ func Open(index string) {
 	for _, v := range d.StyleTags {
 		css.StyleTag(v)
 	}
-
-	nodes := css.Map(d.DOM)
+	css.CreateDocument(d.DOM)
+	nodes := css.Map()
 	wm.LoadTextures(nodes.Render)
 	wm.Draw(nodes.Render)
 
@@ -75,7 +74,8 @@ func Open(index string) {
 
 			css.Width = float32(screenWidth)
 			css.Height = float32(screenHeight)
-			nodes = css.Map(d.DOM)
+			css.CreateDocument(d.DOM)
+			nodes = css.Map()
 			wm.LoadTextures(nodes.Render)
 		}
 
@@ -99,7 +99,7 @@ func Parse(path string) Doc {
 
 	check(scanner.Err())
 	// println(encapsulateText(htmlContent))
-	doc, err := dom.FastParse(strings.NewReader(encapsulateText(htmlContent)))
+	doc, err := html.Parse(strings.NewReader(encapsulateText(htmlContent)))
 	check(err)
 
 	// Extract stylesheet link tags and style tags
@@ -110,7 +110,6 @@ func Parse(path string) Doc {
 		StyleSheets: stylesheets,
 		StyleTags:   styleTags,
 		DOM:         doc,
-		Title:       dom.InnerText(dom.GetElementsByTagName(doc, "title")[0]),
 	}
 
 	return d

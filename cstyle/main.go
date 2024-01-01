@@ -22,7 +22,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/go-shiori/dom"
 	"golang.org/x/net/html"
 )
 
@@ -43,6 +42,7 @@ type CSS struct {
 	Height      float32
 	StyleSheets []map[string]map[string]string
 	Plugins     []Plugin
+	Document    *element.Node
 }
 
 type Mapped struct {
@@ -65,24 +65,69 @@ func (c *CSS) StyleTag(css string) {
 	c.StyleSheets = append(c.StyleSheets, styles)
 }
 
+func (c *CSS) CreateDocument(doc *html.Node) {
+	id := doc.FirstChild.Data + fmt.Sprint(rand.Int63())
+	n := doc.FirstChild
+	node := element.Node{
+		Node: n,
+		Parent: &element.Node{
+			Id:     "ROOT",
+			X:      0,
+			Y:      0,
+			Width:  c.Width,
+			Height: c.Height,
+			EM:     16,
+			Type:   3,
+			Styles: map[string]string{
+				"width":  strconv.FormatFloat(float64(c.Width), 'f', -1, 32) + "px",
+				"height": strconv.FormatFloat(float64(c.Height), 'f', -1, 32) + "px",
+			},
+		},
+		Id:     id,
+		X:      0,
+		Y:      0,
+		Type:   3,
+		Width:  c.Width,
+		Height: c.Height,
+	}
+	for child := n.FirstChild; child != nil; child = child.NextSibling {
+		if child.Type == html.ElementNode {
+			node.Children = append(node.Children, CreateNode(node, child))
+		}
+	}
+	c.Document = &node
+}
+
+func CreateNode(parent element.Node, n *html.Node) element.Node {
+	id := n.Data + fmt.Sprint(rand.Int63())
+	node := element.Node{
+		Node:    n,
+		Parent:  &parent,
+		Type:    n.Type,
+		TagName: n.Data,
+		Id:      id,
+	}
+	for child := n.FirstChild; child != nil; child = child.NextSibling {
+		if child.Type == html.ElementNode {
+			node.Children = append(node.Children, CreateNode(node, child))
+		}
+	}
+	return node
+}
+
 // gen id's via a tree so they stay the same
-func (c *CSS) Map(doc *html.Node) Mapped {
+func (c *CSS) Map() Mapped {
+	doc := c.Document
 	styleMap := make(map[string]map[string]string)
 	for a := 0; a < len(c.StyleSheets); a++ {
 		for key, styles := range c.StyleSheets[a] {
-			matching := dom.QuerySelectorAll(doc, key)
+			matching := doc.QuerySelectorAll(key)
 			for _, v := range matching {
 				if v.Type == html.ElementNode {
-					id := dom.GetAttribute(v, "DOMNODEID")
-					if len(id) == 0 {
-						id = dom.TagName(v) + fmt.Sprint(rand.Int63())
-						dom.SetAttribute(v, "DOMNODEID", id)
-					}
-
-					if styleMap[id] == nil {
-						styleMap[id] = styles
+					if styleMap[v.Id] == nil {
+						styleMap[v.Id] = styles
 					} else {
-						styleMap[id] = utils.Merge(styleMap[id], styles)
+						styleMap[v.Id] = utils.Merge(styleMap[v.Id], styles)
 					}
 				}
 			}
@@ -91,37 +136,9 @@ func (c *CSS) Map(doc *html.Node) Mapped {
 
 	// Inherit CSS styles from parent
 	inherit(doc, styleMap)
-	fId := dom.GetAttribute(doc.FirstChild, "DOMNODEID")
-	node := element.Node{
-		Node: doc.FirstChild,
-		Parent: &element.Node{
-			Id:     "ROOT",
-			X:      0,
-			Y:      0,
-			Width:  c.Width,
-			Height: c.Height,
-			EM:     16,
-			Styles: map[string]string{
-				"width":  strconv.FormatFloat(float64(c.Width), 'f', -1, 32) + "px",
-				"height": strconv.FormatFloat(float64(c.Height), 'f', -1, 32) + "px",
-			},
-		},
-		Id:     fId,
-		X:      0,
-		Y:      0,
-		Width:  c.Width,
-		Height: c.Height,
-		Styles: styleMap[fId],
-	}
-	initNodes(&node, styleMap)
-
-	node = ComputeNodeStyle(node, c.Plugins)
-
-	// Print(&node, 0)
-
-	divs := node.QuerySelector("div.button")
-
-	fmt.Println(divs.Id)
+	nodes := initNodes(doc, styleMap)
+	node := ComputeNodeStyle(nodes, c.Plugins)
+	Print(&node, 0)
 
 	renderLine := flatten(&node)
 
@@ -160,7 +177,6 @@ func ComputeNodeStyle(n element.Node, plugins []Plugin) element.Node {
 
 	if styleMap["position"] == "absolute" {
 		base := GetPositionOffsetNode(&n)
-
 		if styleMap["top"] != "" {
 			v, _ := utils.ConvertToPixels(styleMap["top"], float32(n.EM), n.Parent.Width)
 			y = v + base.Y
@@ -295,42 +311,35 @@ var inheritedProps = []string{
 	"display",
 }
 
-func inherit(n *html.Node, styleMap map[string]map[string]string) {
+func inherit(n *element.Node, styleMap map[string]map[string]string) {
 	if n.Type == html.ElementNode {
-		id := dom.GetAttribute(n, "DOMNODEID")
-		if len(id) == 0 {
-			id = dom.TagName(n) + fmt.Sprint(rand.Int63())
-			dom.SetAttribute(n, "DOMNODEID", id)
-		}
-		pId := dom.GetAttribute(n.Parent, "DOMNODEID")
+		pId := n.Parent.Id
 		if len(pId) > 0 {
-			if styleMap[id] == nil {
-				styleMap[id] = make(map[string]string)
+			if styleMap[n.Id] == nil {
+				styleMap[n.Id] = make(map[string]string)
 			}
 			if styleMap[pId] == nil {
 				styleMap[pId] = make(map[string]string)
 			}
 
-			inline := parser.ParseStyleAttribute(dom.GetAttribute(n, "style") + ";")
-			styleMap[id] = utils.Merge(styleMap[id], inline)
-
+			inline := parser.ParseStyleAttribute(n.GetAttribute("style") + ";")
+			styleMap[n.Id] = utils.Merge(styleMap[n.Id], inline)
 			for _, v := range inheritedProps {
-				if styleMap[id][v] == "" && styleMap[pId][v] != "" {
-					styleMap[id][v] = styleMap[pId][v]
+				if styleMap[n.Id][v] == "" && styleMap[pId][v] != "" {
+					styleMap[n.Id][v] = styleMap[pId][v]
 				}
 			}
 		}
-		utils.SetMP(id, styleMap)
+		utils.SetMP(n.Id, styleMap)
 	}
 
-	for c := n.FirstChild; c != nil; c = c.NextSibling {
-		inherit(c, styleMap)
+	for _, v := range n.Children {
+		inherit(&v, styleMap)
 	}
 }
 
-func initNodes(n *element.Node, styleMap map[string]map[string]string) {
+func initNodes(n *element.Node, styleMap map[string]map[string]string) element.Node {
 	n.Styles = styleMap[n.Id]
-
 	border, err := CompleteBorder(n.Styles)
 	if err == nil {
 		n.Border = border
@@ -362,6 +371,7 @@ func initNodes(n *element.Node, styleMap map[string]map[string]string) {
 	}
 
 	width, _ := utils.ConvertToPixels(n.Styles["width"], n.EM, n.Parent.Width)
+	fmt.Println(n.Id, n.Styles["width"], width, n.Parent.Width, n.Parent.Id)
 	if n.Styles["min-width"] != "" {
 		minWidth, _ := utils.ConvertToPixels(n.Styles["min-width"], n.EM, n.Parent.Width)
 		width = utils.Max(width, minWidth)
@@ -405,33 +415,27 @@ func initNodes(n *element.Node, styleMap map[string]map[string]string) {
 	}
 
 	n.Text.LineHeight = int(lineHeight)
-	n.Text.Text = dom.TextContent(n.Node)
+	n.Text.Text = n.InnerText()
 	n.Text.Font = f
 	n.Text.WordSpacing = int(wordSpacing)
 	n.Text.LetterSpacing = int(letterSpacing)
 
 	n.Colors = color.Parse(n.Styles)
-
-	cn := dom.ChildNodes(n.Node)
-	for _, c := range cn {
-
+	for i, c := range n.Children {
 		if c.Type == html.ElementNode {
-			id := dom.GetAttribute(c, "DOMNODEID")
-			node := element.Node{
-				Node:   c,
-				Parent: n,
-				Id:     id,
-				Styles: styleMap[id],
-			}
-			initNodes(&node, styleMap)
+			c.Parent = n
+			cn := initNodes(&c, styleMap)
+
+			n.Children[i] = cn
 
 			if len(n.Children) > 1 {
-				node.PrevSibling = &n.Children[len(n.Children)-1]
-				n.Children[len(n.Children)-1].NextSibling = &node
+				cn.PrevSibling = &n.Children[i]
+				n.Children[i].NextSibling = &cn
 			}
-			n.Children = append(n.Children, node)
 		}
 	}
+
+	return *n
 }
 
 func GetPositionOffsetNode(n *element.Node) *element.Node {

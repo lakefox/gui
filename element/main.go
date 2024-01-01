@@ -1,7 +1,6 @@
 package element
 
 import (
-	"fmt"
 	"gui/selector"
 	"image"
 	ic "image/color"
@@ -14,6 +13,8 @@ import (
 
 type Node struct {
 	Node        *html.Node
+	Type        html.NodeType
+	TagName     string
 	Parent      *Node
 	Children    []Node
 	Styles      map[string]string
@@ -118,7 +119,6 @@ func (n *Node) SetAttribute(key, value string) {
 
 func (n *Node) QuerySelectorAll(selectString string) []Node {
 	results := []Node{}
-	fmt.Println(n.Id, TestSelector(selectString, n))
 	if TestSelector(selectString, n) {
 		results = append(results, *n)
 	}
@@ -145,6 +145,25 @@ func (n *Node) QuerySelector(selectString string) Node {
 	}
 
 	return Node{}
+}
+
+func (node *Node) InnerText() string {
+	var result strings.Builder
+
+	var getText func(*html.Node)
+	getText = func(n *html.Node) {
+		if n.Type == html.TextNode {
+			result.WriteString(n.Data)
+		}
+
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			getText(c)
+		}
+	}
+
+	getText(node.Node)
+
+	return result.String()
 }
 
 func TestSelector(selectString string, n *Node) bool {
