@@ -16,7 +16,6 @@ import (
 	"gui/font"
 	"gui/parser"
 	"gui/utils"
-	"math/rand"
 	"os"
 	"sort"
 	"strconv"
@@ -66,7 +65,7 @@ func (c *CSS) StyleTag(css string) {
 }
 
 func (c *CSS) CreateDocument(doc *html.Node) {
-	id := doc.FirstChild.Data + fmt.Sprint(rand.Int63())
+	id := doc.FirstChild.Data + "0"
 	n := doc.FirstChild
 	node := element.Node{
 		Node: n,
@@ -90,16 +89,18 @@ func (c *CSS) CreateDocument(doc *html.Node) {
 		Width:  c.Width,
 		Height: c.Height,
 	}
+	i := 0
 	for child := n.FirstChild; child != nil; child = child.NextSibling {
 		if child.Type == html.ElementNode {
-			node.Children = append(node.Children, CreateNode(node, child))
+			node.Children = append(node.Children, CreateNode(node, child, fmt.Sprint(i)))
+			i++
 		}
 	}
 	c.Document = &node
 }
 
-func CreateNode(parent element.Node, n *html.Node) element.Node {
-	id := n.Data + fmt.Sprint(rand.Int63())
+func CreateNode(parent element.Node, n *html.Node, slug string) element.Node {
+	id := n.Data + slug
 	node := element.Node{
 		Node:    n,
 		Parent:  &parent,
@@ -107,9 +108,11 @@ func CreateNode(parent element.Node, n *html.Node) element.Node {
 		TagName: n.Data,
 		Id:      id,
 	}
+	i := 0
 	for child := n.FirstChild; child != nil; child = child.NextSibling {
 		if child.Type == html.ElementNode {
-			node.Children = append(node.Children, CreateNode(node, child))
+			node.Children = append(node.Children, CreateNode(node, child, slug+fmt.Sprint(i)))
+			i++
 		}
 	}
 	return node
@@ -371,7 +374,6 @@ func initNodes(n *element.Node, styleMap map[string]map[string]string) element.N
 	}
 
 	width, _ := utils.ConvertToPixels(n.Styles["width"], n.EM, n.Parent.Width)
-	fmt.Println(n.Id, n.Styles["width"], width, n.Parent.Width, n.Parent.Id)
 	if n.Styles["min-width"] != "" {
 		minWidth, _ := utils.ConvertToPixels(n.Styles["min-width"], n.EM, n.Parent.Width)
 		width = utils.Max(width, minWidth)

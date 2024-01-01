@@ -31,18 +31,18 @@ body {
   background-color: gray;
 }
 
-/* .row {
+.row {
   display: flex;
   justify-content: space-between;
   flex-direction: row;
   height: 64px;
-} */
+}
 
 .button {
   width: 147px;
   height: 50px;
   background: #212121;
   border: 2px solid black;
-  display: inline;
+  /* display: inline; */
   margin-right: 10px;
 }

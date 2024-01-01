@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"gui/cstyle/plugins/block"
+	"gui/cstyle/plugins/flex"
 	"gui/cstyle/plugins/inline"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -45,6 +46,7 @@ func Open(index string) {
 	css.StyleSheet("./master.css")
 	css.AddPlugin(inline.Init())
 	css.AddPlugin(block.Init())
+	css.AddPlugin(flex.Init())
 
 	for _, v := range d.StyleSheets {
 		css.StyleSheet(v)

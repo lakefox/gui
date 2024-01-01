@@ -9,8 +9,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-
-	"golang.org/x/net/html"
 )
 
 func AddMarginAndPadding(styleMap map[string]map[string]string, id string, width, height float32) (float32, float32, float32, float32) {
@@ -311,34 +309,4 @@ func GetStructField(data interface{}, fieldName string) (interface{}, error) {
 	}
 
 	return field.Interface(), nil
-}
-
-func getAttributes(node *html.Node) map[string]string {
-	attributes := make(map[string]string)
-
-	for _, attr := range node.Attr {
-		attributes[attr.Key] = attr.Val
-	}
-
-	return attributes
-}
-
-func setAttribute(node *html.Node, key, value string) {
-	// Check if the node is an element node
-	if node.Type == html.ElementNode {
-		// Iterate through the attributes
-		for i, attr := range node.Attr {
-			// If the attribute key matches, update its value
-			if attr.Key == key {
-				node.Attr[i].Val = value
-				return
-			}
-		}
-
-		// If the attribute key was not found, add a new attribute
-		node.Attr = append(node.Attr, html.Attribute{
-			Key: key,
-			Val: value,
-		})
-	}
 }
