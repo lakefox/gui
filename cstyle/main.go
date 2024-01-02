@@ -255,23 +255,6 @@ func ComputeNodeStyle(n element.Node, plugins []Plugin) element.Node {
 	n.Width = width
 	n.Height = height
 
-	// Sorting the array by the Level field
-	sort.Slice(plugins, func(i, j int) bool {
-		return plugins[i].Level < plugins[j].Level
-	})
-
-	for _, v := range plugins {
-		matches := true
-		for name, value := range v.Styles {
-			if styleMap[name] != value {
-				matches = false
-			}
-		}
-		if matches {
-			v.Handler(&n)
-		}
-	}
-
 	// Call children here
 
 	var childYOffset float32
@@ -288,6 +271,23 @@ func ComputeNodeStyle(n element.Node, plugins []Plugin) element.Node {
 				n.Height += n.Children[i].Padding.Bottom
 			}
 
+		}
+	}
+
+	// Sorting the array by the Level field
+	sort.Slice(plugins, func(i, j int) bool {
+		return plugins[i].Level < plugins[j].Level
+	})
+
+	for _, v := range plugins {
+		matches := true
+		for name, value := range v.Styles {
+			if styleMap[name] != value && !(styleMap[name] != "" && value == "*") {
+				matches = false
+			}
+		}
+		if matches {
+			v.Handler(&n)
 		}
 	}
 
