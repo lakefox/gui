@@ -33,10 +33,12 @@ body {
 
 .row {
   display: flex;
-  justify-content: space-between;
   flex-direction: row;
-  height: 64px;
+  height: 128px;
   background: red;
+  flex-wrap: wrap;
+  justify-content: space-around;
+  align-content: space-around;
 }
 
 .button {
