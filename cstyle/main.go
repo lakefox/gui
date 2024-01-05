@@ -141,7 +141,7 @@ func (c *CSS) Map() Mapped {
 	inherit(doc, styleMap)
 	nodes := initNodes(doc, styleMap)
 	node := ComputeNodeStyle(nodes, c.Plugins)
-	Print(&node, 0)
+	// Print(&node, 0)
 
 	renderLine := flatten(&node)
 
@@ -282,7 +282,7 @@ func ComputeNodeStyle(n element.Node, plugins []Plugin) element.Node {
 	for _, v := range plugins {
 		matches := true
 		for name, value := range v.Styles {
-			if styleMap[name] != value && !(styleMap[name] != "" && value == "*") {
+			if styleMap[name] != value && !(value == "*") {
 				matches = false
 			}
 		}

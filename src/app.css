@@ -37,7 +37,7 @@ body {
   height: 128px;
   background: red;
   flex-wrap: wrap;
-  justify-content: space-around;
+  justify-content: flex-start;
   align-content: space-around;
 }
 
@@ -46,6 +46,4 @@ body {
   height: 50px;
   background: #212121;
   border: 2px solid black;
-  /* display: inline; */
-  margin-right: 10px;
 }
