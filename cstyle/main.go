@@ -24,12 +24,6 @@ import (
 	"golang.org/x/net/html"
 )
 
-func check(e error) {
-	if e != nil {
-		panic(e)
-	}
-}
-
 type Plugin struct {
 	Styles  map[string]string
 	Level   int
@@ -53,7 +47,7 @@ type Mapped struct {
 func (c *CSS) StyleSheet(path string) {
 	// Parse the CSS file
 	dat, err := os.ReadFile(path)
-	check(err)
+	utils.Check(err)
 	styles := parser.ParseCSS(string(dat))
 
 	c.StyleSheets = append(c.StyleSheets, styles)

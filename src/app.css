@@ -21,24 +21,38 @@ body {
   background: #212121;
 }
 
-#buttons {
-  position: absolute;
+.buttons {
+  /* position: absolute;
   bottom: 0;
-  left: 0;
+  left: 0; */
   width: calc(100% - 700px);
   min-width: 50%;
-  height: 128px;
+  height: 50%;
+  /* height: 128px; */
   background-color: gray;
+  margin-left: 20px;
 }
 
 .row {
   display: flex;
   flex-direction: row;
-  height: 128px;
+  height: 100%;
+  /* height: 128px; */
   background: red;
   flex-wrap: wrap;
-  justify-content: flex-start;
-  align-content: space-around;
+  align-content: center;
+}
+
+.between {
+  justify-content: center;
+}
+
+.around {
+  justify-content: space-around;
+}
+
+.even {
+  justify-content: space-evenly;
 }
 
 .button {

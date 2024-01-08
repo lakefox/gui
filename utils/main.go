@@ -310,3 +310,36 @@ func GetStructField(data interface{}, fieldName string) (interface{}, error) {
 
 	return field.Interface(), nil
 }
+
+func SetStructFieldValue(data interface{}, fieldName string, newValue interface{}) error {
+	val := reflect.ValueOf(data)
+
+	// Make sure we have a pointer to a struct
+	if val.Kind() != reflect.Ptr || val.Elem().Kind() != reflect.Struct {
+		return fmt.Errorf("Expected a pointer to a struct")
+	}
+
+	// Get the struct field by name
+	field := val.Elem().FieldByName(fieldName)
+
+	// Check if the field exists
+	if !field.IsValid() {
+		return fmt.Errorf("Field not found: %s", fieldName)
+	}
+
+	// Check if the new value type is assignable to the field type
+	if !reflect.ValueOf(newValue).Type().AssignableTo(field.Type()) {
+		return fmt.Errorf("Incompatible types for field %s", fieldName)
+	}
+
+	// Set the new value
+	field.Set(reflect.ValueOf(newValue))
+
+	return nil
+}
+
+func Check(e error) {
+	if e != nil {
+		panic(e)
+	}
+}

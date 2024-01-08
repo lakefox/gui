@@ -2,6 +2,7 @@ package selector
 
 import (
 	"slices"
+	"strings"
 
 	"golang.org/x/net/html"
 )
@@ -11,7 +12,10 @@ func GetCSSSelectors(node *html.Node, selectors []string) []string {
 		selectors = append(selectors, node.Data)
 		for _, attr := range node.Attr {
 			if attr.Key == "class" {
-				selectors = append(selectors, "."+attr.Val)
+				classes := strings.Split(attr.Val, " ")
+				for _, class := range classes {
+					selectors = append(selectors, "."+class)
+				}
 			} else if attr.Key == "id" {
 				selectors = append(selectors, "#"+attr.Val)
 			} else {
