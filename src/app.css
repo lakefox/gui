@@ -40,11 +40,12 @@ body {
   /* height: 128px; */
   background: red;
   flex-wrap: wrap;
-  align-content: center;
+  align-content: space-around;
+  /* justify-content: flex-end; */
 }
 
 .between {
-  justify-content: center;
+  /* justify-content: space-between; */
 }
 
 .around {

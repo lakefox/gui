@@ -24,8 +24,126 @@ func Init() cstyle.Plugin {
 
 			// Brief: justify does not align the bottom row correctly
 			//        y axis also needs to be done
-			offset(n, n.Styles["justify-content"], "X", "Width")
-			// offset(n, n.Styles["align-content"], "Y", "Height")
+
+			var xOffset, yOffset float32
+			if n.Styles["justify-content"] == "" || n.Styles["justify-content"] == "flex-start" || n.Styles["justify-content"] == "flex-end" || n.Styles["justify-content"] == "center" {
+				yOffset = n.Y
+				chunkStart := 0
+				for i, v := range n.Children {
+					if xOffset+v.Width > n.Width {
+						yOffset += v.Height
+						if n.Styles["justify-content"] == "flex-end" || n.Styles["justify-content"] == "center" {
+							dif := n.Width - (xOffset)
+							if n.Styles["justify-content"] == "center" {
+								dif = dif / 2
+							}
+							for a := chunkStart; a < i; a++ {
+								n.Children[a].X += dif
+							}
+						}
+						chunkStart = i
+						xOffset = 0
+					}
+					n.Children[i].X = xOffset + n.X
+					n.Children[i].Y = yOffset
+					xOffset += v.Width
+				}
+				// Get the last row
+				if n.Styles["justify-content"] == "flex-end" || n.Styles["justify-content"] == "center" {
+					dif := n.Width - (xOffset)
+					if n.Styles["justify-content"] == "center" {
+						dif = dif / 2
+					}
+					for a := chunkStart; a < len(n.Children); a++ {
+						n.Children[a].X += dif
+					}
+				}
+			} else {
+				verbs := strings.Split(n.Styles["flex-direction"], "-")
+				orderedNode := order(*n, n.Children, verbs[0], len(verbs) > 1, n.Styles["flex-wrap"] == "wrap")
+
+				var i int
+
+				colWidth := n.Width / float32(len(orderedNode))
+
+				if n.Styles["justify-content"] == "space-evenly" {
+					b, _ := utils.ConvertToPixels(n.Children[i].Border.Width, n.Children[i].EM, n.Width)
+					cwV := utils.Max((colWidth-(n.Children[i].Width+(b*2)))/2, 0)
+					xOffset = cwV
+				}
+
+				for a, column := range orderedNode {
+					var maxColumnHeight float32
+					for _, item := range column {
+						maxColumnHeight = utils.Max(item.Height, maxColumnHeight)
+					}
+
+					yOffset = n.Children[0].Y
+					for _, item := range column {
+						n.Children[i] = item
+						if n.Styles["justify-content"] == "space-between" {
+							cwV := utils.Max((colWidth - (item.Width)), 0)
+							if a == 0 {
+								n.Children[i].X += xOffset
+							} else if a == len(orderedNode)-1 {
+								n.Children[i].X += xOffset + cwV
+							} else {
+								n.Children[i].X += xOffset + cwV/2
+							}
+						} else {
+							cwV := utils.Max((colWidth-(item.Width))/2, 0)
+							var offset float32
+							if n.Styles["justify-content"] == "space-evenly" {
+								offset = ((cwV * 2) / float32(len(orderedNode))) * float32(a)
+							}
+							n.Children[i].X += xOffset + (cwV - offset)
+
+						}
+						n.Children[i].Y = yOffset
+						yOffset += maxColumnHeight
+						i++
+
+					}
+					xOffset += colWidth
+				}
+			}
+
+			if n.Styles["align-content"] != "" && n.Styles["align-content"] != "flex-start" {
+				var min, max, rows, currY float32
+				min = 1000000000000
+				for _, v := range n.Children {
+					min = utils.Min(min, v.Y)
+					max = utils.Max(max, v.Height+v.Y)
+					if v.Y > currY {
+						rows++
+						currY = v.Y
+					}
+				}
+				rows++
+				height := max - min
+				rowHeight := ((n.Height - height) / rows)
+
+				for i := range n.Children {
+					row := float32(i % int(rows))
+					if n.Styles["align-content"] == "center" {
+						n.Children[i].Y += (n.Height - height) / 2
+					} else if n.Styles["align-content"] == "flex-end" {
+						n.Children[i].Y += (n.Height - height)
+					} else if n.Styles["align-content"] == "space-around" {
+						n.Children[i].Y += (rowHeight * row) + (rowHeight / 2)
+					} else if n.Styles["align-content"] == "space-evenly" {
+						n.Children[i].Y += (rowHeight * row) + (rowHeight / 2)
+					} else if n.Styles["align-content"] == "space-between" {
+						n.Children[i].Y += (((n.Height - height) / (rows - 1)) * row)
+					} else if n.Styles["align-content"] == "stretch" {
+						n.Children[i].Y += (rowHeight * row)
+						if n.Children[i].Styles["height"] == "" {
+							n.Children[i].Height = n.Height / rows
+						}
+					}
+				}
+			}
+
 		},
 	}
 }
@@ -132,108 +250,4 @@ func order(p element.Node, elements []element.Node, direction string, reversed, 
 	}
 
 	return nodes
-}
-
-func offset(n *element.Node, styleKey, axis, side string) {
-	nAxisInt, _ := utils.GetStructField(n, axis)
-	var nAxis float32
-	if nAxisInt != nil {
-		nAxis = nAxisInt.(float32)
-	}
-	nSideInt, _ := utils.GetStructField(n, side)
-	var nSide float32
-	if nSideInt != nil {
-		nSide = nSideInt.(float32)
-	}
-	var xOffset float32
-	if styleKey == "" || styleKey == "flex-start" || styleKey == "flex-end" || styleKey == "center" {
-		chunkStart := 0
-		xOffset = nAxis
-		for i, v := range n.Children {
-			vSideInt, _ := utils.GetStructField(v, side)
-			var vSide float32
-			if vSideInt != nil {
-				vSide = vSideInt.(float32)
-			}
-			vAxisInt, _ := utils.GetStructField(v, axis)
-			var vAxis float32
-			if vAxisInt != nil {
-				vAxis = vAxisInt.(float32)
-			}
-			if xOffset+vSide > nSide {
-				if styleKey == "flex-end" || styleKey == "center" {
-					dif := nSide - (xOffset - nAxis)
-					if styleKey == "center" {
-						dif = dif / 2
-					}
-					for a := chunkStart; a < i; a++ {
-						// n.Children[a].X += dif
-						utils.SetStructFieldValue(n.Children[a], axis, vAxis+dif)
-					}
-				}
-				chunkStart = i
-				xOffset = nAxis
-			}
-			utils.SetStructFieldValue(n, axis, xOffset)
-			xOffset += v.Width
-		}
-		if styleKey == "flex-end" || styleKey == "center" {
-			dif := nSide - (xOffset)
-			if styleKey == "center" {
-				dif = dif / 2
-			}
-			for a := chunkStart; a < len(n.Children); a++ {
-				vAxisInt, _ := utils.GetStructField(n.Children[a], axis)
-				var vAxis float32
-				if vAxisInt != nil {
-					vAxis = vAxisInt.(float32)
-				}
-				utils.SetStructFieldValue(n.Children[a], axis, vAxis+dif)
-
-			}
-		}
-	} else {
-		verbs := strings.Split(n.Styles["flex-direction"], "-")
-		orderedNode := order(*n, n.Children, verbs[0], len(verbs) > 1, n.Styles["flex-wrap"] == "wrap")
-
-		var i int
-
-		colWidth := n.Width / float32(len(orderedNode))
-
-		if styleKey == "space-evenly" {
-			cwV := utils.Max((colWidth-(n.Children[i].Width))/2, 0)
-			xOffset = cwV
-		}
-
-		for a, column := range orderedNode {
-			var maxColumnHeight float32
-			for _, item := range column {
-				maxColumnHeight = utils.Max(item.Height, maxColumnHeight)
-			}
-
-			for _, item := range column {
-				n.Children[i] = item
-				if styleKey == "space-between" {
-					cwV := utils.Max((colWidth - (item.Width)), 0)
-					if a == 0 {
-						n.Children[i].X += xOffset
-					} else if a == len(orderedNode)-1 {
-						n.Children[i].X += xOffset + cwV
-					} else {
-						n.Children[i].X += xOffset + cwV/2
-					}
-				} else {
-					cwV := utils.Max((colWidth-(item.Width))/2, 0)
-					var offset float32
-					if styleKey == "space-evenly" {
-						offset = ((cwV * 2) / float32(len(orderedNode))) * float32(a)
-					}
-					n.Children[i].X += xOffset + (cwV - offset)
-
-				}
-				i++
-			}
-			xOffset += colWidth
-		}
-	}
 }
