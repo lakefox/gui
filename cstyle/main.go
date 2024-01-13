@@ -389,6 +389,11 @@ func initNodes(n *element.Node, styleMap map[string]map[string]string) element.N
 		height = utils.Min(height, maxHeight)
 	}
 
+	if n.Styles["margin"] == "auto" && n.Styles["margin-left"] == "" && n.Styles["margin-right"] == "" {
+		n.Margin.Left = utils.Max((n.Parent.Width-width)/2, 0)
+		n.Margin.Right = utils.Max((n.Parent.Width-width)/2, 0)
+	}
+
 	n.Width = width
 	n.Height = height
 

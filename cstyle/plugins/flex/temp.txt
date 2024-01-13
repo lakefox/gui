@@ -30,6 +30,42 @@ func Init() cstyle.Plugin {
 	}
 }
 
+###########
+if n.Styles["justify-content"] == "" || n.Styles["justify-content"] == "flex-start" || n.Styles["justify-content"] == "flex-end" || n.Styles["justify-content"] == "center" {
+				yOffset = n.Y
+				chunkStart := 0
+				for i, v := range n.Children {
+					if xOffset+v.Width > n.Width {
+						yOffset += v.Height
+						if n.Styles["justify-content"] == "flex-end" || n.Styles["justify-content"] == "center" {
+							dif := n.Width - (xOffset)
+							if n.Styles["justify-content"] == "center" {
+								dif = dif / 2
+							}
+							for a := chunkStart; a < i; a++ {
+								n.Children[a].X += dif
+							}
+						}
+						chunkStart = i
+						xOffset = 0
+					}
+					n.Children[i].X = xOffset + n.X
+					n.Children[i].Y = yOffset
+					xOffset += v.Width
+				}
+				// Get the last row
+				if n.Styles["justify-content"] == "flex-end" || n.Styles["justify-content"] == "center" {
+					dif := n.Width - (xOffset)
+					if n.Styles["justify-content"] == "center" {
+						dif = dif / 2
+					}
+					for a := chunkStart; a < len(n.Children); a++ {
+						n.Children[a].X += dif
+					}
+				}
+			} else {
+                ##################
+
 func order(p element.Node, elements []element.Node, direction string, reversed, wrap bool) [][]element.Node {
 	var dir, marginStart, marginEnd string
 	if direction == "column" {
