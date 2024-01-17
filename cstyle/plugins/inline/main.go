@@ -12,26 +12,26 @@ func Init() cstyle.Plugin {
 		},
 		Level: 0,
 		Handler: func(n *element.Node) {
-			copyOfX := n.X
+			copyOfX := n.Properties.X
 			for i, v := range n.Parent.Children {
-				if v.Id == n.Id {
-					if n.X+n.Width-2 > n.Parent.Width+copyOfX && i > 0 {
-						n.Y += float32(n.Parent.Children[i-1].Height)
-						n.X = copyOfX
+				if v.Properties.Id == n.Properties.Id {
+					if n.Properties.X+n.Properties.Width-2 > n.Parent.Properties.Width+copyOfX && i > 0 {
+						n.Properties.Y += float32(n.Parent.Children[i-1].Properties.Height)
+						n.Properties.X = copyOfX
 					}
 					if i > 0 {
 						if n.Parent.Children[i-1].Style["display"] == "inline" {
-							if n.Parent.Children[i-1].Text.X+n.Text.Width < int(n.Parent.Children[i-1].Width) {
-								n.Y -= float32(n.Parent.Children[i-1].Text.LineHeight)
-								n.X += float32(n.Parent.Children[i-1].Text.X)
+							if n.Parent.Children[i-1].Properties.Text.X+n.Properties.Text.Width < int(n.Parent.Children[i-1].Properties.Width) {
+								n.Properties.Y -= float32(n.Parent.Children[i-1].Properties.Text.LineHeight)
+								n.Properties.X += float32(n.Parent.Children[i-1].Properties.Text.X)
 							}
 						}
 					}
 					break
 				} else if v.Style["display"] == "inline" {
-					n.X += v.Width
+					n.Properties.X += v.Properties.Width
 				} else {
-					n.X = copyOfX
+					n.Properties.X = copyOfX
 				}
 			}
 		},

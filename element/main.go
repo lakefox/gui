@@ -12,12 +12,18 @@ import (
 )
 
 type Node struct {
+	TagName     string
+	Parent      *Node
+	Children    []Node
+	Style       map[string]string
+	PrevSibling *Node
+	NextSibling *Node
+	Properties  Properties
+}
+
+type Properties struct {
 	Node           *html.Node
 	Type           html.NodeType
-	TagName        string
-	Parent         *Node
-	Children       []Node
-	Style          map[string]string
 	Id             string
 	X              float32
 	Y              float32
@@ -26,12 +32,10 @@ type Node struct {
 	Margin         Margin
 	Padding        Padding
 	Border         Border
+	EventListeners map[string][]func(Event)
 	EM             float32
 	Text           Text
 	Colors         Colors
-	PrevSibling    *Node
-	NextSibling    *Node
-	EventListeners map[string][]func(Event)
 }
 
 type Margin struct {
@@ -95,7 +99,7 @@ type Colors struct {
 func (n *Node) GetAttribute(name string) string {
 	attributes := make(map[string]string)
 
-	for _, attr := range n.Node.Attr {
+	for _, attr := range n.Properties.Node.Attr {
 		attributes[attr.Key] = attr.Val
 	}
 	return attributes[name]
@@ -103,16 +107,16 @@ func (n *Node) GetAttribute(name string) string {
 
 func (n *Node) SetAttribute(key, value string) {
 	// Iterate through the attributes
-	for i, attr := range n.Node.Attr {
+	for i, attr := range n.Properties.Node.Attr {
 		// If the attribute key matches, update its value
 		if attr.Key == key {
-			n.Node.Attr[i].Val = value
+			n.Properties.Node.Attr[i].Val = value
 			return
 		}
 	}
 
 	// If the attribute key was not found, add a new attribute
-	n.Node.Attr = append(n.Node.Attr, html.Attribute{
+	n.Properties.Node.Attr = append(n.Properties.Node.Attr, html.Attribute{
 		Key: key,
 		Val: value,
 	})
@@ -142,7 +146,7 @@ func (n *Node) QuerySelector(selectString string) *Node {
 	for i := range n.Children {
 		el := &n.Children[i]
 		cr := el.QuerySelector(selectString)
-		if cr.Id != "" {
+		if cr.Properties.Id != "" {
 			return cr
 		}
 	}
@@ -164,7 +168,7 @@ func (node *Node) InnerText() string {
 		}
 	}
 
-	getText(node.Node)
+	getText(node.Properties.Node)
 
 	return result.String()
 }
@@ -172,7 +176,7 @@ func (node *Node) InnerText() string {
 func TestSelector(selectString string, n *Node) bool {
 	parts := strings.Split(selectString, ">")
 
-	selectors := selector.GetCSSSelectors(n.Node, []string{})
+	selectors := selector.GetCSSSelectors(n.Properties.Node, []string{})
 
 	part := selector.SplitSelector(strings.TrimSpace(parts[len(parts)-1]))
 
@@ -192,11 +196,11 @@ type Event struct {
 }
 
 func (node *Node) AddEventListener(name string, callback func(Event)) {
-	if node.EventListeners == nil {
-		node.EventListeners = make(map[string][]func(Event))
+	if node.Properties.EventListeners == nil {
+		node.Properties.EventListeners = make(map[string][]func(Event))
 	}
-	if node.EventListeners[name] == nil {
-		node.EventListeners[name] = []func(Event){}
+	if node.Properties.EventListeners[name] == nil {
+		node.Properties.EventListeners[name] = []func(Event){}
 	}
-	node.EventListeners[name] = append(node.EventListeners[name], callback)
+	node.Properties.EventListeners[name] = append(node.Properties.EventListeners[name], callback)
 }

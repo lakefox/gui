@@ -56,8 +56,8 @@ func (wm *WindowManager) CloseWindow() {
 func (wm *WindowManager) LoadTextures(nodes []element.Node) {
 	wm.Textures = make([]rl.Texture2D, len(nodes))
 	for i, node := range nodes {
-		if node.Text.Image != nil {
-			texture := rl.LoadTextureFromImage(rl.NewImageFromImage(node.Text.Image))
+		if node.Properties.Text.Image != nil {
+			texture := rl.LoadTextureFromImage(rl.NewImageFromImage(node.Properties.Text.Image))
 			wm.Textures[i] = texture
 		}
 	}
@@ -67,21 +67,21 @@ func (wm *WindowManager) LoadTextures(nodes []element.Node) {
 func (wm *WindowManager) Draw(nodes []element.Node) {
 
 	for i, node := range nodes {
-		bw, _ := utils.ConvertToPixels(node.Border.Width, node.EM, node.Width)
-		rad, _ := utils.ConvertToPixels(node.Border.Radius, node.EM, node.Width)
+		bw, _ := utils.ConvertToPixels(node.Properties.Border.Width, node.Properties.EM, node.Properties.Width)
+		rad, _ := utils.ConvertToPixels(node.Properties.Border.Radius, node.Properties.EM, node.Properties.Width)
 
-		rect := rl.NewRectangle(node.X+bw,
-			node.Y+bw,
-			node.Width-(bw+bw),
-			(node.Height+(node.Padding.Top+node.Padding.Bottom))-(bw+bw),
+		rect := rl.NewRectangle(node.Properties.X+bw,
+			node.Properties.Y+bw,
+			node.Properties.Width-(bw+bw),
+			(node.Properties.Height+(node.Properties.Padding.Top+node.Properties.Padding.Bottom))-(bw+bw),
 		)
 
-		rl.DrawRectangleRoundedLines(rect, rad/200, 1000, bw, node.Border.Color)
-		rl.DrawRectangleRounded(rect, rad/200, 1000, node.Colors.Background)
+		rl.DrawRectangleRoundedLines(rect, rad/200, 1000, bw, node.Properties.Border.Color)
+		rl.DrawRectangleRounded(rect, rad/200, 1000, node.Properties.Colors.Background)
 
-		if node.Text.Image != nil {
-			r, g, b, a := node.Text.Color.RGBA()
-			rl.DrawTexture(wm.Textures[i], int32(node.X+node.Padding.Left+bw), int32(node.Y+node.Padding.Top), color.RGBA{uint8(r), uint8(g), uint8(b), uint8(a)})
+		if node.Properties.Text.Image != nil {
+			r, g, b, a := node.Properties.Text.Color.RGBA()
+			rl.DrawTexture(wm.Textures[i], int32(node.Properties.X+node.Properties.Padding.Left+bw), int32(node.Properties.Y+node.Properties.Padding.Top), color.RGBA{uint8(r), uint8(g), uint8(b), uint8(a)})
 		}
 	}
 

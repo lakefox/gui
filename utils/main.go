@@ -264,11 +264,11 @@ func Min(a, b float32) float32 {
 }
 
 func FindRelative(n *element.Node, styleMap map[string]map[string]string) (float32, float32) {
-	pos := styleMap[n.Id]["position"]
+	pos := styleMap[n.Properties.Id]["position"]
 
 	if pos == "relative" {
-		x, _ := strconv.ParseFloat(styleMap[n.Id]["x"], 32)
-		y, _ := strconv.ParseFloat(styleMap[n.Id]["y"], 32)
+		x, _ := strconv.ParseFloat(styleMap[n.Properties.Id]["x"], 32)
+		y, _ := strconv.ParseFloat(styleMap[n.Properties.Id]["y"], 32)
 		return float32(x), float32(y)
 	} else {
 		if n.Parent != nil {
@@ -297,7 +297,7 @@ func GetStructField(data interface{}, fieldName string) (interface{}, error) {
 
 	// Make sure we have a pointer to a struct
 	if val.Kind() != reflect.Ptr || val.Elem().Kind() != reflect.Struct {
-		return nil, fmt.Errorf("Expected a pointer to a struct")
+		return nil, fmt.Errorf("expected a pointer to a struct")
 	}
 
 	// Get the struct field by name
@@ -305,7 +305,7 @@ func GetStructField(data interface{}, fieldName string) (interface{}, error) {
 
 	// Check if the field exists
 	if !field.IsValid() {
-		return nil, fmt.Errorf("Field not found: %s", fieldName)
+		return nil, fmt.Errorf("field not found: %s", fieldName)
 	}
 
 	return field.Interface(), nil
@@ -316,7 +316,7 @@ func SetStructFieldValue(data interface{}, fieldName string, newValue interface{
 
 	// Make sure we have a pointer to a struct
 	if val.Kind() != reflect.Ptr || val.Elem().Kind() != reflect.Struct {
-		return fmt.Errorf("Expected a pointer to a struct")
+		return fmt.Errorf("expected a pointer to a struct")
 	}
 
 	// Get the struct field by name
@@ -324,12 +324,12 @@ func SetStructFieldValue(data interface{}, fieldName string, newValue interface{
 
 	// Check if the field exists
 	if !field.IsValid() {
-		return fmt.Errorf("Field not found: %s", fieldName)
+		return fmt.Errorf("field not found: %s", fieldName)
 	}
 
 	// Check if the new value type is assignable to the field type
 	if !reflect.ValueOf(newValue).Type().AssignableTo(field.Type()) {
-		return fmt.Errorf("Incompatible types for field %s", fieldName)
+		return fmt.Errorf("incompatible types for field %s", fieldName)
 	}
 
 	// Set the new value

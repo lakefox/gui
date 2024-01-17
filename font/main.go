@@ -115,8 +115,8 @@ func MeasureLine(n *element.Node) (int, int) {
 	passed := false
 	lineOffset, nodeOffset := 0, 0
 	for _, v := range n.Parent.Children {
-		l := MeasureText(&v.Text, v.Text.Text)
-		if v.Id == n.Id {
+		l := MeasureText(&v.Properties.Text, v.Properties.Text.Text)
+		if v.Properties.Id == n.Properties.Id {
 			passed = true
 			lineOffset += l
 		} else {
@@ -253,7 +253,7 @@ func getFontsRecursively(dir string, fontPaths *[]string) {
 }
 
 func Render(n *element.Node) float32 {
-	t := &n.Text
+	t := &n.Properties.Text
 	lines := GetLines(*t)
 
 	if t.LineHeight == 0 {
@@ -312,7 +312,7 @@ func Render(n *element.Node) float32 {
 		}
 		dr.Dot.Y += fh
 	}
-	n.Text.X = MeasureText(t, lines[len(lines)-1])
+	n.Properties.Text.X = MeasureText(t, lines[len(lines)-1])
 	return float32(t.LineHeight * len(lines))
 }
 

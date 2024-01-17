@@ -62,7 +62,7 @@ func Open(index string, script func(*element.Node)) {
 	nodes := css.Map()
 	doc := nodes.Document
 	script(doc)
-	fmt.Println("here", doc.QuerySelector(".button").EventListeners)
+	fmt.Println("here", doc.QuerySelector(".button").Properties.EventListeners)
 	r := nodes.Render()
 	wm.LoadTextures(r)
 	wm.Draw(r)
