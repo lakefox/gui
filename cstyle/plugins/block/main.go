@@ -14,7 +14,7 @@ func Init() cstyle.Plugin {
 		Level: 0,
 		Handler: func(n *element.Node) {
 			// If the element is display block and the width is unset then make it 100%
-			if n.Styles["width"] == "" {
+			if n.Style["width"] == "" {
 				n.Width, _ = utils.ConvertToPixels("100%", n.EM, n.Parent.Width)
 				n.Width -= n.Margin.Right + n.Margin.Left
 			} else {

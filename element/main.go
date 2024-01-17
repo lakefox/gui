@@ -12,25 +12,26 @@ import (
 )
 
 type Node struct {
-	Node        *html.Node
-	Type        html.NodeType
-	TagName     string
-	Parent      *Node
-	Children    []Node
-	Styles      map[string]string
-	Id          string
-	X           float32
-	Y           float32
-	Width       float32
-	Height      float32
-	Margin      Margin
-	Padding     Padding
-	Border      Border
-	EM          float32
-	Text        Text
-	Colors      Colors
-	PrevSibling *Node
-	NextSibling *Node
+	Node           *html.Node
+	Type           html.NodeType
+	TagName        string
+	Parent         *Node
+	Children       []Node
+	Style          map[string]string
+	Id             string
+	X              float32
+	Y              float32
+	Width          float32
+	Height         float32
+	Margin         Margin
+	Padding        Padding
+	Border         Border
+	EM             float32
+	Text           Text
+	Colors         Colors
+	PrevSibling    *Node
+	NextSibling    *Node
+	EventListeners map[string][]func(Event)
 }
 
 type Margin struct {
@@ -117,34 +118,36 @@ func (n *Node) SetAttribute(key, value string) {
 	})
 }
 
-func (n *Node) QuerySelectorAll(selectString string) []Node {
-	results := []Node{}
+func (n *Node) QuerySelectorAll(selectString string) *[]*Node {
+	results := []*Node{}
 	if TestSelector(selectString, n) {
-		results = append(results, *n)
+		results = append(results, n)
 	}
 
-	for _, v := range n.Children {
-		cr := v.QuerySelectorAll(selectString)
-		if len(cr) > 0 {
-			results = append(results, cr...)
+	for i := range n.Children {
+		el := &n.Children[i]
+		cr := el.QuerySelectorAll(selectString)
+		if len(*cr) > 0 {
+			results = append(results, *cr...)
 		}
 	}
-	return results
+	return &results
 }
 
-func (n *Node) QuerySelector(selectString string) Node {
+func (n *Node) QuerySelector(selectString string) *Node {
 	if TestSelector(selectString, n) {
-		return *n
+		return n
 	}
 
-	for _, v := range n.Children {
-		cr := v.QuerySelector(selectString)
+	for i := range n.Children {
+		el := &n.Children[i]
+		cr := el.QuerySelector(selectString)
 		if cr.Id != "" {
 			return cr
 		}
 	}
 
-	return Node{}
+	return &Node{}
 }
 
 func (node *Node) InnerText() string {
@@ -180,4 +183,20 @@ func TestSelector(selectString string, n *Node) bool {
 	} else {
 		return TestSelector(strings.Join(parts[0:len(parts)-1], ">"), n.Parent)
 	}
+}
+
+type Event struct {
+	X     int
+	Y     int
+	Click bool
+}
+
+func (node *Node) AddEventListener(name string, callback func(Event)) {
+	if node.EventListeners == nil {
+		node.EventListeners = make(map[string][]func(Event))
+	}
+	if node.EventListeners[name] == nil {
+		node.EventListeners[name] = []func(Event){}
+	}
+	node.EventListeners[name] = append(node.EventListeners[name], callback)
 }

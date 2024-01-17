@@ -2,7 +2,10 @@ package document
 
 import (
 	"bufio"
+	"fmt"
 	"gui/cstyle"
+	"gui/element"
+	"gui/events"
 	"gui/window"
 	"net/url"
 	"os"
@@ -18,14 +21,14 @@ import (
 	"golang.org/x/net/html"
 )
 
-type Doc struct {
+type Window struct {
 	StyleSheets []string
 	StyleTags   []string
 	DOM         *html.Node
 	Title       string
 }
 
-func Open(index string) {
+func Open(index string, script func(*element.Node)) {
 	d := Parse(index)
 
 	wm := window.NewWindowManager()
@@ -57,8 +60,12 @@ func Open(index string) {
 	}
 	css.CreateDocument(d.DOM)
 	nodes := css.Map()
-	wm.LoadTextures(nodes.Render)
-	wm.Draw(nodes.Render)
+	doc := nodes.Document
+	script(doc)
+	fmt.Println("here", doc.QuerySelector(".button").EventListeners)
+	r := nodes.Render()
+	wm.LoadTextures(r)
+	wm.Draw(r)
 
 	// Main game loop
 	for !wm.WindowShouldClose() {
@@ -78,16 +85,19 @@ func Open(index string) {
 			css.Height = float32(screenHeight)
 			css.CreateDocument(d.DOM)
 			nodes = css.Map()
-			wm.LoadTextures(nodes.Render)
+			doc = nodes.Document
+			script(doc)
+			wm.LoadTextures(nodes.Render())
 		}
+		events.GetEvents(doc)
 
-		wm.Draw(nodes.Render)
+		wm.Draw(nodes.Render())
 
 		rl.EndDrawing()
 	}
 }
 
-func Parse(path string) Doc {
+func Parse(path string) Window {
 	file, err := os.Open(path)
 	check(err)
 	defer file.Close()
@@ -108,7 +118,7 @@ func Parse(path string) Doc {
 	stylesheets := extractStylesheets(doc, filepath.Dir(path))
 	styleTags := extractStyleTags(doc)
 
-	d := Doc{
+	d := Window{
 		StyleSheets: stylesheets,
 		StyleTags:   styleTags,
 		DOM:         doc,

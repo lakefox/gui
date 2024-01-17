@@ -22,15 +22,15 @@ func Init() cstyle.Plugin {
 
 			// Brief: justify does not align the bottom row correctly
 			//        y axis also needs to be done
-			verbs := strings.Split(n.Styles["flex-direction"], "-")
-			orderedNode := order(*n, n.Children, verbs[0], len(verbs) > 1, n.Styles["flex-wrap"] == "wrap")
+			verbs := strings.Split(n.Style["flex-direction"], "-")
+			orderedNode := order(*n, n.Children, verbs[0], len(verbs) > 1, n.Style["flex-wrap"] == "wrap")
 
 			var i int
 
 			colWidth := n.Width / float32(len(orderedNode))
 
 			var xOffset, yOffset float32
-			if n.Styles["justify-content"] == "space-evenly" {
+			if n.Style["justify-content"] == "space-evenly" {
 				b, _ := utils.ConvertToPixels(n.Children[i].Border.Width, n.Children[i].EM, n.Width)
 				cwV := utils.Max((colWidth-(n.Children[i].Width+(b*2)))/2, 0)
 				xOffset = cwV
@@ -45,7 +45,7 @@ func Init() cstyle.Plugin {
 				yOffset = n.Children[0].Y
 				for _, item := range column {
 					n.Children[i] = item
-					if n.Styles["justify-content"] == "space-between" {
+					if n.Style["justify-content"] == "space-between" {
 						cwV := utils.Max((colWidth - (item.Width)), 0)
 						if a == 0 {
 							n.Children[i].X += xOffset
@@ -54,18 +54,18 @@ func Init() cstyle.Plugin {
 						} else {
 							n.Children[i].X += xOffset + cwV/2
 						}
-					} else if n.Styles["justify-content"] == "flex-end" || n.Styles["justify-content"] == "center" {
+					} else if n.Style["justify-content"] == "flex-end" || n.Style["justify-content"] == "center" {
 						dif := n.Width - (xOffset)
-						if n.Styles["justify-content"] == "center" {
+						if n.Style["justify-content"] == "center" {
 							dif = dif / 2
 						}
 						n.Children[i].X += dif
-					} else if n.Styles["justify-content"] == "flex-start" || n.Styles["justify-content"] == "" {
+					} else if n.Style["justify-content"] == "flex-start" || n.Style["justify-content"] == "" {
 						n.Children[i].X += xOffset
 					} else {
 						cwV := utils.Max((colWidth-(item.Width))/2, 0)
 						var offset float32
-						if n.Styles["justify-content"] == "space-evenly" {
+						if n.Style["justify-content"] == "space-evenly" {
 							offset = ((cwV * 2) / float32(len(orderedNode))) * float32(a)
 						}
 						n.Children[i].X += xOffset + (cwV - offset)
@@ -79,10 +79,10 @@ func Init() cstyle.Plugin {
 				xOffset += colWidth
 			}
 
-			content := n.Styles["align-content"]
+			content := n.Style["align-content"]
 
-			if n.Styles["flex-direction"] == "column" {
-				content = n.Styles["justify-content"]
+			if n.Style["flex-direction"] == "column" {
+				content = n.Style["justify-content"]
 			}
 
 			if content != "" && content != "flex-start" {
@@ -121,7 +121,7 @@ func Init() cstyle.Plugin {
 						n.Children[i].Y += (((n.Height - height) / (rows - 1)) * row)
 					} else if content == "stretch" {
 						n.Children[i].Y += (rowHeight * row)
-						if n.Children[i].Styles["height"] == "" {
+						if n.Children[i].Style["height"] == "" {
 							n.Children[i].Height = n.Height / rows
 						}
 					}

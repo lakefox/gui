@@ -20,7 +20,7 @@ func Init() cstyle.Plugin {
 						n.X = copyOfX
 					}
 					if i > 0 {
-						if n.Parent.Children[i-1].Styles["display"] == "inline" {
+						if n.Parent.Children[i-1].Style["display"] == "inline" {
 							if n.Parent.Children[i-1].Text.X+n.Text.Width < int(n.Parent.Children[i-1].Width) {
 								n.Y -= float32(n.Parent.Children[i-1].Text.LineHeight)
 								n.X += float32(n.Parent.Children[i-1].Text.X)
@@ -28,7 +28,7 @@ func Init() cstyle.Plugin {
 						}
 					}
 					break
-				} else if v.Styles["display"] == "inline" {
+				} else if v.Style["display"] == "inline" {
 					n.X += v.Width
 				} else {
 					n.X = copyOfX
