@@ -18,9 +18,35 @@ func main() {
 		buttons := row.QuerySelectorAll(".button")
 		b := *buttons
 		for i := range b {
+			// b[i].InnerText = "mason"
 			b[i].AddEventListener("click", func(e element.Event) {
-				fmt.Println("Click")
+				fmt.Println("Click: ", e.Target.InnerText)
+			})
+			b[i].AddEventListener("mouseenter", func(e element.Event) {
+				fmt.Println("MOUSE ENTER")
+			})
+			b[i].AddEventListener("mouseleave", func(e element.Event) {
+				fmt.Println("MOUSE LEAVE")
+			})
+			b[i].AddEventListener("mouseover", func(e element.Event) {
+				fmt.Println("MOUSE OVER")
+			})
+
+			b[i].AddEventListener("mousemove", func(e element.Event) {
+				fmt.Println("MOUSE POSITION: ", e.X, e.Y)
 			})
 		}
+
+		doc.AddEventListener("mousedown", func(e element.Event) {
+			fmt.Println("MOUSE DOWN")
+		})
+
+		doc.AddEventListener("mouseup", func(e element.Event) {
+			fmt.Println("MOUSE UP")
+		})
+
+		doc.AddEventListener("click", func(e element.Event) {
+			fmt.Println("CLICK")
+		})
 	})
 }

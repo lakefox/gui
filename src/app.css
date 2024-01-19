@@ -37,7 +37,7 @@ body {
   flex-direction: row;
   flex-wrap: wrap;
   height: 128px;
-  background: red;
+  /* background: red; */
   align-content: space-evenly;
   width: 688px;
   margin: auto;
@@ -60,4 +60,5 @@ body {
   height: 50px;
   background: #212121;
   border: 2px solid black;
+  font-weight: 900;
 }

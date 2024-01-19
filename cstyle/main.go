@@ -100,8 +100,9 @@ func (c *CSS) CreateDocument(doc *html.Node) {
 func CreateNode(parent element.Node, n *html.Node, slug string) element.Node {
 	id := n.Data + slug
 	node := element.Node{
-		Parent:  &parent,
-		TagName: n.Data,
+		Parent:    &parent,
+		TagName:   n.Data,
+		InnerText: utils.GetInnerText(n),
 		Properties: element.Properties{
 			Id:   id,
 			Type: n.Type,
@@ -140,7 +141,7 @@ func (c *CSS) Map() Mapped {
 	// Inherit CSS styles from parent
 	inherit(doc, styleMap)
 	nodes := initNodes(doc, styleMap)
-	node := ComputeNodeStyle(nodes, c.Plugins)
+	node := c.ComputeNodeStyle(nodes)
 	// Print(&node, 0)
 
 	d := Mapped{
@@ -150,8 +151,8 @@ func (c *CSS) Map() Mapped {
 	return d
 }
 
-func (m *Mapped) Render() []element.Node {
-	return flatten(m.Document)
+func (c *CSS) Render(doc *element.Node) []element.Node {
+	return flatten(doc)
 }
 
 func (c *CSS) AddPlugin(plugin Plugin) {
@@ -162,8 +163,8 @@ func (c *CSS) AddPlugin(plugin Plugin) {
 // this should cover the main parts of html but if some one wants for example drop shadows they
 // can make a plug in for it
 
-func ComputeNodeStyle(n element.Node, plugins []Plugin) element.Node {
-
+func (c *CSS) ComputeNodeStyle(n element.Node) element.Node {
+	plugins := c.Plugins
 	styleMap := n.Style
 
 	if styleMap["display"] == "none" {
@@ -242,7 +243,7 @@ func ComputeNodeStyle(n element.Node, plugins []Plugin) element.Node {
 
 	if len(n.Children) == 0 {
 		// Confirm text exists
-		if len(n.Properties.Text.Text) > 0 {
+		if len(n.InnerText) > 0 {
 			innerWidth := width
 			innerHeight := height
 			genTextNode(&n, &innerWidth, &innerHeight)
@@ -261,7 +262,7 @@ func ComputeNodeStyle(n element.Node, plugins []Plugin) element.Node {
 	var childYOffset float32
 	for i, v := range n.Children {
 		v.Parent = &n
-		n.Children[i] = ComputeNodeStyle(v, plugins)
+		n.Children[i] = c.ComputeNodeStyle(v)
 		if styleMap["height"] == "" {
 			if n.Children[i].Style["position"] != "absolute" && n.Children[i].Properties.Y > childYOffset {
 				childYOffset = n.Children[i].Properties.Y
@@ -423,7 +424,6 @@ func initNodes(n *element.Node, styleMap map[string]map[string]string) element.N
 	}
 
 	n.Properties.Text.LineHeight = int(lineHeight)
-	n.Properties.Text.Text = n.InnerText()
 	n.Properties.Text.Font = f
 	n.Properties.Text.WordSpacing = int(wordSpacing)
 	n.Properties.Text.LetterSpacing = int(letterSpacing)
@@ -584,7 +584,7 @@ func genTextNode(n *element.Node, width, height *float32) {
 	if n.Parent.Properties.Width != 0 && n.Style["display"] != "inline" && n.Style["width"] == "" {
 		*width = (n.Parent.Properties.Width - n.Properties.Padding.Right) - n.Properties.Padding.Left
 	} else if n.Style["width"] == "" {
-		*width = utils.Max(*width, float32(font.MeasureLongest(&n.Properties.Text)))
+		*width = utils.Max(*width, float32(font.MeasureLongest(n)))
 	} else if n.Style["width"] != "" {
 		*width, _ = utils.ConvertToPixels(n.Style["width"], n.Properties.EM, n.Parent.Properties.Width)
 	}

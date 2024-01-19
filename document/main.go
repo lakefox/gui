@@ -62,10 +62,16 @@ func Open(index string, script func(*element.Node)) {
 	nodes := css.Map()
 	doc := nodes.Document
 	script(doc)
-	fmt.Println("here", doc.QuerySelector(".button").Properties.EventListeners)
-	r := nodes.Render()
+	newDoc := css.ComputeNodeStyle(*doc)
+	doc = &newDoc
+	fmt.Println("here", doc.QuerySelector(".button").InnerText)
+	r := css.Render(doc)
 	wm.LoadTextures(r)
 	wm.Draw(r)
+
+	evts := map[string]element.Event{}
+
+	eventStore := &evts
 
 	// Main game loop
 	for !wm.WindowShouldClose() {
@@ -87,11 +93,13 @@ func Open(index string, script func(*element.Node)) {
 			nodes = css.Map()
 			doc = nodes.Document
 			script(doc)
-			wm.LoadTextures(nodes.Render())
+			newDoc := css.ComputeNodeStyle(*doc)
+			doc = &newDoc
+			wm.LoadTextures(css.Render(doc))
 		}
-		events.GetEvents(doc)
+		eventStore = events.GetEvents(doc, eventStore)
 
-		wm.Draw(nodes.Render())
+		wm.Draw(css.Render(doc))
 
 		rl.EndDrawing()
 	}

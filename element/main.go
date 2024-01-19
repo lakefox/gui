@@ -12,13 +12,22 @@ import (
 )
 
 type Node struct {
-	TagName     string
-	Parent      *Node
-	Children    []Node
-	Style       map[string]string
-	PrevSibling *Node
-	NextSibling *Node
-	Properties  Properties
+	TagName       string
+	InnerText     string
+	Parent        *Node
+	Children      []Node
+	Style         map[string]string
+	PrevSibling   *Node
+	NextSibling   *Node
+	OnClick       func(Event)
+	OnContextMenu func(Event)
+	OnMouseDown   func(Event)
+	OnMouseUp     func(Event)
+	OnMouseEnter  func(Event)
+	OnMouseLeave  func(Event)
+	OnMouseOver   func(Event)
+	OnMouseMove   func(Event)
+	Properties    Properties
 }
 
 type Properties struct {
@@ -60,7 +69,6 @@ type Border struct {
 }
 
 type Text struct {
-	Text                string
 	Font                font.Face
 	Color               ic.RGBA
 	Image               *image.RGBA
@@ -154,25 +162,6 @@ func (n *Node) QuerySelector(selectString string) *Node {
 	return &Node{}
 }
 
-func (node *Node) InnerText() string {
-	var result strings.Builder
-
-	var getText func(*html.Node)
-	getText = func(n *html.Node) {
-		if n.Type == html.TextNode {
-			result.WriteString(n.Data)
-		}
-
-		for c := n.FirstChild; c != nil; c = c.NextSibling {
-			getText(c)
-		}
-	}
-
-	getText(node.Properties.Node)
-
-	return result.String()
-}
-
 func TestSelector(selectString string, n *Node) bool {
 	parts := strings.Split(selectString, ">")
 
@@ -190,9 +179,16 @@ func TestSelector(selectString string, n *Node) bool {
 }
 
 type Event struct {
-	X     int
-	Y     int
-	Click bool
+	X           int
+	Y           int
+	Click       bool
+	ContextMenu bool
+	MouseDown   bool
+	MouseUp     bool
+	MouseEnter  bool
+	MouseLeave  bool
+	MouseOver   bool
+	Target      Node
 }
 
 func (node *Node) AddEventListener(name string, callback func(Event)) {

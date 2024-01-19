@@ -9,6 +9,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"golang.org/x/net/html"
 )
 
 func AddMarginAndPadding(styleMap map[string]map[string]string, id string, width, height float32) (float32, float32, float32, float32) {
@@ -342,4 +344,23 @@ func Check(e error) {
 	if e != nil {
 		panic(e)
 	}
+}
+
+func GetInnerText(n *html.Node) string {
+	var result strings.Builder
+
+	var getText func(*html.Node)
+	getText = func(n *html.Node) {
+		if n.Type == html.TextNode {
+			result.WriteString(n.Data)
+		}
+
+		for c := n.FirstChild; c != nil; c = c.NextSibling {
+			getText(c)
+		}
+	}
+
+	getText(n)
+
+	return result.String()
 }
