@@ -48,5 +48,13 @@ func main() {
 		doc.AddEventListener("click", func(e element.Event) {
 			fmt.Println("CLICK")
 		})
+
+		doc.AddEventListener("scroll", func(e element.Event) {
+			fmt.Println("Y: ", e.Target.ScrollY)
+		})
+		editor := doc.QuerySelector("#editor")
+		editor.AddEventListener("keypress", func(e element.Event) {
+			fmt.Println("key", editor.Value, editor.Properties.Id)
+		})
 	})
 }

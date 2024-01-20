@@ -3,45 +3,77 @@ package events
 import (
 	"fmt"
 	"gui/element"
+	"gui/utils"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-func GetEvents(el *element.Node, prevEvents *map[string]element.Event) *map[string]element.Event {
-	mp := rl.GetMousePosition()
+type RLData struct {
+	MP rl.Vector2
+	LB bool
+	RB bool
+	WD float32
+	KP int32
+}
+
+func GetEvents(el *element.Node, prevEvents *map[string]element.EventList) *map[string]element.EventList {
+	data := RLData{
+		MP: rl.GetMousePosition(),
+		LB: rl.IsMouseButtonDown(rl.MouseLeftButton),
+		RB: rl.IsMouseButtonPressed(rl.MouseRightButton),
+		WD: rl.GetMouseWheelMove(),
+		KP: rl.GetKeyPressed(),
+	}
 	// Mouse over
 	// fmt.Println(len(*prevEvents))
-	loop(el, mp, prevEvents)
+	loop(el, data, prevEvents)
 	return prevEvents
 }
 
-func loop(el *element.Node, mp rl.Vector2, eventTracker *map[string]element.Event) {
+func RunEvents(events *map[string]element.EventList) {
+	for _, evt := range *events {
+		if len(evt.List) > 0 {
+			for _, v := range evt.List {
+				if len(evt.Event.Target.Properties.EventListeners[v]) > 0 {
+					for _, handler := range evt.Event.Target.Properties.EventListeners[v] {
+						handler(evt.Event)
+					}
+				}
+			}
+
+		}
+	}
+
+}
+
+func loop(el *element.Node, data RLData, eventTracker *map[string]element.EventList) *element.Node {
 	et := *eventTracker
 	eventList := []string{}
-	evt := et[el.Properties.Id]
+	evt := et[el.Properties.Id].Event
 
 	if evt.Target.Properties.Id == "" {
-		et[el.Properties.Id] = element.Event{
-			X:          int(mp.X),
-			Y:          int(mp.Y),
-			MouseUp:    true,
-			MouseLeave: true,
-			Target:     *el,
+		et[el.Properties.Id] = element.EventList{
+			Event: element.Event{
+				X:          int(data.MP.X),
+				Y:          int(data.MP.Y),
+				MouseUp:    true,
+				MouseLeave: true,
+				Target:     *el,
+			},
+			List: []string{},
 		}
 
-		evt = et[el.Properties.Id]
+		evt = et[el.Properties.Id].Event
 	}
 
 	var isMouseOver bool
 
-	if el.Properties.X < mp.X && el.Properties.X+el.Properties.Width > mp.X {
-		if el.Properties.Y < mp.Y && el.Properties.Y+el.Properties.Height > mp.Y {
+	if el.Properties.X < data.MP.X && el.Properties.X+el.Properties.Width > data.MP.X {
+		if el.Properties.Y < data.MP.Y && el.Properties.Y+el.Properties.Height > data.MP.Y {
 			// Mouse is over element
 			isMouseOver = true
 
-			fmt.Println(rl.GetMouseWheelMove())
-
-			if rl.IsMouseButtonDown(rl.MouseLeftButton) && !evt.MouseDown {
+			if data.LB && !evt.MouseDown {
 				evt.MouseDown = true
 				evt.MouseUp = false
 				if el.OnMouseDown != nil {
@@ -50,16 +82,17 @@ func loop(el *element.Node, mp rl.Vector2, eventTracker *map[string]element.Even
 				eventList = append(eventList, "mousedown")
 			}
 
-			if !rl.IsMouseButtonDown(rl.MouseLeftButton) && !evt.MouseUp {
+			if !data.LB && !evt.MouseUp {
 				evt.MouseUp = true
 				evt.MouseDown = false
+				evt.Click = false
 				if el.OnMouseUp != nil {
 					el.OnMouseUp(evt)
 				}
 				eventList = append(eventList, "mouseup")
 			}
 
-			if rl.IsMouseButtonPressed(rl.MouseLeftButton) {
+			if data.LB && !evt.Click {
 				evt.Click = true
 				if el.OnClick != nil {
 					el.OnClick(evt)
@@ -67,12 +100,23 @@ func loop(el *element.Node, mp rl.Vector2, eventTracker *map[string]element.Even
 				eventList = append(eventList, "click")
 			}
 
-			if rl.IsMouseButtonPressed(rl.MouseRightButton) {
+			if data.RB {
 				evt.ContextMenu = true
 				if el.OnContextMenu != nil {
 					el.OnContextMenu(evt)
 				}
 				eventList = append(eventList, "contextmenu")
+			}
+
+			if data.WD != 0 {
+				// fmt.Println(data.WD)
+				// for now just emit a event, will have to add el.scrollX
+				evt.Target.ScrollY = utils.Max(evt.Target.ScrollY+(-data.WD), 0)
+
+				if el.OnScroll != nil {
+					el.OnScroll(evt)
+				}
+				eventList = append(eventList, "scroll")
 			}
 
 			if !evt.MouseEnter {
@@ -89,9 +133,9 @@ func loop(el *element.Node, mp rl.Vector2, eventTracker *map[string]element.Even
 				eventList = append(eventList, "mouseover")
 			}
 
-			if evt.X != int(mp.X) && evt.Y != int(mp.Y) {
-				evt.X = int(mp.X)
-				evt.Y = int(mp.Y)
+			if evt.X != int(data.MP.X) && evt.Y != int(data.MP.Y) {
+				evt.X = int(data.MP.X)
+				evt.Y = int(data.MP.Y)
 				if el.OnMouseMove != nil {
 					el.OnMouseMove(evt)
 				}
@@ -99,9 +143,16 @@ func loop(el *element.Node, mp rl.Vector2, eventTracker *map[string]element.Even
 			}
 
 			// Get the keycode of the pressed key
-			keyPressed := rl.GetKeyPressed()
-			if keyPressed != 0 {
-				fmt.Printf("Key pressed: %c (%d)\n", keyPressed, keyPressed)
+			// issue: need to only add the text data and events to focused elements and only
+			// 		  one at a time
+			if data.KP != 0 {
+				if el.Properties.Editable {
+					ProcessKeyEvent(el, int(data.KP))
+					fmt.Println(el.Properties.Id, el.Value)
+					el.InnerText = el.Value
+					eventList = append(eventList, "keypress")
+				}
+
 			}
 
 		} else {
@@ -123,21 +174,57 @@ func loop(el *element.Node, mp rl.Vector2, eventTracker *map[string]element.Even
 		eventList = append(eventList, "mouseleave")
 	}
 
-	if len(eventList) > 0 {
-		for _, v := range eventList {
-			if len(el.Properties.EventListeners[v]) > 0 {
-				for _, handler := range el.Properties.EventListeners[v] {
-					handler(evt)
-				}
-			}
-		}
-
+	et[el.Properties.Id] = element.EventList{
+		Event: evt,
+		List:  eventList,
 	}
 
-	et[el.Properties.Id] = evt
-
 	eventTracker = &et
-	for _, v := range el.Children {
-		loop(&v, mp, eventTracker)
+	for i, v := range el.Children {
+		el.Children[i] = *loop(&v, data, eventTracker)
+	}
+	return el
+}
+
+// ProcessKeyEvent processes key events for text entry.
+func ProcessKeyEvent(n *element.Node, key int) {
+	// Handle key events for text entry
+	switch key {
+	case rl.KeyBackspace:
+		// Backspace: remove the last character
+		if len(n.Value) > 0 {
+			n.Value = n.Value[:len(n.Value)-1]
+		}
+
+	case rl.KeyA:
+		// Select All: set the entire text as selected
+		if rl.IsKeyDown(rl.KeyLeftControl) || rl.IsKeyDown(rl.KeyRightControl) {
+			n.Properties.Selected = []float32{0, float32(len(n.Value))}
+		} else {
+			// Otherwise, append 'A' to the text
+			n.Value += "A"
+		}
+
+	case rl.KeyC:
+		// Copy: copy the selected text (in this case, print it)
+		if rl.IsKeyDown(rl.KeyLeftControl) || rl.IsKeyDown(rl.KeyRightControl) {
+			fmt.Println("Copy:", n.Value)
+		} else {
+			// Otherwise, append 'C' to the text
+			n.Value += "C"
+		}
+
+	case rl.KeyV:
+		// Paste: paste the copied text (in this case, set it to "Pasted")
+		if rl.IsKeyDown(rl.KeyLeftControl) || rl.IsKeyDown(rl.KeyRightControl) {
+			n.Value = "Pasted"
+		} else {
+			// Otherwise, append 'V' to the text
+			n.Value += "V"
+		}
+
+	default:
+		// Record other key presses
+		n.Value += string(rune(key))
 	}
 }

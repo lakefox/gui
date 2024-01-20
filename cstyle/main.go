@@ -3,11 +3,7 @@ package cstyle
 // package aui/goldie
 // https://pkg.go.dev/automated.sh/goldie
 // https://pkg.go.dev/automated.sh/aui
-
-// The font loading needs to be opomised, rn it loads new
-// stuff for each one even if they use the same font
-// Everything should be one file or at least the rendering pipeline
-// Dom needs to be a custom impleamentation for speed and size
+// https://pkg.go.dev/automated.sh/oat
 
 import (
 	"fmt"
@@ -427,6 +423,12 @@ func initNodes(n *element.Node, styleMap map[string]map[string]string) element.N
 	n.Properties.Text.Font = f
 	n.Properties.Text.WordSpacing = int(wordSpacing)
 	n.Properties.Text.LetterSpacing = int(letterSpacing)
+
+	for _, v := range n.Properties.Node.Attr {
+		if v.Key == "contenteditable" && (v.Val == "" || v.Val == "true") {
+			n.Properties.Editable = true
+		}
+	}
 
 	n.Properties.Colors = color.Parse(n.Style)
 	for i, c := range n.Children {

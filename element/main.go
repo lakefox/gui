@@ -19,6 +19,8 @@ type Node struct {
 	Style         map[string]string
 	PrevSibling   *Node
 	NextSibling   *Node
+	ScrollY       float32
+	Value         string
 	OnClick       func(Event)
 	OnContextMenu func(Event)
 	OnMouseDown   func(Event)
@@ -27,6 +29,7 @@ type Node struct {
 	OnMouseLeave  func(Event)
 	OnMouseOver   func(Event)
 	OnMouseMove   func(Event)
+	OnScroll      func(Event)
 	Properties    Properties
 }
 
@@ -45,6 +48,10 @@ type Properties struct {
 	EM             float32
 	Text           Text
 	Colors         Colors
+	Focusable      bool
+	Focused        bool
+	Editable       bool
+	Selected       []float32
 }
 
 type Margin struct {
@@ -181,6 +188,12 @@ func TestSelector(selectString string, n *Node) bool {
 type Event struct {
 	X           int
 	Y           int
+	KeyCode     int
+	Key         string
+	CtrlKey     bool
+	MetaKey     bool
+	ShiftKey    bool
+	AltKey      bool
 	Click       bool
 	ContextMenu bool
 	MouseDown   bool
@@ -188,7 +201,16 @@ type Event struct {
 	MouseEnter  bool
 	MouseLeave  bool
 	MouseOver   bool
+	KeyUp       bool
+	KeyDown     bool
+	KeyPress    bool
+	Input       bool
 	Target      Node
+}
+
+type EventList struct {
+	Event Event
+	List  []string
 }
 
 func (node *Node) AddEventListener(name string, callback func(Event)) {

@@ -27,7 +27,12 @@ type WindowManager struct {
 	Fonts      map[string]rl.Font
 	FPS        bool
 	FPSCounter fps.FPSCounter
-	Textures   []rl.Texture2D
+	Textures   map[string]TextTexture
+}
+
+type TextTexture struct {
+	Text  string
+	Image rl.Texture2D
 }
 
 // NewWindowManager creates a new WindowManager instance
@@ -54,19 +59,29 @@ func (wm *WindowManager) CloseWindow() {
 }
 
 func (wm *WindowManager) LoadTextures(nodes []element.Node) {
-	wm.Textures = make([]rl.Texture2D, len(nodes))
-	for i, node := range nodes {
+	if wm.Textures == nil {
+		wm.Textures = map[string]TextTexture{}
+	}
+	for _, node := range nodes {
 		if node.Properties.Text.Image != nil {
-			texture := rl.LoadTextureFromImage(rl.NewImageFromImage(node.Properties.Text.Image))
-			wm.Textures[i] = texture
+			if wm.Textures[node.Properties.Id].Text != node.InnerText {
+				rl.UnloadTexture(wm.Textures[node.Properties.Id].Image)
+				texture := rl.LoadTextureFromImage(rl.NewImageFromImage(node.Properties.Text.Image))
+				wm.Textures[node.Properties.Id] = TextTexture{
+					Text:  node.InnerText,
+					Image: texture,
+				}
+			}
+
 		}
+
 	}
 }
 
 // Draw draws all nodes on the window
 func (wm *WindowManager) Draw(nodes []element.Node) {
 
-	for i, node := range nodes {
+	for _, node := range nodes {
 		bw, _ := utils.ConvertToPixels(node.Properties.Border.Width, node.Properties.EM, node.Properties.Width)
 		rad, _ := utils.ConvertToPixels(node.Properties.Border.Radius, node.Properties.EM, node.Properties.Width)
 
@@ -81,7 +96,7 @@ func (wm *WindowManager) Draw(nodes []element.Node) {
 
 		if node.Properties.Text.Image != nil {
 			r, g, b, a := node.Properties.Text.Color.RGBA()
-			rl.DrawTexture(wm.Textures[i], int32(node.Properties.X+node.Properties.Padding.Left+bw), int32(node.Properties.Y+node.Properties.Padding.Top), color.RGBA{uint8(r), uint8(g), uint8(b), uint8(a)})
+			rl.DrawTexture(wm.Textures[node.Properties.Id].Image, int32(node.Properties.X+node.Properties.Padding.Left+bw), int32(node.Properties.Y+node.Properties.Padding.Top), color.RGBA{uint8(r), uint8(g), uint8(b), uint8(a)})
 		}
 	}
 

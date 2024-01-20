@@ -69,7 +69,7 @@ func Open(index string, script func(*element.Node)) {
 	wm.LoadTextures(r)
 	wm.Draw(r)
 
-	evts := map[string]element.Event{}
+	evts := map[string]element.EventList{}
 
 	eventStore := &evts
 
@@ -98,8 +98,11 @@ func Open(index string, script func(*element.Node)) {
 			wm.LoadTextures(css.Render(doc))
 		}
 		eventStore = events.GetEvents(doc, eventStore)
-
+		newDoc := css.ComputeNodeStyle(*doc)
+		doc = &newDoc
+		wm.LoadTextures(css.Render(doc))
 		wm.Draw(css.Render(doc))
+		events.RunEvents(eventStore)
 
 		rl.EndDrawing()
 	}
