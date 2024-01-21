@@ -10,7 +10,7 @@ func Init() cstyle.Plugin {
 		Styles: map[string]string{
 			"display": "inline",
 		},
-		Level: 0,
+		Level: 1,
 		Handler: func(n *element.Node) {
 			copyOfX := n.Properties.X
 			for i, v := range n.Parent.Children {

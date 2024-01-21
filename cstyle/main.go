@@ -115,6 +115,16 @@ func CreateNode(parent element.Node, n *html.Node, slug string) element.Node {
 	return node
 }
 
+func (c *CSS) Resize(n *element.Node, styles map[string]map[string]string) *element.Node {
+	n.Properties.Width = c.Width
+	n.Properties.Height = c.Height
+	n.Parent.Properties.Width = c.Width
+	n.Parent.Properties.Height = c.Height
+	doc := c.ComputeNodeStyle(*n)
+	doc = initNodes(&doc, styles)
+	return &doc
+}
+
 // gen id's via a tree so they stay the same
 func (c *CSS) Map() Mapped {
 	doc := c.Document
@@ -448,20 +458,6 @@ func initNodes(n *element.Node, styleMap map[string]map[string]string) element.N
 	return *n
 }
 
-func GetPositionOffsetNode(n *element.Node) *element.Node {
-	pos := n.Style["position"]
-
-	if pos == "relative" {
-		return n
-	} else {
-		if n.Parent.Properties.Node != nil {
-			return GetPositionOffsetNode(n.Parent)
-		} else {
-			return nil
-		}
-	}
-}
-
 func parseBorderShorthand(borderShorthand string) (element.Border, error) {
 	// Split the shorthand into components
 	borderComponents := strings.Fields(borderShorthand)
@@ -597,4 +593,18 @@ func genTextNode(n *element.Node, width, height *float32) {
 		*height = h
 	}
 
+}
+
+func GetPositionOffsetNode(n *element.Node) *element.Node {
+	pos := n.Style["position"]
+
+	if pos == "relative" {
+		return n
+	} else {
+		if n.Parent.Properties.Node != nil {
+			return GetPositionOffsetNode(n.Parent)
+		} else {
+			return nil
+		}
+	}
 }

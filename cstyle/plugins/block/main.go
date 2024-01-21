@@ -11,7 +11,7 @@ func Init() cstyle.Plugin {
 		Styles: map[string]string{
 			"display": "block",
 		},
-		Level: 0,
+		Level: 1,
 		Handler: func(n *element.Node) {
 			// If the element is display block and the width is unset then make it 100%
 			if n.Style["width"] == "" {

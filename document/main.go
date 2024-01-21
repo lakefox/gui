@@ -2,7 +2,6 @@ package document
 
 import (
 	"bufio"
-	"fmt"
 	"gui/cstyle"
 	"gui/element"
 	"gui/events"
@@ -47,6 +46,7 @@ func Open(index string, script func(*element.Node)) {
 		Height: 450,
 	}
 	css.StyleSheet("./master.css")
+	// css.AddPlugin(position.Init())
 	css.AddPlugin(inline.Init())
 	css.AddPlugin(block.Init())
 	css.AddPlugin(flex.Init())
@@ -64,7 +64,6 @@ func Open(index string, script func(*element.Node)) {
 	script(doc)
 	newDoc := css.ComputeNodeStyle(*doc)
 	doc = &newDoc
-	fmt.Println("here", doc.QuerySelector(".button").InnerText)
 	r := css.Render(doc)
 	wm.LoadTextures(r)
 	wm.Draw(r)
@@ -87,6 +86,12 @@ func Open(index string, script func(*element.Node)) {
 			screenWidth = newWidth
 			screenHeight = newHeight
 
+			// css.Width = float32(screenWidth)
+			// css.Height = float32(screenHeight)
+			// doc = css.Resize(doc, nodes.StyleMap)
+			// script(doc)
+			// wm.LoadTextures(css.Render(doc))
+
 			css.Width = float32(screenWidth)
 			css.Height = float32(screenHeight)
 			css.CreateDocument(d.DOM)
@@ -97,11 +102,13 @@ func Open(index string, script func(*element.Node)) {
 			doc = &newDoc
 			wm.LoadTextures(css.Render(doc))
 		}
+
 		eventStore = events.GetEvents(doc, eventStore)
-		newDoc := css.ComputeNodeStyle(*doc)
-		doc = &newDoc
-		wm.LoadTextures(css.Render(doc))
-		wm.Draw(css.Render(doc))
+		// newDoc := css.ComputeNodeStyle(*nodes.Document)
+		rd := css.Render(doc)
+		wm.LoadTextures(rd)
+		wm.Draw(rd)
+		// time.Sleep(2 * time.Second)
 		events.RunEvents(eventStore)
 
 		rl.EndDrawing()
