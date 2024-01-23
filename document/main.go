@@ -60,13 +60,8 @@ func Open(index string, script func(*element.Node)) {
 	}
 	css.CreateDocument(d.DOM)
 	nodes := css.Map()
-	doc := nodes.Document
-	script(doc)
-	newDoc := css.ComputeNodeStyle(*doc)
-	doc = &newDoc
-	r := css.Render(doc)
-	wm.LoadTextures(r)
-	wm.Draw(r)
+	nodesDocument := nodes.Document
+	script(&nodesDocument)
 
 	evts := map[string]element.EventList{}
 
@@ -86,26 +81,26 @@ func Open(index string, script func(*element.Node)) {
 			screenWidth = newWidth
 			screenHeight = newHeight
 
-			// css.Width = float32(screenWidth)
-			// css.Height = float32(screenHeight)
-			// doc = css.Resize(doc, nodes.StyleMap)
-			// script(doc)
-			// wm.LoadTextures(css.Render(doc))
-
 			css.Width = float32(screenWidth)
 			css.Height = float32(screenHeight)
 			css.CreateDocument(d.DOM)
 			nodes = css.Map()
-			doc = nodes.Document
-			script(doc)
-			newDoc := css.ComputeNodeStyle(*doc)
-			doc = &newDoc
-			wm.LoadTextures(css.Render(doc))
+			// script(nodes.Document)
 		}
 
-		eventStore = events.GetEvents(doc, eventStore)
-		// newDoc := css.ComputeNodeStyle(*nodes.Document)
-		rd := css.Render(doc)
+		eventStore = events.GetEvents(&nodesDocument, eventStore)
+		// could hash the data in each obj to check if it has been changed, if it has the render it and its parents
+		// fmt.Println("first", nodes.Document.InnerText)
+
+		newDoc := css.ComputeNodeStyle(nodesDocument)
+
+		// fmt.Println(nodes.Document.InnerText)
+
+		// newDoc1 := css.ComputeNodeStyle(newDoc)
+		// newDoc2 := css.ComputeNodeStyle(newDoc1)
+		// doc = &newDo2c
+		// rd := css.Render(newDoc2)
+		rd := css.Render(newDoc)
 		wm.LoadTextures(rd)
 		wm.Draw(rd)
 		// time.Sleep(2 * time.Second)

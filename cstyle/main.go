@@ -23,7 +23,7 @@ import (
 type Plugin struct {
 	Styles  map[string]string
 	Level   int
-	Handler func(*element.Node)
+	Handler func(element.Node) element.Node
 }
 
 type CSS struct {
@@ -35,7 +35,7 @@ type CSS struct {
 }
 
 type Mapped struct {
-	Document *element.Node
+	Document element.Node
 	StyleMap map[string]map[string]string
 }
 
@@ -147,17 +147,17 @@ func (c *CSS) Map() Mapped {
 	// Inherit CSS styles from parent
 	inherit(doc, styleMap)
 	nodes := initNodes(doc, styleMap)
-	node := c.ComputeNodeStyle(nodes)
+	// node := c.ComputeNodeStyle(nodes)
 	// Print(&node, 0)
 
 	d := Mapped{
-		Document: &node,
+		Document: nodes,
 		StyleMap: styleMap,
 	}
 	return d
 }
 
-func (c *CSS) Render(doc *element.Node) []element.Node {
+func (c *CSS) Render(doc element.Node) []element.Node {
 	return flatten(doc)
 }
 
@@ -295,7 +295,7 @@ func (c *CSS) ComputeNodeStyle(n element.Node) element.Node {
 			}
 		}
 		if matches {
-			v.Handler(&n)
+			n = v.Handler(&n)
 		}
 	}
 
@@ -524,14 +524,14 @@ func Print(n *element.Node, indent int) {
 	}
 }
 
-func flatten(n *element.Node) []element.Node {
+func flatten(n element.Node) []element.Node {
 	var nodes []element.Node
-	nodes = append(nodes, *n)
+	nodes = append(nodes, n)
 
 	children := n.Children
 	if len(children) > 0 {
 		for _, ch := range children {
-			chNodes := flatten(&ch)
+			chNodes := flatten(ch)
 			nodes = append(nodes, chNodes...)
 		}
 	}
