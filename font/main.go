@@ -450,7 +450,7 @@ func getLines(n *element.Node) []string {
 			n.InnerText = re.ReplaceAllString(text, " ")
 			nl := regexp.MustCompile(`[\r\n]+`)
 			n.InnerText = nl.ReplaceAllString(text, "")
-			n.InnerText = strings.TrimSpace(text)
+			// n.InnerText = strings.TrimSpace(text)
 			lines = wrap(n, t.WordBreak, false)
 		}
 		for i, v := range lines {

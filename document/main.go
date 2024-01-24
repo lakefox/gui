@@ -58,10 +58,8 @@ func Open(index string, script func(*element.Node)) {
 	for _, v := range d.StyleTags {
 		css.StyleTag(v)
 	}
-	css.CreateDocument(d.DOM)
-	nodes := css.Map()
-	nodesDocument := nodes.Document
-	script(&nodesDocument)
+	nodes := cstyle.Map(css.CreateDocument(d.DOM), css)
+	script(&nodes)
 
 	evts := map[string]element.EventList{}
 
@@ -70,7 +68,7 @@ func Open(index string, script func(*element.Node)) {
 	// Main game loop
 	for !wm.WindowShouldClose() {
 		rl.BeginDrawing()
-		// rl.ClearBackground(rl.RayWhite)
+
 		// Check if the window size has changed
 		newWidth := int32(rl.GetScreenWidth())
 		newHeight := int32(rl.GetScreenHeight())
@@ -83,27 +81,19 @@ func Open(index string, script func(*element.Node)) {
 
 			css.Width = float32(screenWidth)
 			css.Height = float32(screenHeight)
-			css.CreateDocument(d.DOM)
-			nodes = css.Map()
-			// script(nodes.Document)
+
+			nodes = cstyle.Map(css.CreateDocument(d.DOM), css)
+			script(&nodes)
 		}
 
-		eventStore = events.GetEvents(&nodesDocument, eventStore)
-		// could hash the data in each obj to check if it has been changed, if it has the render it and its parents
-		// fmt.Println("first", nodes.Document.InnerText)
-
-		newDoc := css.ComputeNodeStyle(nodesDocument)
-
-		// fmt.Println(nodes.Document.InnerText)
-
-		// newDoc1 := css.ComputeNodeStyle(newDoc)
-		// newDoc2 := css.ComputeNodeStyle(newDoc1)
-		// doc = &newDo2c
-		// rd := css.Render(newDoc2)
-		rd := css.Render(newDoc)
+		eventStore = events.GetEvents(&nodes, eventStore)
+		cstyle.ComputeNodeStyle(nodes, css)
+		cstyle.ComputeNodeStyle(nodes, css)
+		cstyle.ComputeNodeStyle(nodes, css)
+		rd := css.Render(nodes)
 		wm.LoadTextures(rd)
 		wm.Draw(rd)
-		// time.Sleep(2 * time.Second)
+
 		events.RunEvents(eventStore)
 
 		rl.EndDrawing()

@@ -11,7 +11,7 @@ func Init() cstyle.Plugin {
 			"display": "inline",
 		},
 		Level: 1,
-		Handler: func(n *element.Node) {
+		Handler: func(n element.Node) element.Node {
 			copyOfX := n.Properties.X
 			for i, v := range n.Parent.Children {
 				if v.Properties.Id == n.Properties.Id {
@@ -34,6 +34,7 @@ func Init() cstyle.Plugin {
 					n.Properties.X = copyOfX
 				}
 			}
+			return n
 		},
 	}
 }

@@ -18,13 +18,13 @@ func Init() cstyle.Plugin {
 			"flex-direction":  "*",
 		},
 		Level: 2,
-		Handler: func(n *element.Node) {
+		Handler: func(n element.Node) element.Node {
 
 			// Brief: justify does not align the bottom row correctly
 			//        y axis also needs to be done
 			verbs := strings.Split(n.Style["flex-direction"], "-")
 
-			orderedNode := order(*n, n.Children, verbs[0], len(verbs) > 1, n.Style["flex-wrap"] == "wrap")
+			orderedNode := order(n, n.Children, verbs[0], len(verbs) > 1, n.Style["flex-wrap"] == "wrap")
 
 			var i int
 
@@ -128,7 +128,7 @@ func Init() cstyle.Plugin {
 					}
 				}
 			}
-
+			return n
 		},
 	}
 }

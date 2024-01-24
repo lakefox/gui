@@ -40,7 +40,6 @@ func RunEvents(events *map[string]element.EventList) {
 					}
 				}
 			}
-
 		}
 	}
 
@@ -147,8 +146,10 @@ func loop(el *element.Node, data RLData, eventTracker *map[string]element.EventL
 			// 		  one at a time
 			if data.KP != 0 {
 				if el.Properties.Editable {
+					el.Value = el.InnerText
 					ProcessKeyEvent(el, int(data.KP))
 					fmt.Println(el.Properties.Id, el.Value)
+
 					el.InnerText = el.Value
 					eventList = append(eventList, "keypress")
 				}

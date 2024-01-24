@@ -12,13 +12,12 @@ import (
 )
 
 type Node struct {
-	TagName       string
-	InnerText     string
-	Parent        *Node
-	Children      []Node
-	Style         map[string]string
-	PrevSibling   *Node
-	NextSibling   *Node
+	TagName   string
+	InnerText string
+	Parent    *Node
+	Children  []Node
+	Style     map[string]string
+
 	ScrollY       float32
 	Value         string
 	OnClick       func(Event)
@@ -52,6 +51,7 @@ type Properties struct {
 	Focused        bool
 	Editable       bool
 	Selected       []float32
+	Test           string
 }
 
 type Margin struct {

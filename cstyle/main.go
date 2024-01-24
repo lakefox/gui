@@ -34,11 +34,6 @@ type CSS struct {
 	Document    *element.Node
 }
 
-type Mapped struct {
-	Document element.Node
-	StyleMap map[string]map[string]string
-}
-
 func (c *CSS) StyleSheet(path string) {
 	// Parse the CSS file
 	dat, err := os.ReadFile(path)
@@ -53,7 +48,7 @@ func (c *CSS) StyleTag(css string) {
 	c.StyleSheets = append(c.StyleSheets, styles)
 }
 
-func (c *CSS) CreateDocument(doc *html.Node) {
+func (c *CSS) CreateDocument(doc *html.Node) element.Node {
 	id := doc.FirstChild.Data + "0"
 	n := doc.FirstChild
 	node := element.Node{
@@ -90,7 +85,7 @@ func (c *CSS) CreateDocument(doc *html.Node) {
 			i++
 		}
 	}
-	c.Document = &node
+	return node
 }
 
 func CreateNode(parent element.Node, n *html.Node, slug string) element.Node {
@@ -115,19 +110,9 @@ func CreateNode(parent element.Node, n *html.Node, slug string) element.Node {
 	return node
 }
 
-func (c *CSS) Resize(n *element.Node, styles map[string]map[string]string) *element.Node {
-	n.Properties.Width = c.Width
-	n.Properties.Height = c.Height
-	n.Parent.Properties.Width = c.Width
-	n.Parent.Properties.Height = c.Height
-	doc := c.ComputeNodeStyle(*n)
-	doc = initNodes(&doc, styles)
-	return &doc
-}
-
 // gen id's via a tree so they stay the same
-func (c *CSS) Map() Mapped {
-	doc := c.Document
+func Map(doc element.Node, c CSS) element.Node {
+	// doc := *c.Document
 	styleMap := make(map[string]map[string]string)
 	for a := 0; a < len(c.StyleSheets); a++ {
 		for key, styles := range c.StyleSheets[a] {
@@ -145,16 +130,11 @@ func (c *CSS) Map() Mapped {
 	}
 
 	// Inherit CSS styles from parent
-	inherit(doc, styleMap)
-	nodes := initNodes(doc, styleMap)
-	// node := c.ComputeNodeStyle(nodes)
+	inherit(&doc, styleMap)
+	nodes := initNodes(&doc, styleMap)
 	// Print(&node, 0)
 
-	d := Mapped{
-		Document: nodes,
-		StyleMap: styleMap,
-	}
-	return d
+	return nodes
 }
 
 func (c *CSS) Render(doc element.Node) []element.Node {
@@ -169,7 +149,7 @@ func (c *CSS) AddPlugin(plugin Plugin) {
 // this should cover the main parts of html but if some one wants for example drop shadows they
 // can make a plug in for it
 
-func (c *CSS) ComputeNodeStyle(n element.Node) element.Node {
+func ComputeNodeStyle(n element.Node, c CSS) element.Node {
 	plugins := c.Plugins
 	styleMap := n.Style
 
@@ -268,7 +248,7 @@ func (c *CSS) ComputeNodeStyle(n element.Node) element.Node {
 	var childYOffset float32
 	for i, v := range n.Children {
 		v.Parent = &n
-		n.Children[i] = c.ComputeNodeStyle(v)
+		n.Children[i] = ComputeNodeStyle(v, c)
 		if styleMap["height"] == "" {
 			if n.Children[i].Style["position"] != "absolute" && n.Children[i].Properties.Y > childYOffset {
 				childYOffset = n.Children[i].Properties.Y
@@ -295,7 +275,7 @@ func (c *CSS) ComputeNodeStyle(n element.Node) element.Node {
 			}
 		}
 		if matches {
-			n = v.Handler(&n)
+			n = v.Handler(n)
 		}
 	}
 
@@ -448,10 +428,6 @@ func initNodes(n *element.Node, styleMap map[string]map[string]string) element.N
 
 			n.Children[i] = cn
 
-			if len(n.Children) > 1 {
-				cn.PrevSibling = &n.Children[i]
-				n.Children[i].NextSibling = &cn
-			}
 		}
 	}
 
