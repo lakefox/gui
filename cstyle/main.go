@@ -61,6 +61,7 @@ func (c *CSS) CreateDocument(doc *html.Node) element.Node {
 				Height: c.Height,
 				EM:     16,
 				Type:   3,
+				Node:   &html.Node{},
 			},
 
 			Style: map[string]string{
@@ -85,7 +86,7 @@ func (c *CSS) CreateDocument(doc *html.Node) element.Node {
 			i++
 		}
 	}
-	return node
+	return initNodes(&node, *c)
 }
 
 func CreateNode(parent element.Node, n *html.Node, slug string) element.Node {
@@ -100,6 +101,24 @@ func CreateNode(parent element.Node, n *html.Node, slug string) element.Node {
 			Node: n,
 		},
 	}
+	for _, attr := range n.Attr {
+		if attr.Key == "class" {
+			classes := strings.Split(attr.Val, " ")
+			for _, class := range classes {
+				node.ClassList.Add(class)
+			}
+		} else if attr.Key == "id" {
+			node.Id = attr.Val
+		} else if attr.Key == "contenteditable" && (attr.Val == "" || attr.Val == "true") {
+			node.Properties.Editable = true
+		} else if attr.Key == "href" {
+			node.Href = attr.Val
+		} else if attr.Key == "src" {
+			node.Src = attr.Val
+		} else if attr.Key == "title" {
+			node.Title = attr.Val
+		}
+	}
 	i := 0
 	for child := n.FirstChild; child != nil; child = child.NextSibling {
 		if child.Type == html.ElementNode {
@@ -110,31 +129,57 @@ func CreateNode(parent element.Node, n *html.Node, slug string) element.Node {
 	return node
 }
 
-// gen id's via a tree so they stay the same
-func Map(doc element.Node, c CSS) element.Node {
-	// doc := *c.Document
-	styleMap := make(map[string]map[string]string)
-	for a := 0; a < len(c.StyleSheets); a++ {
-		for key, styles := range c.StyleSheets[a] {
-			matching := doc.QuerySelectorAll(key)
-			for _, v := range *matching {
-				if v.Properties.Type == html.ElementNode {
-					if styleMap[v.Properties.Id] == nil {
-						styleMap[v.Properties.Id] = styles
-					} else {
-						styleMap[v.Properties.Id] = utils.Merge(styleMap[v.Properties.Id], styles)
-					}
-				}
+var inheritedProps = []string{
+	"color",
+	"cursor",
+	"font",
+	"font-family",
+	"font-size",
+	"font-style",
+	"font-weight",
+	"letter-spacing",
+	"line-height",
+	"text-align",
+	"text-indent",
+	"text-justify",
+	"text-shadow",
+	"text-transform",
+	"visibility",
+	"word-spacing",
+	"display",
+}
+
+func (c *CSS) GetStyles(n element.Node) map[string]string {
+	styles := map[string]string{}
+	if n.Parent != nil {
+		ps := c.GetStyles(*n.Parent)
+		for _, v := range inheritedProps {
+			if ps[v] != "" {
+				styles[v] = ps[v]
 			}
 		}
+
 	}
 
-	// Inherit CSS styles from parent
-	inherit(&doc, styleMap)
-	nodes := initNodes(&doc, styleMap)
-	// Print(&node, 0)
+	for _, styleSheet := range c.StyleSheets {
+		for selector := range styleSheet {
+			// fmt.Println(selector, n.Properties.Id)
+			if element.TestSelector(selector, &n) {
+				for k, v := range styleSheet[selector] {
+					styles[k] = v
+				}
+			}
 
-	return nodes
+		}
+	}
+	inline := parser.ParseStyleAttribute(n.GetAttribute("style") + ";")
+	styles = utils.Merge(styles, inline)
+
+	for k, v := range n.Style {
+		styles[k] = v
+	}
+
+	return styles
 }
 
 func (c *CSS) Render(doc element.Node) []element.Node {
@@ -149,8 +194,9 @@ func (c *CSS) AddPlugin(plugin Plugin) {
 // this should cover the main parts of html but if some one wants for example drop shadows they
 // can make a plug in for it
 
-func ComputeNodeStyle(n element.Node, c CSS) element.Node {
+func (c *CSS) ComputeNodeStyle(n element.Node) element.Node {
 	plugins := c.Plugins
+	n.Style = c.GetStyles(n)
 	styleMap := n.Style
 
 	if styleMap["display"] == "none" {
@@ -248,7 +294,7 @@ func ComputeNodeStyle(n element.Node, c CSS) element.Node {
 	var childYOffset float32
 	for i, v := range n.Children {
 		v.Parent = &n
-		n.Children[i] = ComputeNodeStyle(v, c)
+		n.Children[i] = c.ComputeNodeStyle(v)
 		if styleMap["height"] == "" {
 			if n.Children[i].Style["position"] != "absolute" && n.Children[i].Properties.Y > childYOffset {
 				childYOffset = n.Children[i].Properties.Y
@@ -282,55 +328,8 @@ func ComputeNodeStyle(n element.Node, c CSS) element.Node {
 	return n
 }
 
-var inheritedProps = []string{
-	"color",
-	"cursor",
-	"font",
-	"font-family",
-	"font-size",
-	"font-style",
-	"font-weight",
-	"letter-spacing",
-	"line-height",
-	"text-align",
-	"text-indent",
-	"text-justify",
-	"text-shadow",
-	"text-transform",
-	"visibility",
-	"word-spacing",
-	"display",
-}
-
-func inherit(n *element.Node, styleMap map[string]map[string]string) {
-	if n.Properties.Type == html.ElementNode {
-		pId := n.Parent.Properties.Id
-		if len(pId) > 0 {
-			if styleMap[n.Properties.Id] == nil {
-				styleMap[n.Properties.Id] = make(map[string]string)
-			}
-			if styleMap[pId] == nil {
-				styleMap[pId] = make(map[string]string)
-			}
-
-			inline := parser.ParseStyleAttribute(n.GetAttribute("style") + ";")
-			styleMap[n.Properties.Id] = utils.Merge(styleMap[n.Properties.Id], inline)
-			for _, v := range inheritedProps {
-				if styleMap[n.Properties.Id][v] == "" && styleMap[pId][v] != "" {
-					styleMap[n.Properties.Id][v] = styleMap[pId][v]
-				}
-			}
-		}
-		utils.SetMP(n.Properties.Id, styleMap)
-	}
-
-	for _, v := range n.Children {
-		inherit(&v, styleMap)
-	}
-}
-
-func initNodes(n *element.Node, styleMap map[string]map[string]string) element.Node {
-	n.Style = styleMap[n.Properties.Id]
+func initNodes(n *element.Node, c CSS) element.Node {
+	n.Style = c.GetStyles(*n)
 	border, err := CompleteBorder(n.Style)
 	if err == nil {
 		n.Properties.Border = border
@@ -414,17 +413,11 @@ func initNodes(n *element.Node, styleMap map[string]map[string]string) element.N
 	n.Properties.Text.WordSpacing = int(wordSpacing)
 	n.Properties.Text.LetterSpacing = int(letterSpacing)
 
-	for _, v := range n.Properties.Node.Attr {
-		if v.Key == "contenteditable" && (v.Val == "" || v.Val == "true") {
-			n.Properties.Editable = true
-		}
-	}
-
 	n.Properties.Colors = color.Parse(n.Style)
-	for i, c := range n.Children {
-		if c.Properties.Type == html.ElementNode {
-			c.Parent = n
-			cn := initNodes(&c, styleMap)
+	for i, ch := range n.Children {
+		if ch.Properties.Type == html.ElementNode {
+			ch.Parent = n
+			cn := initNodes(&ch, c)
 
 			n.Children[i] = cn
 
@@ -477,29 +470,6 @@ func CompleteBorder(cssProperties map[string]string) (element.Border, error) {
 	return border, err
 }
 
-func Print(n *element.Node, indent int) {
-	pre := strings.Repeat("\t", indent)
-	fmt.Printf(pre+"%s\n", n.Properties.Id)
-	fmt.Printf(pre+"-- Parent: %d\n", n.Parent.Properties.Id)
-	fmt.Printf(pre+"\t-- Width: %f\n", n.Parent.Properties.Width)
-	fmt.Printf(pre+"\t-- Height: %f\n", n.Parent.Properties.Height)
-	fmt.Printf(pre + "-- Colors:\n")
-	fmt.Printf(pre+"\t-- Font: %f\n", n.Properties.Colors.Font)
-	fmt.Printf(pre+"\t-- Background: %f\n", n.Properties.Colors.Background)
-	fmt.Printf(pre+"-- Children: %d\n", len(n.Children))
-	fmt.Printf(pre+"-- EM: %f\n", n.Properties.EM)
-	fmt.Printf(pre+"-- X: %f\n", n.Properties.X)
-	fmt.Printf(pre+"-- Y: %f\n", n.Properties.Y)
-	fmt.Printf(pre+"-- Width: %f\n", n.Properties.Width)
-	fmt.Printf(pre+"-- Height: %f\n", n.Properties.Height)
-	fmt.Printf(pre+"-- Border: %#v\n", n.Properties.Border)
-	fmt.Printf(pre+"-- Styles: %#v\n", n.Style)
-
-	for _, v := range n.Children {
-		Print(&v, indent+1)
-	}
-}
-
 func flatten(n element.Node) []element.Node {
 	var nodes []element.Node
 	nodes = append(nodes, n)
@@ -536,9 +506,9 @@ func genTextNode(n *element.Node, width, height *float32) {
 		dt, _ = utils.ConvertToPixels(n.Style["text-decoration-thickness"], n.Properties.EM, *width)
 	}
 
-	c, _ := color.Font(n.Style)
+	col, _ := color.Font(n.Style)
 
-	n.Properties.Text.Color = c
+	n.Properties.Text.Color = col
 	n.Properties.Text.Align = n.Style["text-align"]
 	n.Properties.Text.WordBreak = wb
 	n.Properties.Text.WordSpacing = int(wordSpacing)

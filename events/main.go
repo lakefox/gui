@@ -71,6 +71,7 @@ func loop(el *element.Node, data RLData, eventTracker *map[string]element.EventL
 		if el.Properties.Y < data.MP.Y && el.Properties.Y+el.Properties.Height > data.MP.Y {
 			// Mouse is over element
 			isMouseOver = true
+			el.Properties.Hover = true
 
 			if data.LB && !evt.MouseDown {
 				evt.MouseDown = true
@@ -169,6 +170,7 @@ func loop(el *element.Node, data RLData, eventTracker *map[string]element.EventL
 		evt.MouseEnter = false
 		evt.MouseOver = false
 		evt.MouseLeave = true
+		el.Properties.Hover = false
 		if el.OnMouseLeave != nil {
 			el.OnMouseLeave(evt)
 		}

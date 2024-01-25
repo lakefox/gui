@@ -18,10 +18,9 @@ func main() {
 		buttons := row.QuerySelectorAll(".button")
 		b := *buttons
 		for i := range b {
-
 			b[i].AddEventListener("click", func(e element.Event) {
 				fmt.Println("Click: ", e.Target.InnerText)
-				b[i].InnerText = "mason"
+				e.Target.InnerText = "mason"
 			})
 		}
 
@@ -29,5 +28,11 @@ func main() {
 		editor.AddEventListener("keypress", func(e element.Event) {
 			fmt.Println("key", editor.Value, editor.Properties.Id)
 		})
+		div := document.CreateElement("div")
+		div.InnerText = "test"
+		div.ClassList.Add("button")
+		row.Children = []element.Node{}
+		row.AppendChild(div)
 	})
+
 }

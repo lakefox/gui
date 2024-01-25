@@ -45,35 +45,35 @@ func AddMarginAndPadding(styleMap map[string]map[string]string, id string, width
 	return width, height, marginWidth, marginHeight
 }
 
-func SetMP(id string, styleMap map[string]map[string]string) {
-	if styleMap[id]["margin"] != "" {
-		left, right, top, bottom := convertMarginToIndividualProperties(styleMap[id]["margin"])
-		if styleMap[id]["margin-left"] == "" {
-			styleMap[id]["margin-left"] = left
+func SetMP(styleMap map[string]string) {
+	if styleMap["margin"] != "" {
+		left, right, top, bottom := convertMarginToIndividualProperties(styleMap["margin"])
+		if styleMap["margin-left"] == "" {
+			styleMap["margin-left"] = left
 		}
-		if styleMap[id]["margin-right"] == "" {
-			styleMap[id]["margin-right"] = right
+		if styleMap["margin-right"] == "" {
+			styleMap["margin-right"] = right
 		}
-		if styleMap[id]["margin-top"] == "" {
-			styleMap[id]["margin-top"] = top
+		if styleMap["margin-top"] == "" {
+			styleMap["margin-top"] = top
 		}
-		if styleMap[id]["margin-bottom"] == "" {
-			styleMap[id]["margin-bottom"] = bottom
+		if styleMap["margin-bottom"] == "" {
+			styleMap["margin-bottom"] = bottom
 		}
 	}
-	if styleMap[id]["padding"] != "" {
-		left, right, top, bottom := convertMarginToIndividualProperties(styleMap[id]["padding"])
-		if styleMap[id]["padding-left"] == "" {
-			styleMap[id]["padding-left"] = left
+	if styleMap["padding"] != "" {
+		left, right, top, bottom := convertMarginToIndividualProperties(styleMap["padding"])
+		if styleMap["padding-left"] == "" {
+			styleMap["padding-left"] = left
 		}
-		if styleMap[id]["padding-right"] == "" {
-			styleMap[id]["padding-right"] = right
+		if styleMap["padding-right"] == "" {
+			styleMap["padding-right"] = right
 		}
-		if styleMap[id]["padding-top"] == "" {
-			styleMap[id]["padding-top"] = top
+		if styleMap["padding-top"] == "" {
+			styleMap["padding-top"] = top
 		}
-		if styleMap[id]["padding-bottom"] == "" {
-			styleMap[id]["padding-bottom"] = bottom
+		if styleMap["padding-bottom"] == "" {
+			styleMap["padding-bottom"] = bottom
 		}
 	}
 }

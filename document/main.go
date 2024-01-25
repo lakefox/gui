@@ -28,7 +28,7 @@ type Window struct {
 }
 
 func Open(index string, script func(*element.Node)) {
-	d := Parse(index)
+	d := parse(index)
 
 	wm := window.NewWindowManager()
 	wm.FPS = true
@@ -58,8 +58,10 @@ func Open(index string, script func(*element.Node)) {
 	for _, v := range d.StyleTags {
 		css.StyleTag(v)
 	}
-	nodes := cstyle.Map(css.CreateDocument(d.DOM), css)
+	nodes := css.CreateDocument(d.DOM)
 	script(&nodes)
+
+	// fmt.Println(nodes.Style)
 
 	evts := map[string]element.EventList{}
 
@@ -82,14 +84,18 @@ func Open(index string, script func(*element.Node)) {
 			css.Width = float32(screenWidth)
 			css.Height = float32(screenHeight)
 
-			nodes = cstyle.Map(css.CreateDocument(d.DOM), css)
+			nodes = css.CreateDocument(d.DOM)
 			script(&nodes)
 		}
 
 		eventStore = events.GetEvents(&nodes, eventStore)
-		cstyle.ComputeNodeStyle(nodes, css)
-		cstyle.ComputeNodeStyle(nodes, css)
-		cstyle.ComputeNodeStyle(nodes, css)
+		// the issue is that the computestyle function references elements using the *parent point.
+		// that references the nodes data so the orginal data get modified not the one passed through
+		// I need to come up with a way to only use it as a refernce
+		// this "hack" will cause issue, I am going insane trying to fix it
+		css.ComputeNodeStyle(nodes)
+		css.ComputeNodeStyle(nodes)
+		css.ComputeNodeStyle(nodes)
 		rd := css.Render(nodes)
 		wm.LoadTextures(rd)
 		wm.Draw(rd)
@@ -100,7 +106,11 @@ func Open(index string, script func(*element.Node)) {
 	}
 }
 
-func Parse(path string) Window {
+func CreateElement(t string) element.Node {
+	return element.Node{TagName: t, Properties: element.Properties{Node: &html.Node{}}}
+}
+
+func parse(path string) Window {
 	file, err := os.Open(path)
 	check(err)
 	defer file.Close()

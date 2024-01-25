@@ -17,6 +17,11 @@ type Node struct {
 	Parent    *Node
 	Children  []Node
 	Style     map[string]string
+	Id        string
+	ClassList ClassList
+	Href      string
+	Src       string
+	Title     string
 
 	ScrollY       float32
 	Value         string
@@ -50,8 +55,30 @@ type Properties struct {
 	Focusable      bool
 	Focused        bool
 	Editable       bool
+	Hover          bool
 	Selected       []float32
 	Test           string
+}
+
+type ClassList struct {
+	Classes []string
+	Value   string
+}
+
+func (c *ClassList) Add(class string) {
+	c.Classes = append(c.Classes, class)
+	c.Value = strings.Join(c.Classes, " ")
+}
+
+func (c *ClassList) Remove(class string) {
+	for i, v := range c.Classes {
+		if v == class {
+			c.Classes = append(c.Classes[:i], c.Classes[i+1:]...)
+			break
+		}
+	}
+
+	c.Value = strings.Join(c.Classes, " ")
 }
 
 type Margin struct {
@@ -172,7 +199,26 @@ func (n *Node) QuerySelector(selectString string) *Node {
 func TestSelector(selectString string, n *Node) bool {
 	parts := strings.Split(selectString, ">")
 
-	selectors := selector.GetCSSSelectors(n.Properties.Node, []string{})
+	s := []string{}
+	if n.Properties.Focusable {
+		if n.Properties.Focused {
+			s = append(s, ":focus")
+		}
+	}
+
+	if n.Properties.Hover {
+		s = append(s, ":hover")
+	}
+
+	classes := n.ClassList.Classes
+
+	for _, v := range classes {
+		s = append(s, "."+v)
+	}
+
+	s = append(s, "#"+n.Id)
+	// fmt.Println(n.Properties.Node)
+	selectors := selector.GetCSSSelectors(n.Properties.Node, s)
 
 	part := selector.SplitSelector(strings.TrimSpace(parts[len(parts)-1]))
 
@@ -182,6 +228,25 @@ func TestSelector(selectString string, n *Node) bool {
 		return has
 	} else {
 		return TestSelector(strings.Join(parts[0:len(parts)-1], ">"), n.Parent)
+	}
+}
+
+func (n *Node) AppendChild(c Node) {
+	c.Parent = n
+	n.Children = append(n.Children, c)
+}
+
+func (n *Node) Focus() {
+	if n.Properties.Focusable {
+		n.Properties.Focused = true
+		n.ClassList.Add(":focus")
+	}
+}
+
+func (n *Node) Blur() {
+	if n.Properties.Focusable {
+		n.Properties.Focused = false
+		n.ClassList.Remove(":focus")
 	}
 }
 
