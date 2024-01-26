@@ -23,7 +23,7 @@ import (
 type Plugin struct {
 	Styles  map[string]string
 	Level   int
-	Handler func(element.Node) element.Node
+	Handler func(*element.Node)
 }
 
 type CSS struct {
@@ -194,9 +194,9 @@ func (c *CSS) AddPlugin(plugin Plugin) {
 // this should cover the main parts of html but if some one wants for example drop shadows they
 // can make a plug in for it
 
-func (c *CSS) ComputeNodeStyle(n element.Node) element.Node {
+func (c *CSS) ComputeNodeStyle(n *element.Node) *element.Node {
 	plugins := c.Plugins
-	n.Style = c.GetStyles(n)
+	n.Style = c.GetStyles(*n)
 	styleMap := n.Style
 
 	if styleMap["display"] == "none" {
@@ -213,7 +213,7 @@ func (c *CSS) ComputeNodeStyle(n element.Node) element.Node {
 	var top, left, right, bottom bool = false, false, false, false
 
 	if styleMap["position"] == "absolute" {
-		base := GetPositionOffsetNode(&n)
+		base := GetPositionOffsetNode(n)
 		if styleMap["top"] != "" {
 			v, _ := utils.ConvertToPixels(styleMap["top"], float32(n.Properties.EM), n.Parent.Properties.Width)
 			y = v + base.Properties.Y
@@ -278,7 +278,7 @@ func (c *CSS) ComputeNodeStyle(n element.Node) element.Node {
 		if len(n.InnerText) > 0 {
 			innerWidth := width
 			innerHeight := height
-			genTextNode(&n, &innerWidth, &innerHeight)
+			genTextNode(n, &innerWidth, &innerHeight)
 			width = innerWidth + n.Properties.Padding.Left + n.Properties.Padding.Right
 			height = innerHeight
 		}
@@ -293,8 +293,8 @@ func (c *CSS) ComputeNodeStyle(n element.Node) element.Node {
 
 	var childYOffset float32
 	for i, v := range n.Children {
-		v.Parent = &n
-		n.Children[i] = c.ComputeNodeStyle(v)
+		v.Parent = n
+		n.Children[i] = *c.ComputeNodeStyle(&v)
 		if styleMap["height"] == "" {
 			if n.Children[i].Style["position"] != "absolute" && n.Children[i].Properties.Y > childYOffset {
 				childYOffset = n.Children[i].Properties.Y
@@ -321,7 +321,7 @@ func (c *CSS) ComputeNodeStyle(n element.Node) element.Node {
 			}
 		}
 		if matches {
-			n = v.Handler(n)
+			v.Handler(n)
 		}
 	}
 
@@ -329,6 +329,21 @@ func (c *CSS) ComputeNodeStyle(n element.Node) element.Node {
 }
 
 func initNodes(n *element.Node, c CSS) element.Node {
+	n = InitNode(n, c)
+	for i, ch := range n.Children {
+		if ch.Properties.Type == html.ElementNode {
+			ch.Parent = n
+			cn := initNodes(&ch, c)
+
+			n.Children[i] = cn
+
+		}
+	}
+
+	return *n
+}
+
+func InitNode(n *element.Node, c CSS) *element.Node {
 	n.Style = c.GetStyles(*n)
 	border, err := CompleteBorder(n.Style)
 	if err == nil {
@@ -414,17 +429,7 @@ func initNodes(n *element.Node, c CSS) element.Node {
 	n.Properties.Text.LetterSpacing = int(letterSpacing)
 
 	n.Properties.Colors = color.Parse(n.Style)
-	for i, ch := range n.Children {
-		if ch.Properties.Type == html.ElementNode {
-			ch.Parent = n
-			cn := initNodes(&ch, c)
-
-			n.Children[i] = cn
-
-		}
-	}
-
-	return *n
+	return n
 }
 
 func parseBorderShorthand(borderShorthand string) (element.Border, error) {

@@ -93,9 +93,7 @@ func Open(index string, script func(*element.Node)) {
 		// that references the nodes data so the orginal data get modified not the one passed through
 		// I need to come up with a way to only use it as a refernce
 		// this "hack" will cause issue, I am going insane trying to fix it
-		css.ComputeNodeStyle(nodes)
-		css.ComputeNodeStyle(nodes)
-		css.ComputeNodeStyle(nodes)
+		css.ComputeNodeStyle(&nodes)
 		rd := css.Render(nodes)
 		wm.LoadTextures(rd)
 		wm.Draw(rd)
@@ -107,7 +105,9 @@ func Open(index string, script func(*element.Node)) {
 }
 
 func CreateElement(t string) element.Node {
-	return element.Node{TagName: t, Properties: element.Properties{Node: &html.Node{}}}
+	n := element.Node{TagName: t, Properties: element.Properties{Node: &html.Node{}}}
+	// cstyle.InitNode()
+	return n
 }
 
 func parse(path string) Window {

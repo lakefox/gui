@@ -122,6 +122,7 @@ type Text struct {
 	WordBreak           string
 	EM                  int
 	X                   int
+	LoadedFont          string
 }
 
 type Shadow struct {

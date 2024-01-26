@@ -12,7 +12,7 @@ func Init() cstyle.Plugin {
 			"position": "*",
 		},
 		Level: 0,
-		Handler: func(n element.Node) element.Node {
+		Handler: func(n *element.Node) {
 			styleMap := n.Style
 			width, height := n.Properties.Width, n.Properties.Height
 			x, y := n.Properties.X, n.Properties.Y
@@ -20,7 +20,7 @@ func Init() cstyle.Plugin {
 			var top, left, right, bottom bool = false, false, false, false
 
 			if styleMap["position"] == "absolute" {
-				base := GetPositionOffsetNode(&n)
+				base := GetPositionOffsetNode(n)
 				if styleMap["top"] != "" {
 					v, _ := utils.ConvertToPixels(styleMap["top"], float32(n.Properties.EM), n.Parent.Properties.Width)
 					y = v + base.Properties.Y
@@ -84,7 +84,6 @@ func Init() cstyle.Plugin {
 			n.Properties.Y = y
 			n.Properties.Width = width
 			n.Properties.Height = height
-			return n
 		},
 	}
 }

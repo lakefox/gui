@@ -18,24 +18,27 @@ func Init() cstyle.Plugin {
 			"flex-direction":  "*",
 		},
 		Level: 2,
-		Handler: func(n element.Node) element.Node {
+		Handler: func(n *element.Node) {
 
 			// Brief: justify does not align the bottom row correctly
 			//        y axis also needs to be done
 			verbs := strings.Split(n.Style["flex-direction"], "-")
 
-			orderedNode := order(n, n.Children, verbs[0], len(verbs) > 1, n.Style["flex-wrap"] == "wrap")
+			orderedNode := order(*n, n.Children, verbs[0], len(verbs) > 1, n.Style["flex-wrap"] == "wrap")
 
-			var i int
+			// var i int
 
 			colWidth := n.Properties.Width / float32(len(orderedNode))
 
 			var xOffset, yOffset float32
-			if n.Style["justify-content"] == "space-evenly" {
-				b, _ := utils.ConvertToPixels(n.Children[i].Properties.Border.Width, n.Children[i].Properties.EM, n.Properties.Width)
-				cwV := utils.Max((colWidth-(n.Children[i].Properties.Width+(b*2)))/2, 0)
-				xOffset = cwV
-			}
+			// if n.Style["justify-content"] == "space-evenly" {
+			// 	b, _ := utils.ConvertToPixels(n.Children[i].Properties.Border.Width, n.Children[i].Properties.EM, n.Properties.Width)
+			// 	cwV := utils.Max((colWidth-(n.Children[i].Properties.Width+(b*2)))/2, 0)
+			// 	xOffset = cwV
+			// }
+
+			posTrack := map[int]int{}
+			p := 0
 
 			for a, column := range orderedNode {
 				var maxColumnHeight float32
@@ -45,7 +48,15 @@ func Init() cstyle.Plugin {
 
 				yOffset = n.Children[0].Properties.Y
 				for _, item := range column {
-					n.Children[i] = item
+					var i int
+					for c, v := range n.Children {
+						if v.Properties.Id == item.Properties.Id {
+							i = c
+						}
+					}
+					posTrack[p] = i
+					p++
+					// n.Children[i] = item
 					if n.Style["justify-content"] == "space-between" {
 						cwV := utils.Max((colWidth - (item.Properties.Width)), 0)
 						if a == 0 {
@@ -101,8 +112,9 @@ func Init() cstyle.Plugin {
 				height := max - min
 				rowHeight := ((n.Properties.Height - height) / rows)
 
-				for i := range n.Children {
-					row := float32(int(i % int(rows)))
+				for e := range n.Children {
+					i := posTrack[e]
+					row := float32(int(e % int(rows)))
 					if row == 0 {
 						col++
 					}
@@ -128,7 +140,6 @@ func Init() cstyle.Plugin {
 					}
 				}
 			}
-			return n
 		},
 	}
 }
