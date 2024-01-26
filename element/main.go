@@ -43,6 +43,7 @@ type Properties struct {
 	Id             string
 	X              float32
 	Y              float32
+	Hash           string
 	Width          float32
 	Height         float32
 	Margin         Margin

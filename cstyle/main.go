@@ -12,6 +12,7 @@ import (
 	"gui/font"
 	"gui/parser"
 	"gui/utils"
+	"hash/fnv"
 	"os"
 	"sort"
 	"strconv"
@@ -194,9 +195,28 @@ func (c *CSS) AddPlugin(plugin Plugin) {
 // this should cover the main parts of html but if some one wants for example drop shadows they
 // can make a plug in for it
 
+func hash(styles map[string]string) string {
+	// Create a new FNV-1a hash
+	hasher := fnv.New32a()
+
+	// Concatenate all values into a single string
+	var concatenatedValues string
+	for key, val := range styles {
+		concatenatedValues += key + val
+	}
+	hasher.Write([]byte(concatenatedValues))
+
+	return string(hasher.Sum32())
+}
+
 func (c *CSS) ComputeNodeStyle(n *element.Node) *element.Node {
 	plugins := c.Plugins
-	n.Style = c.GetStyles(*n)
+	hv := hash(n.Style)
+	if n.Properties.Hash != hv {
+		// this is kinda a sloppy way to do this but it works ig
+		n.Style = c.GetStyles(*n)
+		n.Properties.Hash = hv
+	}
 	styleMap := n.Style
 
 	if styleMap["display"] == "none" {
