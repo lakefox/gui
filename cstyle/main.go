@@ -150,6 +150,16 @@ var inheritedProps = []string{
 	"display",
 }
 
+// need to get rid of the .props for the most part all styles should be computed dynamically
+// can keep like focusable and stuff that describes the element
+
+// currently the append child does not work due to the props and other stuff not existing so it fails
+// moving to a real time style compute would fix that
+
+// :hover is parsed correctly but because the hash func doesn't invalidate it becuase the val
+// is updated in the props. change to append :hover to style to create the effect
+//							or merge the class with the styles? idk have to think more
+
 func (c *CSS) GetStyles(n element.Node) map[string]string {
 	styles := map[string]string{}
 	for k, v := range n.Style {
@@ -195,17 +205,11 @@ func (c *CSS) AddPlugin(plugin Plugin) {
 	c.Plugins = append(c.Plugins, plugin)
 }
 
-// make a way of breaking each section out into it's own module so people can add their own.
-// this should cover the main parts of html but if some one wants for example drop shadows they
-// can make a plug in for it
-
 func hash(n *element.Node) string {
 	// Create a new FNV-1a hash
 	hasher := fnv.New32a()
 
 	// Concatenate all values into a single string
-
-	// need to get rid of the .props for the most part all styles should be computed dynamically
 	var concatenatedValues string
 	for key, val := range n.Style {
 		concatenatedValues += key + val
