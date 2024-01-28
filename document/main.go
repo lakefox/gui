@@ -27,7 +27,11 @@ type Window struct {
 	Title       string
 }
 
-func Open(index string, script func(*element.Node)) {
+type Document struct {
+	CSS cstyle.CSS
+}
+
+func (doc Document) Open(index string, script func(*element.Node)) {
 	d := parse(index)
 
 	wm := window.NewWindowManager()
@@ -41,24 +45,26 @@ func Open(index string, script func(*element.Node)) {
 	wm.OpenWindow(screenWidth, screenHeight)
 	defer wm.CloseWindow()
 
-	css := cstyle.CSS{
+	doc.CSS = cstyle.CSS{
 		Width:  800,
 		Height: 450,
 	}
-	css.StyleSheet("./master.css")
+	doc.CSS.StyleSheet("./master.css")
 	// css.AddPlugin(position.Init())
-	css.AddPlugin(inline.Init())
-	css.AddPlugin(block.Init())
-	css.AddPlugin(flex.Init())
+	doc.CSS.AddPlugin(inline.Init())
+	doc.CSS.AddPlugin(block.Init())
+	doc.CSS.AddPlugin(flex.Init())
 
 	for _, v := range d.StyleSheets {
-		css.StyleSheet(v)
+		doc.CSS.StyleSheet(v)
 	}
 
 	for _, v := range d.StyleTags {
-		css.StyleTag(v)
+		doc.CSS.StyleTag(v)
 	}
-	nodes := css.CreateDocument(d.DOM)
+
+	nodes := doc.CSS.CreateDocument(d.DOM)
+
 	script(&nodes)
 
 	// fmt.Println(nodes.Style)
@@ -81,10 +87,10 @@ func Open(index string, script func(*element.Node)) {
 			screenWidth = newWidth
 			screenHeight = newHeight
 
-			css.Width = float32(screenWidth)
-			css.Height = float32(screenHeight)
+			doc.CSS.Width = float32(screenWidth)
+			doc.CSS.Height = float32(screenHeight)
 
-			nodes = css.CreateDocument(d.DOM)
+			nodes = doc.CSS.CreateDocument(d.DOM)
 			script(&nodes)
 		}
 
@@ -93,8 +99,8 @@ func Open(index string, script func(*element.Node)) {
 		// that references the nodes data so the orginal data get modified not the one passed through
 		// I need to come up with a way to only use it as a refernce
 		// this "hack" will cause issue, I am going insane trying to fix it
-		css.ComputeNodeStyle(&nodes)
-		rd := css.Render(nodes)
+		doc.CSS.ComputeNodeStyle(&nodes)
+		rd := doc.CSS.Render(nodes)
 		wm.LoadTextures(rd)
 		wm.Draw(rd)
 
@@ -104,9 +110,9 @@ func Open(index string, script func(*element.Node)) {
 	}
 }
 
-func CreateElement(t string) element.Node {
+func (doc Document) CreateElement(t string) element.Node {
 	n := element.Node{TagName: t, Properties: element.Properties{Node: &html.Node{}}}
-	// cstyle.InitNode()
+	cstyle.InitNode(&n, doc.CSS)
 	return n
 }
 

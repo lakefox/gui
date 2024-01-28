@@ -62,3 +62,7 @@ body {
   border: 2px solid black;
   font-weight: 900;
 }
+
+.button:hover {
+  background-color: red;
+}

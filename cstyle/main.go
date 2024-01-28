@@ -152,6 +152,9 @@ var inheritedProps = []string{
 
 func (c *CSS) GetStyles(n element.Node) map[string]string {
 	styles := map[string]string{}
+	for k, v := range n.Style {
+		styles[k] = v
+	}
 	if n.Parent != nil {
 		ps := c.GetStyles(*n.Parent)
 		for _, v := range inheritedProps {
@@ -165,6 +168,10 @@ func (c *CSS) GetStyles(n element.Node) map[string]string {
 	for _, styleSheet := range c.StyleSheets {
 		for selector := range styleSheet {
 			// fmt.Println(selector, n.Properties.Id)
+			if strings.Contains(selector, "hover") && element.TestSelector(selector, &n) {
+				fmt.Println(selector, n.Properties.Id, styleSheet[selector])
+
+			}
 			if element.TestSelector(selector, &n) {
 				for k, v := range styleSheet[selector] {
 					styles[k] = v
@@ -175,10 +182,7 @@ func (c *CSS) GetStyles(n element.Node) map[string]string {
 	}
 	inline := parser.ParseStyleAttribute(n.GetAttribute("style") + ";")
 	styles = utils.Merge(styles, inline)
-
-	for k, v := range n.Style {
-		styles[k] = v
-	}
+	// add hover and focus css events
 
 	return styles
 }
@@ -195,23 +199,25 @@ func (c *CSS) AddPlugin(plugin Plugin) {
 // this should cover the main parts of html but if some one wants for example drop shadows they
 // can make a plug in for it
 
-func hash(styles map[string]string) string {
+func hash(n *element.Node) string {
 	// Create a new FNV-1a hash
 	hasher := fnv.New32a()
 
 	// Concatenate all values into a single string
+
+	// need to get rid of the .props for the most part all styles should be computed dynamically
 	var concatenatedValues string
-	for key, val := range styles {
+	for key, val := range n.Style {
 		concatenatedValues += key + val
 	}
 	hasher.Write([]byte(concatenatedValues))
 
-	return string(hasher.Sum32())
+	return string(rune(hasher.Sum32()))
 }
 
 func (c *CSS) ComputeNodeStyle(n *element.Node) *element.Node {
 	plugins := c.Plugins
-	hv := hash(n.Style)
+	hv := hash(n)
 	if n.Properties.Hash != hv {
 		// this is kinda a sloppy way to do this but it works ig
 		n.Style = c.GetStyles(*n)

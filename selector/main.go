@@ -33,7 +33,7 @@ func SplitSelector(s string) []string {
 
 	for _, char := range s {
 		switch char {
-		case '.', '#', '[', ']':
+		case '.', '#', '[', ']', ':':
 			if current != "" {
 				if string(char) == "]" {
 					current += string(char)
