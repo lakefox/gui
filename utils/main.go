@@ -13,69 +13,112 @@ import (
 	"golang.org/x/net/html"
 )
 
-func AddMarginAndPadding(styleMap map[string]map[string]string, id string, width, height float32) (float32, float32, float32, float32) {
-	fs := font.GetFontSize(styleMap[id])
-	if styleMap[id]["padding-left"] != "" || styleMap[id]["padding-right"] != "" {
-		l, _ := ConvertToPixels(styleMap[id]["padding-left"], fs, width)
-		r, _ := ConvertToPixels(styleMap[id]["padding-right"], fs, width)
-		width += l
-		width += r
-	}
-	if styleMap[id]["padding-top"] != "" || styleMap[id]["padding-bottom"] != "" {
-		t, _ := ConvertToPixels(styleMap[id]["padding-top"], fs, height)
-		b, _ := ConvertToPixels(styleMap[id]["padding-bottom"], fs, height)
-		height += t
-		height += b
-	}
-
-	var marginWidth, marginHeight float32 = width, height
-
-	if styleMap[id]["margin-left"] != "" || styleMap[id]["margin-right"] != "" {
-		l, _ := ConvertToPixels(styleMap[id]["margin-left"], fs, width)
-		r, _ := ConvertToPixels(styleMap[id]["margin-right"], fs, width)
-		marginWidth += l
-		marginWidth += r
-	}
-	if styleMap[id]["margin-top"] != "" || styleMap[id]["margin-bottom"] != "" {
-		t, _ := ConvertToPixels(styleMap[id]["margin-top"], fs, height)
-		b, _ := ConvertToPixels(styleMap[id]["margin-bottom"], fs, height)
-		marginHeight += t
-		marginHeight += b
-	}
-	return width, height, marginWidth, marginHeight
+type WidthHeight struct {
+	Width  float32
+	Height float32
 }
 
-func SetMP(styleMap map[string]string) {
-	if styleMap["margin"] != "" {
-		left, right, top, bottom := convertMarginToIndividualProperties(styleMap["margin"])
-		if styleMap["margin-left"] == "" {
-			styleMap["margin-left"] = left
-		}
-		if styleMap["margin-right"] == "" {
-			styleMap["margin-right"] = right
-		}
-		if styleMap["margin-top"] == "" {
-			styleMap["margin-top"] = top
-		}
-		if styleMap["margin-bottom"] == "" {
-			styleMap["margin-bottom"] = bottom
-		}
-	}
-	if styleMap["padding"] != "" {
-		left, right, top, bottom := convertMarginToIndividualProperties(styleMap["padding"])
-		if styleMap["padding-left"] == "" {
-			styleMap["padding-left"] = left
-		}
-		if styleMap["padding-right"] == "" {
-			styleMap["padding-right"] = right
-		}
-		if styleMap["padding-top"] == "" {
-			styleMap["padding-top"] = top
-		}
-		if styleMap["padding-bottom"] == "" {
-			styleMap["padding-bottom"] = bottom
+func GetWH(n element.Node) WidthHeight {
+	fs := font.GetFontSize(n.Style)
+
+	var pwh WidthHeight
+	if n.Parent != nil {
+		pwh = GetWH(*n.Parent)
+	} else {
+		pwh = WidthHeight{}
+		for _, attr := range n.Properties.Node.Attr {
+			val, _ := strconv.ParseFloat(attr.Val, 32)
+			if attr.Key == "Width" {
+				pwh.Width = float32(val)
+			}
+			if attr.Key == "Height" {
+				pwh.Height = float32(val)
+			}
 		}
 	}
+
+	width, _ := ConvertToPixels(n.Style["width"], fs, pwh.Width)
+	if n.Style["min-width"] != "" {
+		minWidth, _ := ConvertToPixels(n.Style["min-width"], fs, pwh.Width)
+		width = Max(width, minWidth)
+	}
+
+	if n.Style["max-width"] != "" {
+		maxWidth, _ := ConvertToPixels(n.Style["max-width"], fs, pwh.Width)
+		width = Min(width, maxWidth)
+	}
+
+	height, _ := ConvertToPixels(n.Style["height"], fs, pwh.Height)
+	if n.Style["min-height"] != "" {
+		minHeight, _ := ConvertToPixels(n.Style["min-height"], fs, pwh.Height)
+		height = Max(height, minHeight)
+	}
+
+	if n.Style["max-height"] != "" {
+		maxHeight, _ := ConvertToPixels(n.Style["max-height"], fs, pwh.Height)
+		height = Min(height, maxHeight)
+	}
+	return WidthHeight{
+		Width:  width,
+		Height: height,
+	}
+}
+
+func SetWH(width, height float32) {
+	// could have a calculated style so map[string]string{"computed":"width: 100;x: 100;etc..",}
+	// then make a function that can parse/update all of them as needed..
+	// might still run into the issue of things not always being updated
+}
+
+type MarginPadding struct {
+	Top    float32
+	Left   float32
+	Right  float32
+	Bottom float32
+}
+
+func GetMP(n element.Node, t string) MarginPadding {
+	fs := font.GetFontSize(n.Style)
+	m := MarginPadding{}
+
+	wh := GetWH(n)
+
+	if n.Style[t] != "" {
+		left, right, top, bottom := convertMarginToIndividualProperties(n.Style[t])
+		if n.Style[t+"-left"] == "" {
+			n.Style[t+"-left"] = left
+		}
+		if n.Style[t+"-right"] == "" {
+			n.Style[t+"-right"] = right
+		}
+		if n.Style[t+"-top"] == "" {
+			n.Style[t+"-top"] = top
+		}
+		if n.Style[t+"-bottom"] == "" {
+			n.Style[t+"-bottom"] = bottom
+		}
+	}
+	if n.Style[t+"-left"] != "" || n.Style[t+"-right"] != "" {
+		l, _ := ConvertToPixels(n.Style[t+"-left"], fs, wh.Width)
+		r, _ := ConvertToPixels(n.Style[t+"-right"], fs, wh.Width)
+		m.Left = l
+		m.Right = r
+	}
+	if n.Style[t+"-top"] != "" || n.Style[t+"-bottom"] != "" {
+		top, _ := ConvertToPixels(n.Style[t+"-top"], fs, wh.Height)
+		b, _ := ConvertToPixels(n.Style[t+"-bottom"], fs, wh.Height)
+		m.Top = top
+		m.Bottom = b
+	}
+	if t == "margin" {
+		if n.Style["margin"] == "auto" && n.Style["margin-left"] == "" && n.Style["margin-right"] == "" {
+			// this dont work
+			m.Left = Max((n.Parent.Properties.Width-wh.Width)/2, 0)
+			m.Right = Max((n.Parent.Properties.Width-wh.Width)/2, 0)
+		}
+	}
+
+	return m
 }
 
 func convertMarginToIndividualProperties(margin string) (string, string, string, string) {

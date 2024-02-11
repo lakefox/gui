@@ -46,13 +46,10 @@ type Properties struct {
 	Hash           string
 	Width          float32
 	Height         float32
-	Margin         Margin
-	Padding        Padding
 	Border         Border
 	EventListeners map[string][]func(Event)
 	EM             float32
 	Text           Text
-	Colors         Colors
 	Focusable      bool
 	Focused        bool
 	Editable       bool
@@ -80,20 +77,6 @@ func (c *ClassList) Remove(class string) {
 	}
 
 	c.Value = strings.Join(c.Classes, " ")
-}
-
-type Margin struct {
-	Top    float32
-	Right  float32
-	Bottom float32
-	Left   float32
-}
-
-type Padding struct {
-	Top    float32
-	Right  float32
-	Bottom float32
-	Left   float32
 }
 
 type Border struct {
@@ -131,13 +114,6 @@ type Shadow struct {
 	Y     int
 	Blur  int
 	Color ic.RGBA
-}
-
-// Color represents an RGBA color
-type Colors struct {
-	Background     ic.RGBA
-	Font           ic.RGBA
-	TextDecoration ic.RGBA
 }
 
 func (n *Node) GetAttribute(name string) string {
@@ -208,19 +184,16 @@ func TestSelector(selectString string, n *Node) bool {
 		}
 	}
 
-	if n.Properties.Hover {
-		s = append(s, ":hover")
-	}
-
 	classes := n.ClassList.Classes
 
 	for _, v := range classes {
 		s = append(s, "."+v)
 	}
-
-	s = append(s, "#"+n.Id)
 	// fmt.Println(n.Properties.Node)
 	selectors := selector.GetCSSSelectors(n.Properties.Node, s)
+	if n.Id != "" {
+		selectors = append(selectors, "#"+n.Id)
+	}
 
 	part := selector.SplitSelector(strings.TrimSpace(parts[len(parts)-1]))
 

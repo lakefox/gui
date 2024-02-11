@@ -19,6 +19,8 @@ func Init() cstyle.Plugin {
 
 			var top, left, right, bottom bool = false, false, false, false
 
+			m := utils.GetMP(*n, "margin")
+
 			if styleMap["position"] == "absolute" {
 				base := GetPositionOffsetNode(n)
 				if styleMap["top"] != "" {
@@ -58,7 +60,9 @@ func Init() cstyle.Plugin {
 						}
 						break
 					} else if styleMap["display"] != "inline" {
-						y += v.Properties.Margin.Top + v.Properties.Margin.Bottom + v.Properties.Padding.Top + v.Properties.Padding.Bottom + v.Properties.Height
+						mc := utils.GetMP(*n, "margin")
+						p := utils.GetMP(*n, "padding")
+						y += mc.Top + mc.Bottom + p.Top + p.Bottom + v.Properties.Height
 					}
 				}
 			}
@@ -68,16 +72,16 @@ func Init() cstyle.Plugin {
 			relPos := !top && !left && !right && !bottom
 
 			if left || relPos {
-				x += n.Properties.Margin.Left
+				x += m.Left
 			}
 			if top || relPos {
-				y += n.Properties.Margin.Top
+				y += m.Top
 			}
 			if right {
-				x -= n.Properties.Margin.Right
+				x -= m.Right
 			}
 			if bottom {
-				y -= n.Properties.Margin.Bottom
+				y -= m.Bottom
 			}
 
 			n.Properties.X = x

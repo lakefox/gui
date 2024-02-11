@@ -164,9 +164,10 @@ func order(p element.Node, elements []element.Node, direction string, reversed, 
 		if direction == "column" {
 			collector := []element.Node{}
 			for _, v := range elements {
+				m := utils.GetMP(v, "margin")
 				elMax, _ := utils.GetStructField(&v.Properties, "Height")
-				elMS, _ := utils.GetStructField(&v.Properties.Margin, marginStart)
-				elME, _ := utils.GetStructField(&v.Properties.Margin, marginEnd)
+				elMS, _ := utils.GetStructField(&m, marginStart)
+				elME, _ := utils.GetStructField(&m, marginEnd)
 				tMax := elMax.(float32) + elMS.(float32) + elME.(float32)
 				if counter+int(tMax) < int(max.(float32)) {
 					collector = append(collector, v)
@@ -187,9 +188,10 @@ func order(p element.Node, elements []element.Node, direction string, reversed, 
 		} else {
 			var mod int
 			for _, v := range elements {
+				m := utils.GetMP(v, "margin")
 				elMax, _ := utils.GetStructField(&v.Properties, "Width")
-				elMS, _ := utils.GetStructField(&v.Properties.Margin, marginStart)
-				elME, _ := utils.GetStructField(&v.Properties.Margin, marginEnd)
+				elMS, _ := utils.GetStructField(&m, marginStart)
+				elME, _ := utils.GetStructField(&m, marginEnd)
 				tMax := elMax.(float32) + elMS.(float32) + elME.(float32)
 				if counter+int(tMax) < int(max.(float32)) {
 					if len(nodes)-1 < mod {
@@ -216,9 +218,10 @@ func order(p element.Node, elements []element.Node, direction string, reversed, 
 	} else {
 		var tMax float32
 		for _, v := range elements {
+			m := utils.GetMP(v, "margin")
 			elMax, _ := utils.GetStructField(&v.Properties, dir)
-			elMS, _ := utils.GetStructField(&v.Properties.Margin, marginStart)
-			elME, _ := utils.GetStructField(&v.Properties.Margin, marginEnd)
+			elMS, _ := utils.GetStructField(&m, marginStart)
+			elME, _ := utils.GetStructField(&m, marginEnd)
 			tMax += elMax.(float32) + elMS.(float32) + elME.(float32)
 		}
 

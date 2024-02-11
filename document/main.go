@@ -64,8 +64,9 @@ func (doc Document) Open(index string, script func(*element.Node)) {
 	}
 
 	nodes := doc.CSS.CreateDocument(d.DOM)
+	root := &nodes
 
-	script(&nodes)
+	script(root)
 
 	// fmt.Println(nodes.Style)
 
@@ -91,16 +92,13 @@ func (doc Document) Open(index string, script func(*element.Node)) {
 			doc.CSS.Height = float32(screenHeight)
 
 			nodes = doc.CSS.CreateDocument(d.DOM)
-			script(&nodes)
+			root = &nodes
+			script(root)
 		}
 
-		eventStore = events.GetEvents(&nodes, eventStore)
-		// the issue is that the computestyle function references elements using the *parent point.
-		// that references the nodes data so the orginal data get modified not the one passed through
-		// I need to come up with a way to only use it as a refernce
-		// this "hack" will cause issue, I am going insane trying to fix it
-		doc.CSS.ComputeNodeStyle(&nodes)
-		rd := doc.CSS.Render(nodes)
+		eventStore = events.GetEvents(root, eventStore)
+		doc.CSS.ComputeNodeStyle(root)
+		rd := doc.CSS.Render(*root)
 		wm.LoadTextures(rd)
 		wm.Draw(rd)
 

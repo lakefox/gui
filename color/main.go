@@ -2,7 +2,6 @@ package color
 
 import (
 	"fmt"
-	"gui/element"
 	ic "image/color"
 	"strconv"
 	"strings"
@@ -381,36 +380,31 @@ func CalculateBackgroundColor(styles map[string]string) (ic.RGBA, error) {
 	return ParseRGBA(backgroundColor)
 }
 
-func Parse(styles map[string]string) element.Colors {
-	fontColor, err := ParseRGBA(styles["color"])
-	textDec := fontColor
-	if err != nil {
-		fontColor = ic.RGBA{0, 0, 0, 1}
+func Parse(styles map[string]string, t string) ic.RGBA {
+	if t == "font" {
+		fontColor, err := ParseRGBA(styles["color"])
+		if err != nil {
+			return ic.RGBA{0, 0, 0, 1}
+		} else {
+			return fontColor
+		}
+	} else if t == "decoration" {
+		textDec, err := ParseRGBA(styles["text-decoration-color"])
+		if err != nil {
+			return ic.RGBA{0, 0, 0, 1}
+		} else {
+			return textDec
+		}
+	} else if t == "background" {
+		backgroundColor, err := CalculateBackgroundColor(styles)
+		if err != nil {
+			return ic.RGBA{255, 255, 255, 0}
+		} else {
+			return backgroundColor
+		}
+	} else {
+		return ic.RGBA{255, 255, 255, 0}
 	}
-	textDec, err = ParseRGBA(styles["text-decoration-color"])
-	if err != nil {
-		textDec = ic.RGBA{0, 0, 0, 1}
-	}
-	backgroundColor, err := CalculateBackgroundColor(styles)
-	if err != nil {
-		backgroundColor = ic.RGBA{255, 255, 255, 0}
-	}
-	return element.Colors{
-		Background:     backgroundColor,
-		Font:           fontColor,
-		TextDecoration: textDec,
-	}
-}
-
-func Font(styles map[string]string) (ic.RGBA, error) {
-	// Extract the "background-color" or "background" property from the styles
-	fontColor, ok := styles["color"]
-	if !ok {
-		fontColor = "rgba(0,0,0,1)"
-	}
-
-	// Parse the background color and return the result
-	return ParseRGBA(fontColor)
 }
 
 func Color(color string) (ic.RGBA, error) {

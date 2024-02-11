@@ -14,11 +14,14 @@ func Init() cstyle.Plugin {
 		Level: 1,
 		Handler: func(n *element.Node) {
 			// If the element is display block and the width is unset then make it 100%
+
 			if n.Style["width"] == "" {
 				n.Properties.Width, _ = utils.ConvertToPixels("100%", n.Properties.EM, n.Parent.Properties.Width)
-				n.Properties.Width -= n.Properties.Margin.Right + n.Properties.Margin.Left
+				m := utils.GetMP(*n, "margin")
+				n.Properties.Width -= m.Right + m.Left
 			} else {
-				n.Properties.Width += n.Properties.Padding.Right + n.Properties.Padding.Left
+				p := utils.GetMP(*n, "padding")
+				n.Properties.Width += p.Right + p.Left
 			}
 		},
 	}

@@ -6,14 +6,16 @@ package cstyle
 // https://pkg.go.dev/automated.sh/oat
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
 	"gui/color"
 	"gui/element"
 	"gui/font"
 	"gui/parser"
 	"gui/utils"
-	"hash/fnv"
 	"os"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -62,7 +64,10 @@ func (c *CSS) CreateDocument(doc *html.Node) element.Node {
 				Height: c.Height,
 				EM:     16,
 				Type:   3,
-				Node:   &html.Node{},
+				Node: &html.Node{Attr: []html.Attribute{
+					{Key: "Width", Val: fmt.Sprint(c.Width)},
+					{Key: "Height", Val: fmt.Sprint(c.Height)},
+				}},
 			},
 
 			Style: map[string]string{
@@ -71,13 +76,11 @@ func (c *CSS) CreateDocument(doc *html.Node) element.Node {
 			},
 		},
 		Properties: element.Properties{
-			Node:   n,
-			Id:     id,
-			X:      0,
-			Y:      0,
-			Type:   3,
-			Width:  c.Width,
-			Height: c.Height,
+			Node: n,
+			Id:   id,
+			X:    0,
+			Y:    0,
+			Type: 3,
 		},
 	}
 	i := 0
@@ -174,16 +177,20 @@ func (c *CSS) GetStyles(n element.Node) map[string]string {
 		}
 
 	}
+	hovered := false
+	if slices.Contains(n.ClassList.Classes, ":hover") {
+		hovered = true
+	}
 
 	for _, styleSheet := range c.StyleSheets {
 		for selector := range styleSheet {
 			// fmt.Println(selector, n.Properties.Id)
-			if strings.Contains(selector, "hover") && element.TestSelector(selector, &n) {
-				fmt.Println(selector, n.Properties.Id, styleSheet[selector])
-
+			key := selector
+			if strings.Contains(selector, ":hover") && hovered {
+				selector = strings.Replace(selector, ":hover", "", -1)
 			}
 			if element.TestSelector(selector, &n) {
-				for k, v := range styleSheet[selector] {
+				for k, v := range styleSheet[key] {
 					styles[k] = v
 				}
 			}
@@ -207,22 +214,39 @@ func (c *CSS) AddPlugin(plugin Plugin) {
 
 func hash(n *element.Node) string {
 	// Create a new FNV-1a hash
-	hasher := fnv.New32a()
+	hasher := md5.New()
+
+	// Extract and sort the keys
+	var keys []string
+	for key := range n.Style {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
 
 	// Concatenate all values into a single string
 	var concatenatedValues string
-	for key, val := range n.Style {
-		concatenatedValues += key + val
+	for _, key := range keys {
+		concatenatedValues += key + n.Style[key]
 	}
+	concatenatedValues += n.ClassList.Value
+	concatenatedValues += n.Id
 	hasher.Write([]byte(concatenatedValues))
+	sum := hasher.Sum(nil)
+	str := hex.EncodeToString(sum)
+	if n.Properties.Hash != str {
+		fmt.Println(n.Properties.Id)
+		fmt.Println(concatenatedValues)
+		fmt.Println(n.Properties.Hash, str)
+	}
 
-	return string(rune(hasher.Sum32()))
+	return str
 }
 
 func (c *CSS) ComputeNodeStyle(n *element.Node) *element.Node {
 	plugins := c.Plugins
 	hv := hash(n)
 	if n.Properties.Hash != hv {
+		fmt.Println("RELOAD")
 		// this is kinda a sloppy way to do this but it works ig
 		n.Style = c.GetStyles(*n)
 		n.Properties.Hash = hv
@@ -241,6 +265,9 @@ func (c *CSS) ComputeNodeStyle(n *element.Node) *element.Node {
 	x, y := n.Parent.Properties.X, n.Parent.Properties.Y
 
 	var top, left, right, bottom bool = false, false, false, false
+
+	m := utils.GetMP(*n, "margin")
+	p := utils.GetMP(*n, "padding")
 
 	if styleMap["position"] == "absolute" {
 		base := GetPositionOffsetNode(n)
@@ -281,7 +308,9 @@ func (c *CSS) ComputeNodeStyle(n *element.Node) *element.Node {
 				}
 				break
 			} else if styleMap["display"] != "inline" {
-				y += v.Properties.Margin.Top + v.Properties.Margin.Bottom + v.Properties.Padding.Top + v.Properties.Padding.Bottom + v.Properties.Height
+				mc := utils.GetMP(v, "margin")
+				pc := utils.GetMP(v, "padding")
+				y += mc.Top + mc.Bottom + pc.Top + pc.Bottom + v.Properties.Height
 			}
 		}
 	}
@@ -291,16 +320,16 @@ func (c *CSS) ComputeNodeStyle(n *element.Node) *element.Node {
 	relPos := !top && !left && !right && !bottom
 
 	if left || relPos {
-		x += n.Properties.Margin.Left
+		x += m.Left
 	}
 	if top || relPos {
-		y += n.Properties.Margin.Top
+		y += m.Top
 	}
 	if right {
-		x -= n.Properties.Margin.Right
+		x -= m.Right
 	}
 	if bottom {
-		y -= n.Properties.Margin.Bottom
+		y -= m.Bottom
 	}
 
 	if len(n.Children) == 0 {
@@ -308,8 +337,8 @@ func (c *CSS) ComputeNodeStyle(n *element.Node) *element.Node {
 		if len(n.InnerText) > 0 {
 			innerWidth := width
 			innerHeight := height
-			genTextNode(n, &innerWidth, &innerHeight)
-			width = innerWidth + n.Properties.Padding.Left + n.Properties.Padding.Right
+			genTextNode(n, &innerWidth, &innerHeight, p)
+			width = innerWidth + p.Left + p.Right
 			height = innerHeight
 		}
 	}
@@ -328,11 +357,13 @@ func (c *CSS) ComputeNodeStyle(n *element.Node) *element.Node {
 		if styleMap["height"] == "" {
 			if n.Children[i].Style["position"] != "absolute" && n.Children[i].Properties.Y > childYOffset {
 				childYOffset = n.Children[i].Properties.Y
+				m := utils.GetMP(n.Children[i], "margin")
+				p := utils.GetMP(n.Children[i], "padding")
 				n.Properties.Height += n.Children[i].Properties.Height
-				n.Properties.Height += n.Children[i].Properties.Margin.Top
-				n.Properties.Height += n.Children[i].Properties.Margin.Bottom
-				n.Properties.Height += n.Children[i].Properties.Padding.Top
-				n.Properties.Height += n.Children[i].Properties.Padding.Bottom
+				n.Properties.Height += m.Top
+				n.Properties.Height += m.Bottom
+				n.Properties.Height += p.Top
+				n.Properties.Height += p.Bottom
 			}
 
 		}
@@ -383,28 +414,6 @@ func InitNode(n *element.Node, c CSS) *element.Node {
 	fs, _ := utils.ConvertToPixels(n.Style["font-size"], n.Parent.Properties.EM, n.Parent.Properties.Width)
 	n.Properties.EM = fs
 
-	mt, _ := utils.ConvertToPixels(n.Style["margin-top"], n.Properties.EM, n.Parent.Properties.Width)
-	mr, _ := utils.ConvertToPixels(n.Style["margin-right"], n.Properties.EM, n.Parent.Properties.Width)
-	mb, _ := utils.ConvertToPixels(n.Style["margin-bottom"], n.Properties.EM, n.Parent.Properties.Width)
-	ml, _ := utils.ConvertToPixels(n.Style["margin-left"], n.Properties.EM, n.Parent.Properties.Width)
-	n.Properties.Margin = element.Margin{
-		Top:    mt,
-		Right:  mr,
-		Bottom: mb,
-		Left:   ml,
-	}
-
-	pt, _ := utils.ConvertToPixels(n.Style["padding-top"], n.Properties.EM, n.Parent.Properties.Width)
-	pr, _ := utils.ConvertToPixels(n.Style["padding-right"], n.Properties.EM, n.Parent.Properties.Width)
-	pb, _ := utils.ConvertToPixels(n.Style["padding-bottom"], n.Properties.EM, n.Parent.Properties.Width)
-	pl, _ := utils.ConvertToPixels(n.Style["padding-left"], n.Properties.EM, n.Parent.Properties.Width)
-	n.Properties.Padding = element.Padding{
-		Top:    pt,
-		Right:  pr,
-		Bottom: pb,
-		Left:   pl,
-	}
-
 	width, _ := utils.ConvertToPixels(n.Style["width"], n.Properties.EM, n.Parent.Properties.Width)
 	if n.Style["min-width"] != "" {
 		minWidth, _ := utils.ConvertToPixels(n.Style["min-width"], n.Properties.EM, n.Parent.Properties.Width)
@@ -425,11 +434,6 @@ func InitNode(n *element.Node, c CSS) *element.Node {
 	if n.Style["max-height"] != "" {
 		maxHeight, _ := utils.ConvertToPixels(n.Style["max-height"], n.Properties.EM, n.Parent.Properties.Height)
 		height = utils.Min(height, maxHeight)
-	}
-
-	if n.Style["margin"] == "auto" && n.Style["margin-left"] == "" && n.Style["margin-right"] == "" {
-		n.Properties.Margin.Left = utils.Max((n.Parent.Properties.Width-width)/2, 0)
-		n.Properties.Margin.Right = utils.Max((n.Parent.Properties.Width-width)/2, 0)
 	}
 
 	n.Properties.Width = width
@@ -457,8 +461,6 @@ func InitNode(n *element.Node, c CSS) *element.Node {
 	n.Properties.Text.Font = f
 	n.Properties.Text.WordSpacing = int(wordSpacing)
 	n.Properties.Text.LetterSpacing = int(letterSpacing)
-
-	n.Properties.Colors = color.Parse(n.Style)
 	return n
 }
 
@@ -519,7 +521,7 @@ func flatten(n element.Node) []element.Node {
 	return nodes
 }
 
-func genTextNode(n *element.Node, width, height *float32) {
+func genTextNode(n *element.Node, width, height *float32, p utils.MarginPadding) {
 	wb := " "
 
 	if n.Style["word-wrap"] == "break-word" {
@@ -541,7 +543,7 @@ func genTextNode(n *element.Node, width, height *float32) {
 		dt, _ = utils.ConvertToPixels(n.Style["text-decoration-thickness"], n.Properties.EM, *width)
 	}
 
-	col, _ := color.Font(n.Style)
+	col := color.Parse(n.Style, "font")
 
 	n.Properties.Text.Color = col
 	n.Properties.Text.Align = n.Style["text-align"]
@@ -549,7 +551,6 @@ func genTextNode(n *element.Node, width, height *float32) {
 	n.Properties.Text.WordSpacing = int(wordSpacing)
 	n.Properties.Text.LetterSpacing = int(letterSpacing)
 	n.Properties.Text.WhiteSpace = n.Style["white-space"]
-	n.Properties.Text.DecorationColor = n.Properties.Colors.TextDecoration
 	n.Properties.Text.DecorationThickness = int(dt)
 	n.Properties.Text.Overlined = n.Style["text-decoration"] == "overline"
 	n.Properties.Text.Underlined = n.Style["text-decoration"] == "underline"
@@ -561,7 +562,7 @@ func genTextNode(n *element.Node, width, height *float32) {
 		n.Properties.Text.WordSpacing = font.MeasureSpace(&n.Properties.Text)
 	}
 	if n.Parent.Properties.Width != 0 && n.Style["display"] != "inline" && n.Style["width"] == "" {
-		*width = (n.Parent.Properties.Width - n.Properties.Padding.Right) - n.Properties.Padding.Left
+		*width = (n.Parent.Properties.Width - p.Right) - p.Left
 	} else if n.Style["width"] == "" {
 		*width = utils.Max(*width, float32(font.MeasureLongest(n)))
 	} else if n.Style["width"] != "" {
