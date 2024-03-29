@@ -163,45 +163,55 @@ var inheritedProps = []string{
 // is updated in the props. change to append :hover to style to create the effect
 //							or merge the class with the styles? idk have to think more
 
-func (c *CSS) GetStyles(n element.Node) map[string]string {
-	styles := map[string]string{}
-	for k, v := range n.Style {
-		styles[k] = v
-	}
-	if n.Parent != nil {
-		ps := c.GetStyles(*n.Parent)
-		for _, v := range inheritedProps {
-			if ps[v] != "" {
-				styles[v] = ps[v]
-			}
+func (c *CSS) GetStyles(n *element.Node) map[string]string {
+	hv := hash(n)
+	if n.Properties.Hash != hv {
+		styles := map[string]string{}
+		fmt.Println("RELOAD")
+		for k, v := range n.Style {
+			styles[k] = v
 		}
-
-	}
-	hovered := false
-	if slices.Contains(n.ClassList.Classes, ":hover") {
-		hovered = true
-	}
-
-	for _, styleSheet := range c.StyleSheets {
-		for selector := range styleSheet {
-			// fmt.Println(selector, n.Properties.Id)
-			key := selector
-			if strings.Contains(selector, ":hover") && hovered {
-				selector = strings.Replace(selector, ":hover", "", -1)
-			}
-			if element.TestSelector(selector, &n) {
-				for k, v := range styleSheet[key] {
-					styles[k] = v
+		if n.Parent != nil {
+			ps := c.GetStyles(n.Parent)
+			for _, v := range inheritedProps {
+				if ps[v] != "" {
+					styles[v] = ps[v]
 				}
 			}
 
 		}
-	}
-	inline := parser.ParseStyleAttribute(n.GetAttribute("style") + ";")
-	styles = utils.Merge(styles, inline)
-	// add hover and focus css events
+		hovered := false
+		if slices.Contains(n.ClassList.Classes, ":hover") {
+			hovered = true
+		}
 
-	return styles
+		for _, styleSheet := range c.StyleSheets {
+			for selector := range styleSheet {
+				// fmt.Println(selector, n.Properties.Id)
+				key := selector
+				if strings.Contains(selector, ":hover") && hovered {
+					selector = strings.Replace(selector, ":hover", "", -1)
+				}
+				if element.TestSelector(selector, n) {
+					for k, v := range styleSheet[key] {
+						styles[k] = v
+					}
+				}
+
+			}
+		}
+		inline := parser.ParseStyleAttribute(n.GetAttribute("style") + ";")
+		styles = utils.Merge(styles, inline)
+		// add hover and focus css events
+
+		// cache styles
+
+		styles["computed"] = utils.ComputeStyleString(*n)
+		n.Properties.Hash = hv
+		return styles
+	} else {
+		return n.Style
+	}
 }
 
 func (c *CSS) Render(doc element.Node) []element.Node {
@@ -244,30 +254,22 @@ func hash(n *element.Node) string {
 
 func (c *CSS) ComputeNodeStyle(n *element.Node) *element.Node {
 	plugins := c.Plugins
-	hv := hash(n)
-	if n.Properties.Hash != hv {
-		fmt.Println("RELOAD")
-		// this is kinda a sloppy way to do this but it works ig
-		n.Style = c.GetStyles(*n)
-		n.Properties.Hash = hv
-	}
-	styleMap := n.Style
+	styleMap := c.GetStyles(n)
+
+	cs := utils.ComputeStyleMap(*n)
 
 	if styleMap["display"] == "none" {
 		n.Properties.X = 0
 		n.Properties.Y = 0
-		n.Properties.Width = 0
-		n.Properties.Height = 0
+		cs["width"] = 0
+		cs["height"] = 0
 		return n
 	}
 
-	width, height := n.Properties.Width, n.Properties.Height
+	width, height := cs["width"], cs["height"]
 	x, y := n.Parent.Properties.X, n.Parent.Properties.Y
 
 	var top, left, right, bottom bool = false, false, false, false
-
-	m := utils.GetMP(*n, "margin")
-	p := utils.GetMP(*n, "padding")
 
 	if styleMap["position"] == "absolute" {
 		base := GetPositionOffsetNode(n)
@@ -308,9 +310,8 @@ func (c *CSS) ComputeNodeStyle(n *element.Node) *element.Node {
 				}
 				break
 			} else if styleMap["display"] != "inline" {
-				mc := utils.GetMP(v, "margin")
-				pc := utils.GetMP(v, "padding")
-				y += mc.Top + mc.Bottom + pc.Top + pc.Bottom + v.Properties.Height
+				csV := utils.ComputeStyleMap(v)
+				y += csV["margin-top"] + csV["margin-bottom"] + csV["padding-top"] + csV["padding-bottom"] + csV["height"]
 			}
 		}
 	}
@@ -320,16 +321,16 @@ func (c *CSS) ComputeNodeStyle(n *element.Node) *element.Node {
 	relPos := !top && !left && !right && !bottom
 
 	if left || relPos {
-		x += m.Left
+		x += cs["margin-left"]
 	}
 	if top || relPos {
-		y += m.Top
+		y += cs["marign-top"]
 	}
 	if right {
-		x -= m.Right
+		x -= cs["margin-right"]
 	}
 	if bottom {
-		y -= m.Bottom
+		y -= cs["margin-bottom"]
 	}
 
 	if len(n.Children) == 0 {
@@ -337,15 +338,15 @@ func (c *CSS) ComputeNodeStyle(n *element.Node) *element.Node {
 		if len(n.InnerText) > 0 {
 			innerWidth := width
 			innerHeight := height
-			genTextNode(n, &innerWidth, &innerHeight, p)
-			width = innerWidth + p.Left + p.Right
+			genTextNode(n, &innerWidth, &innerHeight)
+			width = innerWidth + cs["padding-left"] + cs["padding-right"]
 			height = innerHeight
 		}
 	}
 
 	n.Properties.X = x
 	n.Properties.Y = y
-	n.Properties.Width = width
+	cs["width"] = width
 	n.Properties.Height = height
 
 	// Call children here
@@ -357,13 +358,12 @@ func (c *CSS) ComputeNodeStyle(n *element.Node) *element.Node {
 		if styleMap["height"] == "" {
 			if n.Children[i].Style["position"] != "absolute" && n.Children[i].Properties.Y > childYOffset {
 				childYOffset = n.Children[i].Properties.Y
-				m := utils.GetMP(n.Children[i], "margin")
-				p := utils.GetMP(n.Children[i], "padding")
-				n.Properties.Height += n.Children[i].Properties.Height
-				n.Properties.Height += m.Top
-				n.Properties.Height += m.Bottom
-				n.Properties.Height += p.Top
-				n.Properties.Height += p.Bottom
+				csC := utils.ComputeStyleMap(n.Children[i])
+				n.Properties.Height += csC["height"]
+				n.Properties.Height += csC["margin-top"]
+				n.Properties.Height += csC["margin-bottom"]
+				n.Properties.Height += csC["padding-top"]
+				n.Properties.Height += csC["padding-bottom"]
 			}
 
 		}
@@ -405,7 +405,7 @@ func initNodes(n *element.Node, c CSS) element.Node {
 }
 
 func InitNode(n *element.Node, c CSS) *element.Node {
-	n.Style = c.GetStyles(*n)
+	n.Style = c.GetStyles(n)
 	border, err := CompleteBorder(n.Style)
 	if err == nil {
 		n.Properties.Border = border
@@ -521,7 +521,7 @@ func flatten(n element.Node) []element.Node {
 	return nodes
 }
 
-func genTextNode(n *element.Node, width, height *float32, p utils.MarginPadding) {
+func genTextNode(n *element.Node, width, height *float32) {
 	wb := " "
 
 	if n.Style["word-wrap"] == "break-word" {
@@ -562,7 +562,8 @@ func genTextNode(n *element.Node, width, height *float32, p utils.MarginPadding)
 		n.Properties.Text.WordSpacing = font.MeasureSpace(&n.Properties.Text)
 	}
 	if n.Parent.Properties.Width != 0 && n.Style["display"] != "inline" && n.Style["width"] == "" {
-		*width = (n.Parent.Properties.Width - p.Right) - p.Left
+		cs := utils.ComputeStyleMap(*n)
+		*width = (n.Parent.Properties.Width - cs["padding-right"]) - cs["padding-left"]
 	} else if n.Style["width"] == "" {
 		*width = utils.Max(*width, float32(font.MeasureLongest(n)))
 	} else if n.Style["width"] != "" {

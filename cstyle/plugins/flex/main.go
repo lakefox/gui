@@ -43,7 +43,8 @@ func Init() cstyle.Plugin {
 			for a, column := range orderedNode {
 				var maxColumnHeight float32
 				for _, item := range column {
-					maxColumnHeight = utils.Max(item.Properties.Height, maxColumnHeight)
+					cs := utils.ComputeStyleMap(item)
+					maxColumnHeight = utils.Max(cs["height"], maxColumnHeight)
 				}
 
 				yOffset = n.Children[0].Properties.Y
