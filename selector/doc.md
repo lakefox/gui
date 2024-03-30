@@ -8,7 +8,7 @@ Selector is a implementation of JavaScripts querySelector. It is split between t
 
 | Arguments             | Description                     |
 | --------------------- | ------------------------------- |
-| node \*element.Node   | Target \*element.Node           |
+| n \*element.Node      | Target \*element.Node           |
 | selectString string   | CSS querySelector string        |
 | return \*element.Node | element.Node matching the query |
 
@@ -21,6 +21,18 @@ To start out, we check the current element to see if the `selectString` matches 
 > if cr.Properties.Id != "" {return cr}
 
 We also do a check to see if the `element.Node.Properties.Id` has been assigned. This is a importaint step as this id is the the `#id` used in html but a unqiue id generated at run time to be used as a internal reference. If it has not been assigned then the element does not exist.
+
+> func (n \*Node) QuerySelectorAll(selectString string) \*[]\*Node {
+
+## QuerySelectorAll
+
+| Arguments             | Description                     |
+| --------------------- | ------------------------------- |
+| n \*element.Node      | Target \*element.Node           |
+| selectString string   | CSS querySelector string        |
+| return \*element.Node | element.Node matching the query |
+
+See [QuerySelector](./#queryselector). `QuerySelectorAll` works the exact same as `QuerySelector` with an added collector (`results`) to collect all elements that match the selector throughout the recusive execution.
 
 > func TestSelector(selectString string, n \*Node) bool {
 
@@ -65,6 +77,18 @@ Then we add the id to the array to complete the current Nodes selectors.
 > has := selector.Contains(part, selectors)
 
 After we have the current Nodes selectors we can use the [SplitSelector](./#splitselector) and [Contains](./#contains) methods to process the passed query (selectString) and compare the two arrays.
+
+> if len(parts) == 1 || !has {
+> return has
+> }
+
+If we are on the last selector in the split selector (parts) or if we have a part that does not match (i.e. has == false) then we can go ahead and return the has value. We return this instead of just the constant `false` becuase if we have gotten to this point in the recursive chain that mean every part has been true until now, so the value of `has` weather `true` or `false` we detirmine if the selector matches for the entire selector string.
+
+> } else {
+> return TestSelector(strings.Join(parts[0:len(parts)-1], ">"), n.Parent)
+> }
+
+If we are not on the last element and the selector matches for this Node then we can remove the last element from `parts` as we have already checked to make sure it matches and join it be `>` charectors as that is what it was split by at the beginning. Then we just recall the function passing the parent as the Node.
 
 > func GetCSSSelectors(node \*html.Node, selectors []string) []string {
 
