@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="shortcut icon" href="/assets/logo.png" type="image/x-icon" />
+    <link rel="stylesheet" href="/style.css" />
+    
+    
+  </head>
+  <body>
+    <nav>
+      <a href="/"
+        ><img src="/assets/logo.png" alt="" title="DECODE" /> GUI Docs</a
+      >
+    </nav>
+    <main><h1 id="selector"><a class="anchor" href="#selector">¶</a> Selector</h1>
+<p>Selector is a implementation of JavaScripts querySelector. It is split between two files this file and the <code>element</code> package to prevent circular dependancys, however this document will be the source for it. The best way to explain how this works is to start in the <code>element</code> package with the <code>querySelector</code> method and then take a look at the parts that make it up.</p>
+<blockquote>
+<p>func (n *Node) QuerySelector(selectString string) *Node {</p>
+</blockquote>
+<h2 id="queryselector"><a class="anchor" href="#queryselector">¶</a> QuerySelector</h2>
+<table>
+<thead>
+<tr>
+<th>Arguments</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>node *element.Node</td>
+<td>Target *element.Node</td>
+</tr>
+<tr>
+<td>selectString string</td>
+<td>CSS querySelector string</td>
+</tr>
+<tr>
+<td>return *element.Node</td>
+<td>element.Node matching the query</td>
+</tr>
+</tbody>
+</table>
+<p><code>QuerySelector</code> works almost the same as JavaScripts <a href="https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_selectors">querySelector method</a> with a far limited scope. After a document is loaded from a HTML file it is compiled into <code>element.Node</code>'s which is a custom implementation of <code>net/html.Node</code>. The reason the <code>net/html</code> node is not used is it has already defined features that stray away from JavaScripts DOM.</p>
+<blockquote>
+<p>if TestSelector(selectString, n) {return n}</p>
+</blockquote>
+<p>To start out, we check the current element to see if the <code>selectString</code> matches the <code>element.Node</code> we called the method on using the <a href="./#testselector"><code>TestSelector</code></a> function. If it does we can end the function there and return itself. If it does not we can continue and check its children. We do this process recursively to simplify the code.</p>
+<blockquote>
+<p>if cr.Properties.Id != &quot;&quot; {return cr}</p>
+</blockquote>
+<p>We also do a check to see if the <code>element.Node.Properties.Id</code> has been assigned. This is a importaint step as this id is the the <code>#id</code> used in html but a unqiue id generated at run time to be used as a internal reference. If it has not been assigned then the element does not exist.</p>
+<blockquote>
+<p>func TestSelector(selectString string, n *Node) bool {</p>
+</blockquote>
+<h2 id="testselector"><a class="anchor" href="#testselector">¶</a> TestSelector</h2>
+<table>
+<thead>
+<tr>
+<th>Arguments</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>selectString string</td>
+<td>CSS querySelector string</td>
+</tr>
+<tr>
+<td>node *element.Node</td>
+<td>Target *element.Node</td>
+</tr>
+<tr>
+<td>return bool</td>
+<td>returns true if the selector matches the string</td>
+</tr>
+</tbody>
+</table>
+<p><code>TestSelector</code> is the foundation of the <a href="./#queryselector"><code>QuerySelector</code></a> and <a href="./#queryselectorall"><code>QuerySelectorAll</code></a> as seen above.</p>
+<blockquote>
+<p>parts := strings.Split(selectString, &quot;&gt;&quot;)</p>
+</blockquote>
+<p>It first starts off by splitting the <code>selectString</code> in to parts divided by <code>&gt;</code> this is becuase when you have a selector like <code>blockquote &gt; p</code> you need to start at the first level (<code>p</code>) to compare the current node to see if you will need to continue to check the parents of the element with the next selector.</p>
+<blockquote>
+<p>s := []string{}
+if n.Properties.Focusable {
+if n.Properties.Focused {
+s = append(s, &quot;:focus&quot;)
+}
+}
+classes := n.ClassList.Classes
+for _, v := range classes {
+s = append(s, &quot;.&quot;+v)
+}</p>
+</blockquote>
+<p>Then we need to build the selectors, so we start by creating an array to store them in (<code>s</code>) and we check to see if the element is focusable and if the element is focused. If so we add the <code>:focus</code> selector to the list. This is important because when targeting a <code>:focus</code>ed element with a querySelector that is the text that is past. We then do the same for classes.</p>
+<blockquote>
+<p>selectors := selector.GetCSSSelectors(n.Properties.Node, s)</p>
+</blockquote>
+<p>Next we use the <a href="./#getcssselectors"><code>GetCSSSelectors</code></a> method in this package to generate any selectors assigned to the <code>net/html</code> Node.</p>
+<blockquote>
+<p>if n.Id != &quot;&quot; {
+selectors = append(selectors, &quot;#&quot;+n.Id)
+}</p>
+</blockquote>
+<p>Then we add the id to the array to complete the current Nodes selectors.</p>
+<blockquote>
+<p>part := selector.SplitSelector(strings.TrimSpace(parts[len(parts)-1]))
+has := selector.Contains(part, selectors)</p>
+</blockquote>
+<p>After we have the current Nodes selectors we can use the <a href="./#splitselector">SplitSelector</a> and <a href="./#contains">Contains</a> methods to process the passed query (selectString) and compare the two arrays.</p>
+<blockquote>
+<p>func GetCSSSelectors(node *html.Node, selectors []string) []string {</p>
+</blockquote>
+<h2 id="getcssselectors"><a class="anchor" href="#getcssselectors">¶</a> GetCSSSelectors</h2>
+<table>
+<thead>
+<tr>
+<th>Arguments</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>node *html.Node</td>
+<td>Target net/html Node</td>
+</tr>
+<tr>
+<td>selectors []string</td>
+<td>Previous Selctors</td>
+</tr>
+<tr>
+<td>return []string</td>
+<td>Output of selectors</td>
+</tr>
+</tbody>
+</table>
+<p><code>GetCSSSelectors</code> purpose is to generate all possible selectors for a <code>net/html</code> Node. It is used inside of the element package interally to the <a href="./#testselector"><code>TestSelector</code></a> function. It does this buy taking the classes, id's, and attributes and creating an array of their string equalivents (.class, #id, and [value=&quot;somevalue&quot;]).</p>
+<blockquote>
+<p>func SplitSelector(s string) []string {</p>
+</blockquote>
+<h2 id="splitselector"><a class="anchor" href="#splitselector">¶</a> SplitSelector</h2>
+<table>
+<thead>
+<tr>
+<th>Arguments</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>s string</td>
+<td>Selector string</td>
+</tr>
+<tr>
+<td>return []string</td>
+<td>Output of selectors</td>
+</tr>
+</tbody>
+</table>
+<p><code>SplitSelector</code> works by simply spliting a CSS selector into it's individual parts see below for an example:</p>
+<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;"><code><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1</span><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">main</span>() {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">2</span><span>	<span style="color:#a6e22e">fmt</span>.<span style="color:#a6e22e">Println</span>(<span style="color:#a6e22e">SplitSelector</span>(<span style="color:#e6db74">&#34;p.text[name=&#39;first&#39;]&#34;</span>))
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">3</span><span>}
+</span></span></code></pre><p>Result</p>
+<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;"><code><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">1</span><span>[p .text [name=&#39;first&#39;]]
+</span></span></code></pre><blockquote>
+<p>func Contains(selector []string, node []string) bool {</p>
+</blockquote>
+<h2 id="contains"><a class="anchor" href="#contains">¶</a> Contains</h2>
+<table>
+<thead>
+<tr>
+<th>Arguments</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>selector []string</td>
+<td>Array of selectors from the target selector</td>
+</tr>
+<tr>
+<td>node []string</td>
+<td>Array of selectors from the target element</td>
+</tr>
+<tr>
+<td>return bool</td>
+<td>boolean value</td>
+</tr>
+</tbody>
+</table>
+<p><code>Contains</code> compares two arrays of selectors, the first argument is the array of the selector that will be use to detirmine if the Node is a match or not. The second argument is the selecter of the targeted Node, the Node need to have all of the selectors of the <code>selector</code> array, however it can have additional selectors and it will still match.</p>
+<pre tabindex="0" style="color:#f8f8f2;background-color:#272822;"><code><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1</span><span><span style="color:#f92672">package</span> <span style="color:#a6e22e">selector</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3</span><span><span style="color:#f92672">import</span> (
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 4</span><span> <span style="color:#e6db74">&#34;slices&#34;</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 5</span><span> <span style="color:#e6db74">&#34;strings&#34;</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 6</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 7</span><span> <span style="color:#e6db74">&#34;golang.org/x/net/html&#34;</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 8</span><span>)
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 9</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">10</span><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">GetCSSSelectors</span>(<span style="color:#a6e22e">node</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">html</span>.<span style="color:#a6e22e">Node</span>, <span style="color:#a6e22e">selectors</span> []<span style="color:#66d9ef">string</span>) []<span style="color:#66d9ef">string</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">11</span><span> <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">node</span>.<span style="color:#a6e22e">Type</span> <span style="color:#f92672">==</span> <span style="color:#a6e22e">html</span>.<span style="color:#a6e22e">ElementNode</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">12</span><span>  <span style="color:#a6e22e">selectors</span> = append(<span style="color:#a6e22e">selectors</span>, <span style="color:#a6e22e">node</span>.<span style="color:#a6e22e">Data</span>)
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">13</span><span>  <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">_</span>, <span style="color:#a6e22e">attr</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">range</span> <span style="color:#a6e22e">node</span>.<span style="color:#a6e22e">Attr</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">14</span><span>   <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">attr</span>.<span style="color:#a6e22e">Key</span> <span style="color:#f92672">==</span> <span style="color:#e6db74">&#34;class&#34;</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">15</span><span>    <span style="color:#a6e22e">classes</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">strings</span>.<span style="color:#a6e22e">Split</span>(<span style="color:#a6e22e">attr</span>.<span style="color:#a6e22e">Val</span>, <span style="color:#e6db74">&#34; &#34;</span>)
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">16</span><span>    <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">_</span>, <span style="color:#a6e22e">class</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">range</span> <span style="color:#a6e22e">classes</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">17</span><span>     <span style="color:#a6e22e">selectors</span> = append(<span style="color:#a6e22e">selectors</span>, <span style="color:#e6db74">&#34;.&#34;</span><span style="color:#f92672">+</span><span style="color:#a6e22e">class</span>)
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">18</span><span>    }
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">19</span><span>   } <span style="color:#66d9ef">else</span> <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">attr</span>.<span style="color:#a6e22e">Key</span> <span style="color:#f92672">==</span> <span style="color:#e6db74">&#34;id&#34;</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">20</span><span>    <span style="color:#a6e22e">selectors</span> = append(<span style="color:#a6e22e">selectors</span>, <span style="color:#e6db74">&#34;#&#34;</span><span style="color:#f92672">+</span><span style="color:#a6e22e">attr</span>.<span style="color:#a6e22e">Val</span>)
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">21</span><span>   } <span style="color:#66d9ef">else</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">22</span><span>    <span style="color:#a6e22e">selectors</span> = append(<span style="color:#a6e22e">selectors</span>, <span style="color:#e6db74">&#34;[&#34;</span><span style="color:#f92672">+</span><span style="color:#a6e22e">attr</span>.<span style="color:#a6e22e">Key</span><span style="color:#f92672">+</span><span style="color:#e6db74">&#34;=\&#34;&#34;</span><span style="color:#f92672">+</span><span style="color:#a6e22e">attr</span>.<span style="color:#a6e22e">Val</span><span style="color:#f92672">+</span><span style="color:#e6db74">&#34;\&#34;]&#34;</span>)
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">23</span><span>   }
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">24</span><span>  }
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">25</span><span> }
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">26</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">27</span><span> <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">selectors</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">28</span><span>}
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">29</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">30</span><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">SplitSelector</span>(<span style="color:#a6e22e">s</span> <span style="color:#66d9ef">string</span>) []<span style="color:#66d9ef">string</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">31</span><span> <span style="color:#66d9ef">var</span> <span style="color:#a6e22e">result</span> []<span style="color:#66d9ef">string</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">32</span><span> <span style="color:#66d9ef">var</span> <span style="color:#a6e22e">current</span> <span style="color:#66d9ef">string</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">33</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">34</span><span> <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">_</span>, <span style="color:#a6e22e">char</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">range</span> <span style="color:#a6e22e">s</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">35</span><span>  <span style="color:#66d9ef">switch</span> <span style="color:#a6e22e">char</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">36</span><span>  <span style="color:#66d9ef">case</span> <span style="color:#e6db74">&#39;.&#39;</span>, <span style="color:#e6db74">&#39;#&#39;</span>, <span style="color:#e6db74">&#39;[&#39;</span>, <span style="color:#e6db74">&#39;]&#39;</span>, <span style="color:#e6db74">&#39;:&#39;</span>:
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">37</span><span>   <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">current</span> <span style="color:#f92672">!=</span> <span style="color:#e6db74">&#34;&#34;</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">38</span><span>    <span style="color:#66d9ef">if</span> string(<span style="color:#a6e22e">char</span>) <span style="color:#f92672">==</span> <span style="color:#e6db74">&#34;]&#34;</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">39</span><span>     <span style="color:#a6e22e">current</span> <span style="color:#f92672">+=</span> string(<span style="color:#a6e22e">char</span>)
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">40</span><span>    }
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">41</span><span>    <span style="color:#a6e22e">result</span> = append(<span style="color:#a6e22e">result</span>, <span style="color:#a6e22e">current</span>)
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">42</span><span>   }
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">43</span><span>   <span style="color:#a6e22e">current</span> = <span style="color:#e6db74">&#34;&#34;</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">44</span><span>   <span style="color:#66d9ef">if</span> string(<span style="color:#a6e22e">char</span>) <span style="color:#f92672">!=</span> <span style="color:#e6db74">&#34;]&#34;</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">45</span><span>    <span style="color:#a6e22e">current</span> <span style="color:#f92672">+=</span> string(<span style="color:#a6e22e">char</span>)
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">46</span><span>   }
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">47</span><span>  <span style="color:#66d9ef">default</span>:
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">48</span><span>   <span style="color:#a6e22e">current</span> <span style="color:#f92672">+=</span> string(<span style="color:#a6e22e">char</span>)
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">49</span><span>  }
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">50</span><span> }
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">51</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">52</span><span> <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">current</span> <span style="color:#f92672">!=</span> <span style="color:#e6db74">&#34;&#34;</span> <span style="color:#f92672">&amp;&amp;</span> <span style="color:#a6e22e">current</span> <span style="color:#f92672">!=</span> <span style="color:#e6db74">&#34;]&#34;</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">53</span><span>  <span style="color:#a6e22e">result</span> = append(<span style="color:#a6e22e">result</span>, <span style="color:#a6e22e">current</span>)
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">54</span><span> }
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">55</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">56</span><span> <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">result</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">57</span><span>}
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">58</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">59</span><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">Contains</span>(<span style="color:#a6e22e">selector</span> []<span style="color:#66d9ef">string</span>, <span style="color:#a6e22e">node</span> []<span style="color:#66d9ef">string</span>) <span style="color:#66d9ef">bool</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">60</span><span> <span style="color:#a6e22e">has</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">true</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">61</span><span> <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">_</span>, <span style="color:#a6e22e">s</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">range</span> <span style="color:#a6e22e">selector</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">62</span><span>  <span style="color:#66d9ef">if</span> !<span style="color:#a6e22e">slices</span>.<span style="color:#a6e22e">Contains</span>(<span style="color:#a6e22e">node</span>, <span style="color:#a6e22e">s</span>) {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">63</span><span>   <span style="color:#a6e22e">has</span> = <span style="color:#66d9ef">false</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">64</span><span>  }
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">65</span><span> }
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">66</span><span> <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">has</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">67</span><span>}
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">68</span><span>
+</span></span></code></pre><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;"><code><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1</span><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">n</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">Node</span>) <span style="color:#a6e22e">QuerySelectorAll</span>(<span style="color:#a6e22e">selectString</span> <span style="color:#66d9ef">string</span>) <span style="color:#f92672">*</span>[]<span style="color:#f92672">*</span><span style="color:#a6e22e">Node</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2</span><span> <span style="color:#a6e22e">results</span> <span style="color:#f92672">:=</span> []<span style="color:#f92672">*</span><span style="color:#a6e22e">Node</span>{}
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3</span><span> <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">TestSelector</span>(<span style="color:#a6e22e">selectString</span>, <span style="color:#a6e22e">n</span>) {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 4</span><span>  <span style="color:#a6e22e">results</span> = append(<span style="color:#a6e22e">results</span>, <span style="color:#a6e22e">n</span>)
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 5</span><span> }
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 6</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 7</span><span> <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">i</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">range</span> <span style="color:#a6e22e">n</span>.<span style="color:#a6e22e">Children</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 8</span><span>  <span style="color:#a6e22e">el</span> <span style="color:#f92672">:=</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">n</span>.<span style="color:#a6e22e">Children</span>[<span style="color:#a6e22e">i</span>]
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 9</span><span>  <span style="color:#a6e22e">cr</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">el</span>.<span style="color:#a6e22e">QuerySelectorAll</span>(<span style="color:#a6e22e">selectString</span>)
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">10</span><span>  <span style="color:#66d9ef">if</span> len(<span style="color:#f92672">*</span><span style="color:#a6e22e">cr</span>) &gt; <span style="color:#ae81ff">0</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">11</span><span>   <span style="color:#a6e22e">results</span> = append(<span style="color:#a6e22e">results</span>, <span style="color:#f92672">*</span><span style="color:#a6e22e">cr</span><span style="color:#f92672">...</span>)
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">12</span><span>  }
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">13</span><span> }
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">14</span><span> <span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">results</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">15</span><span>}
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">16</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">17</span><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">n</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">Node</span>) <span style="color:#a6e22e">QuerySelector</span>(<span style="color:#a6e22e">selectString</span> <span style="color:#66d9ef">string</span>) <span style="color:#f92672">*</span><span style="color:#a6e22e">Node</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">18</span><span> <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">TestSelector</span>(<span style="color:#a6e22e">selectString</span>, <span style="color:#a6e22e">n</span>) {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">19</span><span>  <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">n</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">20</span><span> }
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">21</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">22</span><span> <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">i</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">range</span> <span style="color:#a6e22e">n</span>.<span style="color:#a6e22e">Children</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">23</span><span>  <span style="color:#a6e22e">el</span> <span style="color:#f92672">:=</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">n</span>.<span style="color:#a6e22e">Children</span>[<span style="color:#a6e22e">i</span>]
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">24</span><span>  <span style="color:#a6e22e">cr</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">el</span>.<span style="color:#a6e22e">QuerySelector</span>(<span style="color:#a6e22e">selectString</span>)
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">25</span><span>  <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">cr</span>.<span style="color:#a6e22e">Properties</span>.<span style="color:#a6e22e">Id</span> <span style="color:#f92672">!=</span> <span style="color:#e6db74">&#34;&#34;</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">26</span><span>   <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">cr</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">27</span><span>  }
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">28</span><span> }
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">29</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">30</span><span> <span style="color:#66d9ef">return</span> <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">Node</span>{}
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">31</span><span>}
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">32</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">33</span><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">TestSelector</span>(<span style="color:#a6e22e">selectString</span> <span style="color:#66d9ef">string</span>, <span style="color:#a6e22e">n</span> <span style="color:#f92672">*</span><span style="color:#a6e22e">Node</span>) <span style="color:#66d9ef">bool</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">34</span><span> <span style="color:#a6e22e">parts</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">strings</span>.<span style="color:#a6e22e">Split</span>(<span style="color:#a6e22e">selectString</span>, <span style="color:#e6db74">&#34;&gt;&#34;</span>)
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">35</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">36</span><span> <span style="color:#a6e22e">s</span> <span style="color:#f92672">:=</span> []<span style="color:#66d9ef">string</span>{}
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">37</span><span> <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">n</span>.<span style="color:#a6e22e">Properties</span>.<span style="color:#a6e22e">Focusable</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">38</span><span>  <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">n</span>.<span style="color:#a6e22e">Properties</span>.<span style="color:#a6e22e">Focused</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">39</span><span>   <span style="color:#a6e22e">s</span> = append(<span style="color:#a6e22e">s</span>, <span style="color:#e6db74">&#34;:focus&#34;</span>)
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">40</span><span>  }
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">41</span><span> }
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">42</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">43</span><span> <span style="color:#a6e22e">classes</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">n</span>.<span style="color:#a6e22e">ClassList</span>.<span style="color:#a6e22e">Classes</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">44</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">45</span><span> <span style="color:#66d9ef">for</span> <span style="color:#a6e22e">_</span>, <span style="color:#a6e22e">v</span> <span style="color:#f92672">:=</span> <span style="color:#66d9ef">range</span> <span style="color:#a6e22e">classes</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">46</span><span>  <span style="color:#a6e22e">s</span> = append(<span style="color:#a6e22e">s</span>, <span style="color:#e6db74">&#34;.&#34;</span><span style="color:#f92672">+</span><span style="color:#a6e22e">v</span>)
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">47</span><span> }
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">48</span><span> <span style="color:#75715e">// fmt.Println(n.Properties.Node)
+</span></span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">49</span><span><span style="color:#75715e"></span> <span style="color:#a6e22e">selectors</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">selector</span>.<span style="color:#a6e22e">GetCSSSelectors</span>(<span style="color:#a6e22e">n</span>.<span style="color:#a6e22e">Properties</span>.<span style="color:#a6e22e">Node</span>, <span style="color:#a6e22e">s</span>)
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">50</span><span> <span style="color:#66d9ef">if</span> <span style="color:#a6e22e">n</span>.<span style="color:#a6e22e">Id</span> <span style="color:#f92672">!=</span> <span style="color:#e6db74">&#34;&#34;</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">51</span><span>  <span style="color:#a6e22e">selectors</span> = append(<span style="color:#a6e22e">selectors</span>, <span style="color:#e6db74">&#34;#&#34;</span><span style="color:#f92672">+</span><span style="color:#a6e22e">n</span>.<span style="color:#a6e22e">Id</span>)
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">52</span><span> }
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">53</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">54</span><span> <span style="color:#a6e22e">part</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">selector</span>.<span style="color:#a6e22e">SplitSelector</span>(<span style="color:#a6e22e">strings</span>.<span style="color:#a6e22e">TrimSpace</span>(<span style="color:#a6e22e">parts</span>[len(<span style="color:#a6e22e">parts</span>)<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>]))
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">55</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">56</span><span> <span style="color:#a6e22e">has</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">selector</span>.<span style="color:#a6e22e">Contains</span>(<span style="color:#a6e22e">part</span>, <span style="color:#a6e22e">selectors</span>)
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">57</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">58</span><span> <span style="color:#66d9ef">if</span> len(<span style="color:#a6e22e">parts</span>) <span style="color:#f92672">==</span> <span style="color:#ae81ff">1</span> <span style="color:#f92672">||</span> !<span style="color:#a6e22e">has</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">59</span><span>  <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">has</span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">60</span><span> } <span style="color:#66d9ef">else</span> {
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">61</span><span>  <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">TestSelector</span>(<span style="color:#a6e22e">strings</span>.<span style="color:#a6e22e">Join</span>(<span style="color:#a6e22e">parts</span>[<span style="color:#ae81ff">0</span>:len(<span style="color:#a6e22e">parts</span>)<span style="color:#f92672">-</span><span style="color:#ae81ff">1</span>], <span style="color:#e6db74">&#34;&gt;&#34;</span>), <span style="color:#a6e22e">n</span>.<span style="color:#a6e22e">Parent</span>)
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">62</span><span> }
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">63</span><span>}
+</span></span></code></pre><script src="/plugins/sidebyside.js"></script>
+</main>
+  </body>
+</html>

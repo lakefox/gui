@@ -30,11 +30,11 @@ func main() {
 		editor.AddEventListener("keypress", func(e element.Event) {
 			fmt.Println("key", editor.Value, editor.Properties.Id)
 		})
-		// div := document.CreateElement("div")
-		// div.InnerText = "test"
-		// div.ClassList.Add("button")
-		// row.Children = []element.Node{}
-		// row.AppendChild(div)
+		div := document.CreateElement("div")
+		div.InnerText = "test"
+		div.ClassList.Add("button")
+		row.Children = []element.Node{}
+		row.AppendChild(div)
 	})
 
 }

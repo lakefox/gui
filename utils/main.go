@@ -13,6 +13,76 @@ import (
 	"golang.org/x/net/html"
 )
 
+func ComputeStyleString(n element.Node) string {
+	styles := map[string]string{}
+	wh := GetWH(n)
+	styles["width"] = fmt.Sprint(wh.Width)
+	styles["width"] = fmt.Sprint(wh.Height)
+	m := GetMP(n, "marign")
+	styles["margin-top"] = fmt.Sprint(m.Top)
+	styles["margin-left"] = fmt.Sprint(m.Left)
+	styles["margin-right"] = fmt.Sprint(m.Right)
+	styles["margin-bottom"] = fmt.Sprint(m.Bottom)
+	p := GetMP(n, "padding")
+	styles["padding-top"] = fmt.Sprint(p.Top)
+	styles["padding-left"] = fmt.Sprint(p.Left)
+	styles["padding-right"] = fmt.Sprint(p.Right)
+	styles["padding-bottom"] = fmt.Sprint(p.Bottom)
+	return MapToInline(styles)
+}
+
+func ComputeStyleMap(n element.Node) map[string]float32 {
+	inline := InlineToMap(n.Style["computed"])
+	parsed := map[string]float32{}
+	mt, _ := strconv.ParseFloat(inline["margin-top"], 32)
+	parsed["margin-top"] = float32(mt)
+	ml, _ := strconv.ParseFloat(inline["margin-left"], 32)
+	parsed["margin-left"] = float32(ml)
+	mr, _ := strconv.ParseFloat(inline["margin-right"], 32)
+	parsed["margin-right"] = float32(mr)
+	mb, _ := strconv.ParseFloat(inline["margin-bottom"], 32)
+	parsed["margin-bottom"] = float32(mb)
+
+	pt, _ := strconv.ParseFloat(inline["padding-top"], 32)
+	parsed["padding-top"] = float32(pt)
+	pl, _ := strconv.ParseFloat(inline["padding-left"], 32)
+	parsed["padding-left"] = float32(pl)
+	pr, _ := strconv.ParseFloat(inline["padding-right"], 32)
+	parsed["padding-right"] = float32(pr)
+	pb, _ := strconv.ParseFloat(inline["padding-bottom"], 32)
+	parsed["padding-bottom"] = float32(pb)
+
+	width, _ := strconv.ParseFloat(inline["width"], 32)
+	parsed["width"] = float32(width)
+	height, _ := strconv.ParseFloat(inline["height"], 32)
+	parsed["height"] = float32(height)
+	return parsed
+}
+
+// MapToInlineCSS converts a map[string]string to a string formatted like inline CSS style
+func MapToInline(m map[string]string) string {
+	var cssStrings []string
+	for key, value := range m {
+		cssStrings = append(cssStrings, fmt.Sprintf("%s: %s;", key, value))
+	}
+	return strings.Join(cssStrings, " ")
+}
+
+// InlineCSSToMap converts a string formatted like inline CSS style to a map[string]string
+func InlineToMap(cssString string) map[string]string {
+	cssMap := make(map[string]string)
+	declarations := strings.Split(cssString, ";")
+	for _, declaration := range declarations {
+		parts := strings.Split(strings.TrimSpace(declaration), ":")
+		if len(parts) == 2 {
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+			cssMap[key] = value
+		}
+	}
+	return cssMap
+}
+
 type WidthHeight struct {
 	Width  float32
 	Height float32
