@@ -14,12 +14,12 @@
         ><img src="/assets/logo.png" alt="" title="DECODE" /> GUI Docs</a
       >
     </nav>
-    <main><h1 id="selector"><a class="anchor" href="#selector">¶</a> Selector</h1>
+    <main><h1 id="selector">Selector</h1>
 <p>Selector is a implementation of JavaScripts querySelector. It is split between two files this file and the <code>element</code> package to prevent circular dependancys, however this document will be the source for it. The best way to explain how this works is to start in the <code>element</code> package with the <code>querySelector</code> method and then take a look at the parts that make it up.</p>
 <blockquote>
 <p>func (n *Node) QuerySelector(selectString string) *Node {</p>
 </blockquote>
-<h2 id="queryselector"><a class="anchor" href="#queryselector">¶</a> QuerySelector</h2>
+<h2 id="queryselector"><a class="anchor" href="#queryselector">#</a> QuerySelector</h2>
 <table>
 <thead>
 <tr>
@@ -54,7 +54,7 @@
 <blockquote>
 <p>func (n *Node) QuerySelectorAll(selectString string) *[]*Node {</p>
 </blockquote>
-<h2 id="queryselectorall"><a class="anchor" href="#queryselectorall">¶</a> QuerySelectorAll</h2>
+<h2 id="queryselectorall"><a class="anchor" href="#queryselectorall">#</a> QuerySelectorAll</h2>
 <table>
 <thead>
 <tr>
@@ -81,7 +81,7 @@
 <blockquote>
 <p>func TestSelector(selectString string, n *Node) bool {</p>
 </blockquote>
-<h2 id="testselector"><a class="anchor" href="#testselector">¶</a> TestSelector</h2>
+<h2 id="testselector"><a class="anchor" href="#testselector">#</a> TestSelector</h2>
 <table>
 <thead>
 <tr>
@@ -152,7 +152,7 @@ return TestSelector(strings.Join(parts[0:len(parts)-1], &quot;&gt;&quot;), n.Par
 <blockquote>
 <p>func GetCSSSelectors(node *html.Node, selectors []string) []string {</p>
 </blockquote>
-<h2 id="getcssselectors"><a class="anchor" href="#getcssselectors">¶</a> GetCSSSelectors</h2>
+<h2 id="getcssselectors"><a class="anchor" href="#getcssselectors">#</a> GetCSSSelectors</h2>
 <table>
 <thead>
 <tr>
@@ -179,7 +179,7 @@ return TestSelector(strings.Join(parts[0:len(parts)-1], &quot;&gt;&quot;), n.Par
 <blockquote>
 <p>func SplitSelector(s string) []string {</p>
 </blockquote>
-<h2 id="splitselector"><a class="anchor" href="#splitselector">¶</a> SplitSelector</h2>
+<h2 id="splitselector"><a class="anchor" href="#splitselector">#</a> SplitSelector</h2>
 <table>
 <thead>
 <tr>
@@ -207,7 +207,7 @@ return TestSelector(strings.Join(parts[0:len(parts)-1], &quot;&gt;&quot;), n.Par
 </span></span></code></pre><blockquote>
 <p>func Contains(selector []string, node []string) bool {</p>
 </blockquote>
-<h2 id="contains"><a class="anchor" href="#contains">¶</a> Contains</h2>
+<h2 id="contains"><a class="anchor" href="#contains">#</a> Contains</h2>
 <table>
 <thead>
 <tr>

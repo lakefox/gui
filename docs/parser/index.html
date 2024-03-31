@@ -14,7 +14,34 @@
         ><img src="/assets/logo.png" alt="" title="DECODE" /> GUI Docs</a
       >
     </nav>
-    <main><h1 id="parser"><a class="anchor" href="#parser">¶</a> Parser</h1>
+    <main><h1 id="parser">Parser</h1>
+<p>Parser is the CSS parser for this project, it is made up of two primary functions <code>ParseCSS</code>, <code>ParseStyleAttribute</code>, and a few other functions designed to help with the parsing.</p>
+<blockquote>
+<p>func ParseCSS(css string) map[string]map[string]string {</p>
+</blockquote>
+<h2 id="parsecss"><a class="anchor" href="#parsecss">#</a> ParseCSS</h2>
+<table>
+<thead>
+<tr>
+<th>Arguments</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>n *element.Node</td>
+<td>Target *element.Node</td>
+</tr>
+<tr>
+<td>selectString string</td>
+<td>CSS querySelector string</td>
+</tr>
+<tr>
+<td>return *element.Node</td>
+<td>element.Node matching the query</td>
+</tr>
+</tbody>
+</table>
 <pre tabindex="0" style="color:#f8f8f2;background-color:#272822;"><code><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 1</span><span><span style="color:#f92672">package</span> <span style="color:#a6e22e">parser</span>
 </span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 2</span><span>
 </span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f"> 3</span><span><span style="color:#f92672">import</span> (
@@ -94,6 +121,7 @@
 </span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">77</span><span> <span style="color:#66d9ef">return</span> <span style="color:#a6e22e">commentRegex</span>.<span style="color:#a6e22e">ReplaceAllString</span>(<span style="color:#a6e22e">css</span>, <span style="color:#e6db74">&#34;&#34;</span>)
 </span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">78</span><span>}
 </span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">79</span><span>
-</span></span></code></pre></main>
+</span></span></code></pre><script src="/plugins/sidebyside.js"></script>
+</main>
   </body>
 </html>

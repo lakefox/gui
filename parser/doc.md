@@ -1,5 +1,17 @@
 # Parser
 
+Parser is the CSS parser for this project, it is made up of two primary functions `ParseCSS`, `ParseStyleAttribute`, and a few other functions designed to help with the parsing.
+
+> func ParseCSS(css string) map[string]map[string]string {
+
+## ParseCSS
+
+| Arguments             | Description                     |
+| --------------------- | ------------------------------- |
+| n \*element.Node      | Target \*element.Node           |
+| selectString string   | CSS querySelector string        |
+| return \*element.Node | element.Node matching the query |
+
 ```go
 package parser
 
@@ -81,3 +93,5 @@ func removeComments(css string) string {
 }
 
 ```
+
+<script src="/plugins/sidebyside.js"></script>
