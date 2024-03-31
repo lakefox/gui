@@ -44,7 +44,7 @@
       markedItems[i].dataset.index = window.highlights.length - 1;
       style(markedItems[i], {
         color: "transparent",
-        height: "20px",
+        height: "0px",
         overflow: "hidden",
       });
     }

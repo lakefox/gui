@@ -38,7 +38,6 @@ function parseGoFunctions(code) {
   let match;
 
   while ((match = functionRegex.exec(code)) !== null) {
-    console.log(match);
     let name = match[2];
     let parameters = match[3].split(",").map((param) => param.trim());
     if (match[1]) {
