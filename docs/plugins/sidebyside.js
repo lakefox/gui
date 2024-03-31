@@ -34,7 +34,6 @@
   for (let i = 0; i < markedItems.length; i++) {
     const text = markedItems[i].innerText;
     let found = find(text, documents);
-    console.log(text, found);
     if (found[0] == 0 && found[1] == Infinity && found[0] == 0) {
       markedItems.splice(i, 1);
       i--;
@@ -100,9 +99,11 @@ function getText(el) {
   let t = "";
   let code = el.querySelector("code");
 
-  for (let a = 0; a < code.children.length; a++) {
-    const element = code.children[a];
-    t += element.children[1].innerText;
+  if (code) {
+    for (let a = 0; a < code.children.length; a++) {
+      const element = code.children[a];
+      t += element.children[1].innerText;
+    }
   }
   return t;
 }

@@ -6,11 +6,10 @@ Parser is the CSS parser for this project, it is made up of two primary function
 
 ## ParseCSS
 
-| Arguments             | Description                     |
-| --------------------- | ------------------------------- |
-| n \*element.Node      | Target \*element.Node           |
-| selectString string   | CSS querySelector string        |
-| return \*element.Node | element.Node matching the query |
+| Arguments                           | Description                   |
+| ----------------------------------- | ----------------------------- |
+| css string                          | The contents of a .css file   |
+| return map[string]map[string]string | two dimenitionl map of styles |
 
 ```go
 package parser

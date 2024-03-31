@@ -16,7 +16,33 @@
     </nav>
     <main><h1 id="selector">Selector</h1>
 <p>Selector is a implementation of JavaScripts querySelector. It is split between two files this file and the <code>element</code> package to prevent circular dependancys, however this document will be the source for it. The best way to explain how this works is to start in the <code>element</code> package with the <code>querySelector</code> method and then take a look at the parts that make it up.</p>
-<blockquote>
+<pre class="mermaid">flowchart LR;
+    QuerySelector--&gt;TestSelector;
+    TestSelector--&gt;GetCSSSelectors;
+    GetCSSSelectors--&gt;SplitSelector;
+    SplitSelector--&gt;Contains;
+    Contains--&gt;True;
+    Contains--&gt;False;
+    False--&gt;QuerySelector;
+    True--&gt;EOL;
+    EOL--&gt;Yes;
+    EOL--&gt;No;
+    No--&gt;TestSelector
+    Yes--&gt;QuerySelector;
+</pre><pre class="mermaid">flowchart LR;
+    QuerySelectorAll--&gt;TestSelector;
+    TestSelector--&gt;GetCSSSelectors;
+    GetCSSSelectors--&gt;SplitSelector;
+    SplitSelector--&gt;Contains;
+    Contains--&gt;True;
+    Contains--&gt;False;
+    False--&gt;QuerySelectorAll;
+    True--&gt;EOL;
+    EOL--&gt;Yes;
+    EOL--&gt;No;
+    No--&gt;TestSelector
+    Yes--&gt;QuerySelectorAll;
+</pre><blockquote>
 <p>func (n *Node) QuerySelector(selectString string) *Node {</p>
 </blockquote>
 <h2 id="queryselector"><a class="anchor" href="#queryselector">#</a> QuerySelector</h2>
@@ -363,6 +389,6 @@ return TestSelector(strings.Join(parts[0:len(parts)-1], &quot;&gt;&quot;), n.Par
 </span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">62</span><span> }
 </span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">63</span><span>}
 </span></span></code></pre><script src="/plugins/sidebyside.js"></script>
-</main>
+<script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script><script>mermaid.initialize({startOnLoad: true});</script></main>
   </body>
 </html>

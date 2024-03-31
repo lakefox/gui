@@ -2,6 +2,38 @@
 
 Selector is a implementation of JavaScripts querySelector. It is split between two files this file and the `element` package to prevent circular dependancys, however this document will be the source for it. The best way to explain how this works is to start in the `element` package with the `querySelector` method and then take a look at the parts that make it up.
 
+```mermaid
+flowchart LR;
+    QuerySelector-->TestSelector;
+    TestSelector-->GetCSSSelectors;
+    GetCSSSelectors-->SplitSelector;
+    SplitSelector-->Contains;
+    Contains-->True;
+    Contains-->False;
+    False-->QuerySelector;
+    True-->EOL;
+    EOL-->Yes;
+    EOL-->No;
+    No-->TestSelector
+    Yes-->QuerySelector;
+```
+
+```mermaid
+flowchart LR;
+    QuerySelectorAll-->TestSelector;
+    TestSelector-->GetCSSSelectors;
+    GetCSSSelectors-->SplitSelector;
+    SplitSelector-->Contains;
+    Contains-->True;
+    Contains-->False;
+    False-->QuerySelectorAll;
+    True-->EOL;
+    EOL-->Yes;
+    EOL-->No;
+    No-->TestSelector
+    Yes-->QuerySelectorAll;
+```
+
 > func (n *Node) QuerySelector(selectString string) *Node {
 
 ## QuerySelector
