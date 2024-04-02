@@ -1,38 +1,49 @@
 import { DOM, Fmt, style } from "./html.js";
 import { parseCodeText, detectFileType, parseError } from "./parser.js";
 import { search } from "./search.js";
+import { SideBySide } from "./sidebyside.js";
 
 let div = DOM("div");
 let textarea = DOM("textarea");
 let link = DOM("a");
 let iframe = DOM("iframe");
+let input = DOM("input");
 
-// https://www.google.com/search?igu=1&q=panic%3A%20runtime%20error%3A%20invalid%20memory%20address%20or%20nil%20pointer%20dereference
+let sbs = new SideBySide();
+
+window.onload = () => {
+    sbs.init();
+};
 
 async function popup() {
     let cont = div`class="${css.window}"`;
+    // ${div`innerText="Run Code" class="${css.heading}"`}
+    // ${textarea`class="${css.textarea}"`}
     let w = Fmt`${cont}
-                    ${div`class="${css.inputs}"`}
-                        ${div`innerText="Debug Error" class="${css.heading}"`}
-                        ${textarea`class="${css.textarea}"`}
-                        ${div`innerText="Run Code" class="${css.heading}"`}
-                        ${textarea`class="${css.textarea}"`}
-                    ${div`class="${css.submit}"`}
-                        ${div`class="${css.button}" innerText="Submit"`.on(
-                            "click",
-                            (e) => {
-                                let ta = document.querySelectorAll(
-                                    "." + css.textarea
-                                );
-                                if (ta[0].value != "") {
-                                    // Debug
-                                    debug(ta[0].value, cont);
-                                } else if (ta[1].value != "") {
-                                    // Run
+                    ${div`class="${css.bar}"`}
+                        ${input`class="${css.searchBar}" placeholder="Search" type="search"`}
+                    ${div`class="${css.debug}"`}
+                        ${div`class="${css.inputs}"`}
+                            ${div`innerText="Debug Error" class="${css.heading}"`}
+                            ${textarea`class="${css.textarea}"`}
+
+                        ${div`class="${css.submit}"`}
+                            ${div`class="${css.button}" innerText="Submit"`.on(
+                                "click",
+                                (e) => {
+                                    let ta = document.querySelectorAll(
+                                        "." + css.textarea
+                                    );
+                                    if (ta[0].value != "") {
+                                        // Debug
+                                        debug(ta[0].value, cont);
+                                    } else if (ta[1].value != "") {
+                                        // Run
+                                    }
                                 }
-                            }
-                        )}}`;
+                            )}}`;
     document.body.appendChild(w);
+    document.querySelector(`.${css.searchBar}`).focus();
 }
 
 async function debug(code, cont) {
@@ -41,24 +52,21 @@ async function debug(code, cont) {
     cont.clear();
     let error = getError(code);
 
-    console.log(error);
-
     let results = await search(detectFileType(code) + ": " + error);
-
-    console.log(results);
 
     cont.add(searchResults(results));
 
     let errs = parseError(code);
 
-    console.log(all, errs);
-
     let func = findFunction(errs, all);
+
+    let prevIndexs = [];
+    prevIndexs.push(func);
 
     let frame = iframe`src="/${func.path}/?iframe=true&index=${
         func.index
     }#${func.name.toLowerCase()}${func.type}" class="${css.full}"`;
-    console.log(frame);
+
     frame.onload = () => {
         frame.contentWindow.postMessage(`ERROR: ${code}`);
     };
@@ -66,16 +74,28 @@ async function debug(code, cont) {
 
     window.onmessage = (e) => {
         if (e.data == "next") {
-            func = findFunction(
+            let nextFunc = findFunction(
                 errs,
                 all,
-                Math.min(func.index + 1, errs.length)
+                Math.min(func.index + 1, errs.length - 1)
             );
-            frame.src = `/${func.path}/?iframe=true&index=${
-                func.index
-            }#${func.name.toLowerCase()}${func.type}`;
-        } else {
-            func = findFunction(errs, all, Math.max(func.index - 1, 0));
+
+            if (func.index != nextFunc.index) {
+                prevIndexs.push(func);
+            }
+
+            if (nextFunc.index != func.index) {
+                func = nextFunc;
+                frame.src = `/${func.path}/?iframe=true&index=${
+                    func.index
+                }#${func.name.toLowerCase()}${func.type}`;
+            }
+        } else if (e.data == "previous") {
+            if (prevIndexs.length == 1) {
+                func = prevIndexs[0];
+            } else {
+                func = prevIndexs.pop();
+            }
             frame.src = `/${func.path}/?iframe=true&index=${
                 func.index
             }#${func.name.toLowerCase()}${func.type}`;
@@ -84,11 +104,11 @@ async function debug(code, cont) {
 }
 
 function findFunction(errors, all, last = 0) {
-    errors = errors.slice(last);
     let base = findBasePath(errors);
+    errors = errors.slice(last);
     let func = {};
 
-    console.log(errors, last, all);
+    // console.log(errors, last, all);
 
     for (let a = 0; a < errors.length; a++) {
         const err = errors[a];
@@ -105,10 +125,9 @@ function findFunction(errors, all, last = 0) {
                 bestKey = key;
             }
         }
-        console.log(all[bestKey], bestKey, name, path);
+        // console.log(all[bestKey], bestKey, name, path, err.path);
         if (all[bestKey]) {
             let functions = all[bestKey].functions[type];
-            console.log(functions);
             if (functions) {
                 let bestIndex = 0;
                 for (let b = 0; b < functions.length; b++) {
@@ -254,8 +273,30 @@ let css = style(/*css*/ `
         max-width: 1100px;
         height: 90%;
         max-height: 800px;
+    }
+    .bar {
+        width: 100%;
+        position: absolute;
+        top: 25%;
+    }
+    .searchBar {
+        width: 100%;
+        background: #26272b;
+        border: none;
+        height: 60px;
+        padding: 10px;
+        border-radius: 10px;
+        color: #fff;
+        font-size: 30px;
+        box-shadow: 0 0 0 100000px rgba(0,0,0,.2);
+    }
+    .debug {
         background: #1a1b20;
         border-radius: 10px;
+        height: 50%;
+        position: absolute;
+        width: 100%;
+        bottom: 0;
     }
     .heading {
         color: #e7e7e7;
@@ -270,8 +311,8 @@ let css = style(/*css*/ `
         margin-top: 70px;
     }
     .textarea {
-        width: 100%;
-        height: 200px;
+        width: -webkit-fill-available;
+        height: 180px;
         background: #26272b;
         border: none;
         border-radius: 10px;
@@ -283,7 +324,7 @@ let css = style(/*css*/ `
     .submit {
         position: absolute;
         bottom: 15px;
-        width: 97%;
+        width: 90%;
         display: flex;
         justify-content: flex-end;
         margin: auto;
@@ -378,13 +419,14 @@ let css = style(/*css*/ `
     .btnCont > div {
         height: 35px;
         line-height: 35px;
+        user-select: none;
     }
+    .search {}
 `);
 
 (() => {
     if (window.location.search.indexOf("iframe") != -1) {
         window.onmessage = (event) => {
-            console.log(event);
             if (event.data.slice(0, 7) == "ERROR: ") {
                 const urlParams = new URLSearchParams(window.location.search);
 
@@ -393,9 +435,8 @@ let css = style(/*css*/ `
                 let errs = parseError(text);
                 let highlight = errs[urlParams.get("index")].line;
 
-                console.log(highlight);
+                sbs.error(errs[urlParams.get("index")].lineNum);
 
-                let sbs = document.querySelector("#sidebyside");
                 let err = div`class="${css.error}"`;
                 err.innerHTML = text
                     .split("\n")
@@ -421,13 +462,31 @@ let css = style(/*css*/ `
                                     }
                                 )}
                 `);
-                sbs.parentElement.insertBefore(err, sbs);
-                sbs.style.top = `${
-                    parseInt(getComputedStyle(err)["height"]) + 26
+                sbs.sideCont.parentElement.insertBefore(err, sbs.sideCont);
+                sbs.sideCont.style.top = `${
+                    parseInt(getComputedStyle(err)["height"]) + 40
                 }px`;
             }
         };
     } else {
-        popup();
+        document.addEventListener("keydown", function (event) {
+            // Check if Ctrl key is pressed on Windows or Command key on Mac
+            const isCtrlOrCmdPressed =
+                (event.ctrlKey && navigator.platform.indexOf("Win") > -1) ||
+                (event.metaKey && navigator.platform.indexOf("Mac") > -1);
+
+            // Check if 'K' key is pressed
+            const isKPressed = event.key === "k" || event.keyCode === 75;
+
+            // If both conditions are true, execute your code here
+            if (isCtrlOrCmdPressed && isKPressed) {
+                // Your code here
+                console.log("Ctrl or Command + K pressed");
+                popup();
+            } else if (event.key == "Escape") {
+                let w = document.querySelector(`.${css.window}`);
+                w.parentElement.removeChild(w);
+            }
+        });
     }
 })();

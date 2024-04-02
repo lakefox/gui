@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	rio "gui/document"
+	"gui/document"
 	"gui/element"
 	// _ "net/http/pprof"
 )
@@ -13,7 +13,15 @@ func main() {
 	// 	fmt.Println(http.ListenAndServe("localhost:6060", nil))
 	// }()
 
-	document := rio.Document{}
+	document := document.Document{}
+
+	// html := document.CreateElement("html")
+
+	// document := window.New()
+
+	// html.OnLoad(func() {
+	// 	fmt.Println("loaded")
+	// })
 
 	document.Open("./src/app.html", func(doc *element.Node) {
 		row := doc.QuerySelector(".row")
@@ -30,11 +38,11 @@ func main() {
 		editor.AddEventListener("keypress", func(e element.Event) {
 			fmt.Println("key", editor.Value, editor.Properties.Id)
 		})
-		div := document.CreateElement("div")
-		div.InnerText = "test"
-		div.ClassList.Add("button")
-		row.Children = []element.Node{}
-		row.AppendChild(div)
+		// div := document.CreateElement("div")
+		// div.InnerText = "test"
+		// div.ClassList.Add("button")
+		// row.Children = []element.Node{}
+		// row.AppendChild(div)
 	})
 
 }

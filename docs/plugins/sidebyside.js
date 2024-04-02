@@ -1,64 +1,96 @@
-(() => {
-    let body = document.querySelector("body");
-    let sideCont = document.createElement("div");
-    sideCont.id = "sidebyside";
-    let pre = document.querySelectorAll("pre");
-    let main = document.querySelector("main");
+import { DOM, style, inline } from "./html.js";
 
-    style(main, {
-        width: "50%",
-        overflowY: "auto",
-        height: "calc(100vh - 156px)",
-        margin: "0",
-        paddingBottom: "100px",
-    });
+let div = DOM("div");
 
-    style(body, { overflowY: "hidden" });
-
-    style(sideCont, {
-        width: "50%",
-        position: "fixed",
-        right: "0",
-        top: "0",
-        height: "100vh",
-        overflowY: "auto",
-    });
-
-    body.appendChild(sideCont);
-
-    let markedItems = [...document.querySelectorAll("blockquote > p")];
-    let documents = [...pre].map(getText);
-
-    window.highlights = [];
-    window.current = 0;
-
-    for (let i = 0; i < markedItems.length; i++) {
-        const text = markedItems[i].innerText;
-        let found = find(text, documents);
-        if (found[0] == 0 && found[1] == Infinity && found[0] == 0) {
-            markedItems.splice(i, 1);
-            i--;
-        } else {
-            window.highlights.push(found);
-            sideCont.appendChild(pre[found[2]]);
-            style(pre[found[2]], { display: "none" });
-            markedItems[i].dataset.index = window.highlights.length - 1;
-            style(markedItems[i], {
-                color: "transparent",
-                height: "0px",
-                overflow: "hidden",
-            });
-        }
+export class SideBySide {
+    constructor() {
+        this.body = document.querySelector("body");
+        this.sideCont = div`class="${css.container}"`;
+        this.pre = document.querySelectorAll("pre");
+        this.main = document.querySelector("main");
+        this.lineLocked = false;
     }
 
-    style(pre[window.highlights[0][2]], { display: "block" });
-    let currentItem = -1;
-    main.onscroll = (e) => {
+    init() {
+        this.main.classList.add(css.main);
+        this.body.classList.add(css.body);
+        this.body.appendChild(this.sideCont);
+        let markedItems = [...document.querySelectorAll("blockquote > p")];
+        this.markedItems = markedItems;
+        let documents = [...this.pre].map(getText);
+        this.highlights = [];
+        this.current = 0;
+
+        for (let i = 0; i < markedItems.length; i++) {
+            const text = markedItems[i].innerText;
+            let found = find(text, documents);
+            if (found[0] == 0 && found[1] == Infinity && found[0] == 0) {
+                markedItems.splice(i, 1);
+                i--;
+            } else {
+                this.highlights.push(found);
+                this.sideCont.appendChild(this.pre[found[2]]);
+                inline(this.pre[found[2]], { display: "none" });
+                markedItems[i].dataset.index = this.highlights.length - 1;
+                inline(markedItems[i], {
+                    color: "transparent",
+                    height: "0px",
+                    overflow: "hidden",
+                });
+            }
+        }
+        inline(this.pre[this.highlights[0][2]], { display: "block" });
+
+        let currentItem = -1;
+        this.main.onscroll = (e) => {
+            if (!this.lineLocked) {
+                let closestItem;
+                let minDistance = Infinity;
+
+                markedItems.forEach((item, i) => {
+                    if (isInViewport(item) || i == markedItems.length - 1) {
+                        const distance = Math.abs(
+                            item.getBoundingClientRect().top
+                        );
+                        if (distance < minDistance) {
+                            minDistance = distance;
+                            closestItem = item;
+                        }
+                    }
+                });
+
+                let found =
+                    this.highlights[parseInt(closestItem.dataset.index)];
+                if (currentItem != parseInt(closestItem.dataset.index)) {
+                    for (let i = 0; i < this.highlights.length; i++) {
+                        const element = this.highlights[i];
+                        unHighlight(this.pre[element[2]], element);
+                        inline(this.pre[element[2]], { display: "none" });
+                    }
+
+                    inline(this.pre[found[2]], { display: "block" });
+                    highlight(this.pre[found[2]], found);
+                    view(this.sideCont, this.pre[found[2]], found);
+                    currentItem = parseInt(closestItem.dataset.index);
+                }
+            }
+        };
+
+        this.main.appendChild(div`style="padding: 100vh;"`);
+    }
+
+    error(start, end = false) {
+        if (end == false) {
+            end = start;
+        }
+
+        // this.lineLocked = true;
+
         let closestItem;
         let minDistance = Infinity;
 
-        markedItems.forEach((item, i) => {
-            if (isInViewport(item) || i == markedItems.length - 1) {
+        this.markedItems.forEach((item, i) => {
+            if (isInViewport(item) || i == this.markedItems.length - 1) {
                 const distance = Math.abs(item.getBoundingClientRect().top);
                 if (distance < minDistance) {
                     minDistance = distance;
@@ -66,35 +98,34 @@
                 }
             }
         });
-
-        let found = window.highlights[parseInt(closestItem.dataset.index)];
-        if (currentItem != parseInt(closestItem.dataset.index)) {
-            for (let i = 0; i < window.highlights.length; i++) {
-                const element = window.highlights[i];
-                unHighlight(pre[element[2]], element);
-                style(pre[element[2]], { display: "none" });
-            }
-
-            style(pre[found[2]], { display: "block" });
-            highlight(pre[found[2]], found);
-            view(sideCont, pre[found[2]], found);
-            currentItem = parseInt(closestItem.dataset.index);
-        }
-    };
-    let padding = document.createElement("div");
-
-    style(padding, {
-        height: "100vh",
-    });
-
-    main.appendChild(padding);
-})();
-
-function style(el, styles) {
-    for (const key in styles) {
-        el.style[key] = styles[key];
+        let found = this.highlights[parseInt(closestItem.dataset.index)];
+        found[0] = start;
+        found[1] = end;
+        highlight(this.pre[found[2]], found, "#754242");
+        view(this.sideCont, this.pre[found[2]], found);
     }
 }
+
+let css = style(/*css*/ `
+    .main {
+        width: 50%;
+        overflow-y: auto;
+        height: calc(100vh - 156px);
+        margin: 0;
+        padding-bottom: 100px;
+    }
+    .body {
+        overflow-y: hidden;
+    }
+    .container {
+        width: 50%;
+        position: fixed;
+        right: 0;
+        top: 0;
+        height: 100vh;
+        overflow-y: auto;
+    }
+`);
 
 function getText(el) {
     let t = "";
@@ -150,13 +181,13 @@ function find(text, documents) {
     return [start, end, index];
 }
 
-function highlight(el, lines) {
+function highlight(el, lines, color = "#d2dc0024") {
     let code = el.querySelector("code");
 
     for (let a = lines[0] - 1; a < lines[1]; a++) {
         const element = code.children[a];
-        style(element, {
-            background: "#d2dc0024",
+        inline(element, {
+            background: color,
         });
     }
 }
@@ -166,7 +197,7 @@ function unHighlight(el, lines) {
 
     for (let a = lines[0] - 1; a < lines[1]; a++) {
         const element = code.children[a];
-        style(element, {
+        inline(element, {
             background: "",
         });
     }

@@ -18,7 +18,20 @@
             >
         </nav>
         <main><h1 id="document">document</h1>
-<h2 id="opengo"><a class="anchor" href="#opengo">#</a> Open?(go)</h2>
+<p><code>document</code> is the main API interface for the library, it contains most of the methods provided in the JavaScript <a href="https://developer.mozilla.org/en-US/docs/Web/API/Document">document object</a></p>
+<pre class="mermaid">    flowchart LR;
+        index.html--&gt;open
+        master.css--&gt;open
+        gui--&gt;index.html;
+        gui--&gt;master.css;
+        gui--&gt;document.CreateElement;
+        document.CreateElement--&gt;new;
+        open--&gt;document;
+        new--&gt;document;
+        document--&gt;gui.display;
+        script--&gt;document;
+</pre><h2 id="opengo"><a class="anchor" href="#opengo">#</a> Open?(go)</h2>
+<p>The <code>Open</code> methed is used to load a file from disk and display the file.</p>
 <h2 id="createelementgo"><a class="anchor" href="#createelementgo">#</a> CreateElement?(go)</h2>
 <h2 id="parsego"><a class="anchor" href="#parsego">#</a> parse?(go)</h2>
 <h2 id="extractstylesheetsgo"><a class="anchor" href="#extractstylesheetsgo">#</a> extractStylesheets?(go)</h2>
@@ -299,7 +312,6 @@
 </span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">268</span><span>		panic(<span style="color:#a6e22e">e</span>)
 </span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">269</span><span>	}
 </span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">270</span><span>}
-</span></span></code></pre></main>
-        <script type="module" src="/plugins/sidebyside.js"></script>
+</span></span></code></pre><script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script><script>mermaid.initialize({startOnLoad: true});</script></main>
     </body>
 </html>

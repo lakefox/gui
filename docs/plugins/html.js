@@ -7,6 +7,12 @@ export let style = function () {
     return newCSS.classMap;
 };
 
+export function inline(el, styles) {
+    for (const key in styles) {
+        el.style[key] = styles[key];
+    }
+}
+
 export let Fmt = function (strings, ...values) {
     const elements = strings.map((e, i) => {
         return { el: values[i], depth: e.length };
