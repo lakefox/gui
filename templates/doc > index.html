@@ -1,21 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="shortcut icon" href="/assets/logo.png" type="image/x-icon" />
-    <link rel="stylesheet" href="/style.css" />
-    <!-- <title>{{.Path}}</title> -->
-    <!-- <meta name="description" content="{{.Data.description}}" /> -->
-  </head>
-  <body>
-    <nav>
-      <a href="/"
-        ><img src="/assets/logo.png" alt="" title="DECODE" /> GUI Docs</a
-      >
-    </nav>
-    <main>{{.Content}}</main>
-    <script src="/plugins/mermaid.js"></script>
-    <script src="/plugins/sidebyside.js"></script>
-  </body>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="shortcut icon" href="/assets/logo.png" type="image/x-icon" />
+        <link rel="stylesheet" href="/style.css" />
+        <!-- <title>{{.Path}}</title> -->
+        <!-- <meta name="description" content="{{.Data.description}}" /> -->
+        <script type="module" src="/plugins/error.js"></script>
+        <script type="module" src="/plugins/mermaid.js"></script>
+    </head>
+    <body>
+        <nav>
+            <a href="/"
+                ><img src="/assets/logo.png" alt="" title="DECODE" /> GUI
+                Docs</a
+            >
+        </nav>
+        <main>{{.Content}}</main>
+        <script type="module" src="/plugins/sidebyside.js"></script>
+    </body>
 </html>
