@@ -1,25 +1,28 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <link rel="shortcut icon" href="/assets/logo.png" type="image/x-icon" />
-    <title>GUI</title>
-    <link rel="stylesheet" href="style.css" />
-  </head>
-  <body>
-    <nav>
-      <a href="/"><img src="/assets/logo.png" alt="" title="GUI" /> GUI Docs</a>
-    </nav>
-    <main class="list">
-      <ul id="list">
-        {{range .Posts}} {{$A := "./rss"}} {{$B := "./."}} {{if and (not (or (eq
-        .Url $A) (eq .Url $B)))}}
-        <li>
-          <a href="{{.Url}}" title="{{.Url}}">{{.Url}}</a>
-        </li>
-        {{end}} {{end}}
-      </ul>
-    </main>
-  </body>
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <link rel="shortcut icon" href="/assets/logo.png" type="image/x-icon" />
+        <title>GUI</title>
+        <link rel="stylesheet" href="style.css" />
+        <script type="module" src="/plugins/error.js"></script>
+    </head>
+    <body>
+        <nav>
+            <a href="/"
+                ><img src="/assets/logo.png" alt="" title="GUI" /> GUI Docs</a
+            >
+        </nav>
+        <main class="list">
+            <ul id="list">
+                {{range .Posts}} {{$A := "./rss"}} {{$B := "./."}} {{if and (not
+                (or (eq .Url $A) (eq .Url $B)))}}
+                <li>
+                    <a href="{{.Url}}" title="{{.Url}}">{{.Url}}</a>
+                </li>
+                {{end}} {{end}}
+            </ul>
+        </main>
+    </body>
 </html>

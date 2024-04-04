@@ -12,12 +12,16 @@ export class SideBySide {
     }
 
     init() {
-        this.main.classList.add(css.main);
-        this.body.classList.add(css.body);
-        this.body.appendChild(this.sideCont);
         let markedItems = [...document.querySelectorAll("blockquote > p")];
         this.markedItems = markedItems;
         let documents = [...this.pre].map(getText);
+        if (markedItems.length == 0 || documents.length == 0) {
+            return;
+        }
+        this.main.classList.add(css.main);
+        this.body.classList.add(css.body);
+        this.body.appendChild(this.sideCont);
+
         this.highlights = [];
         this.current = 0;
 

@@ -1,6 +1,6 @@
 import { DOM, Fmt, style } from "./html.js";
 import { parseCodeText, detectFileType, parseError } from "./parser.js";
-import { search } from "./search.js";
+import { webSearch, similarityScore, searchDocuments } from "./search.js";
 import { SideBySide } from "./sidebyside.js";
 
 let div = DOM("div");
@@ -17,12 +17,31 @@ window.onload = () => {
 
 async function popup() {
     let cont = div`class="${css.window}"`;
-    // ${div`innerText="Run Code" class="${css.heading}"`}
-    // ${textarea`class="${css.textarea}"`}
     let all = await getAll();
+    let searchRes = div`class="${css.searchResults}"`;
     let w = Fmt`${cont}
                     ${div`class="${css.bar}"`}
-                        ${input`class="${css.searchBar}" placeholder="Search" type="search"`}
+                        ${input`class="${css.searchBar}" placeholder="Search" type="search"`.on(
+                            "input",
+                            (e) => {
+                                let query = e.target.value;
+                                let results = searchDocuments(all, query);
+                                searchRes.clear();
+                                for (let i = 0; i < results.length; i++) {
+                                    searchRes.add(Fmt`${div``}
+                                                        ${link`innerText="${
+                                                            results[i].top
+                                                        }" href="${new URL(
+                                                            results[i].document,
+                                                            window.location.origin
+                                                        ).toString()}#:~:text=${
+                                                            results[i].top
+                                                        }"`}
+                                                        `);
+                                }
+                            }
+                        )}
+                        ${searchRes}
                     ${div`class="${css.debug}"`}
                         ${div`class="${css.inputs}"`}
                             ${div`innerText="Debug Error" class="${css.heading}"`}
@@ -52,7 +71,7 @@ async function debug(code, cont, all) {
     cont.clear();
     let error = getError(code);
 
-    let results = await search(detectFileType(code) + ": " + error);
+    let results = await webSearch(detectFileType(code) + ": " + error);
 
     cont.add(searchResults(results));
 
@@ -237,33 +256,6 @@ function findBasePath(urls) {
     return basePath;
 }
 
-function similarityScore(string1, string2) {
-    const matrix = Array.from({ length: string1.length + 1 }, (_, i) =>
-        Array.from({ length: string2.length + 1 }, (_, j) =>
-            i === 0 ? j : j === 0 ? i : 0
-        )
-    );
-
-    for (let i = 1; i <= string1.length; i++) {
-        for (let j = 1; j <= string2.length; j++) {
-            if (string1[i - 1] === string2[j - 1]) {
-                matrix[i][j] = matrix[i - 1][j - 1];
-            } else {
-                matrix[i][j] =
-                    Math.min(
-                        matrix[i - 1][j - 1],
-                        matrix[i - 1][j],
-                        matrix[i][j - 1]
-                    ) + 1;
-            }
-        }
-    }
-
-    const maxLen = Math.max(string1.length, string2.length);
-    const similarity = 1 - matrix[string1.length][string2.length] / maxLen;
-    return similarity;
-}
-
 let css = style(/*css*/ `
     .window {
         position: fixed;
@@ -424,6 +416,18 @@ let css = style(/*css*/ `
         user-select: none;
     }
     .search {}
+    .searchResults > div {
+        background: #7d8194;
+        margin-top: 5px;
+        color: #fff;
+        text-decoration: none;
+        border-radius: 5px;
+        padding: 10px;
+        font-family: monospace;
+    }
+    .searchResults > div > a {
+        color: #000;
+    }
 `);
 
 (() => {
