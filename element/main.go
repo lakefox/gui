@@ -1,9 +1,11 @@
 package element
 
 import (
+	"fmt"
 	"gui/selector"
 	"image"
 	ic "image/color"
+	"regexp"
 	"strings"
 
 	"golang.org/x/image/font"
@@ -112,32 +114,6 @@ type Shadow struct {
 	Blur  int
 	Color ic.RGBA
 }
-
-// func (n *Node) GetAttribute(name string) string {
-// 	attributes := make(map[string]string)
-
-// 	for _, attr := range n.Properties.Node.Attr {
-// 		attributes[attr.Key] = attr.Val
-// 	}
-// 	return attributes[name]
-// }
-
-// func (n *Node) SetAttribute(key, value string) {
-// 	// Iterate through the attributes
-// 	for i, attr := range n.Properties.Node.Attr {
-// 		// If the attribute key matches, update its value
-// 		if attr.Key == key {
-// 			n.Properties.Node.Attr[i].Val = value
-// 			return
-// 		}
-// 	}
-
-// 	// If the attribute key was not found, add a new attribute
-// 	n.Properties.Node.Attr = append(n.Properties.Node.Attr, html.Attribute{
-// 		Key: key,
-// 		Val: value,
-// 	})
-// }
 
 func (n *Node) GetAttribute(name string) string {
 	return n.Attribute[name]
@@ -258,6 +234,21 @@ func TestSelector(selectString string, n *Node) bool {
 
 func (n *Node) AppendChild(c Node) {
 	c.Parent = n
+	// Set ID
+	// Define a regular expression to match numeric digits
+	re := regexp.MustCompile(`\d+`)
+
+	// Find all matches of numeric digits in the input string
+	matches := re.FindAllString(c.Parent.Properties.Id, -1)
+
+	// Concatenate all matches into a single string
+	numericPart := ""
+	for _, match := range matches {
+		numericPart += match
+	}
+
+	c.Properties.Id = c.TagName + numericPart + fmt.Sprint(len(c.Parent.Children))
+
 	n.Children = append(n.Children, c)
 }
 

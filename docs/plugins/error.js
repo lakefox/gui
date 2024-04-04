@@ -472,6 +472,9 @@ let css = style(/*css*/ `
                 sbs.sideCont.style.top = `${
                     parseInt(getComputedStyle(err)["height"]) + 40
                 }px`;
+                sbs.sideCont.style.height = `calc(100vh - ${
+                    parseInt(getComputedStyle(err)["height"]) + 40
+                }px)`;
             }
         };
     } else {

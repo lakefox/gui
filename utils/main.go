@@ -487,10 +487,26 @@ func GetPositionOffsetNode(n *element.Node) *element.Node {
 	if pos == "relative" {
 		return n
 	} else {
-		if n.Parent.Style != nil {
-			return GetPositionOffsetNode(n.Parent)
+		if n.Parent.TagName != "ROOT" {
+			if n.Parent.Style != nil {
+				return GetPositionOffsetNode(n.Parent)
+			} else {
+				return nil
+			}
 		} else {
-			return nil
+			return n.Parent
 		}
+	}
+}
+
+func IsParent(n element.Node, name string) bool {
+	if n.Parent.TagName != "ROOT" {
+		if n.Parent.TagName == name {
+			return true
+		} else {
+			return IsParent(*n.Parent, name)
+		}
+	} else {
+		return false
 	}
 }

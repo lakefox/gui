@@ -16,6 +16,7 @@ let td = DOM("td");
 
     for (let i = 0; i < code.length; i++) {
         let res = parseCodeText(code[i].innerText);
+
         if (functions[res.language] == undefined) {
             functions[res.language] = [];
         }

@@ -6,10 +6,6 @@ daslk
 
 ## StyleTag?(go)
 
-## CreateDocument?(go)
-
-## CreateNode?(go)
-
 ## GetStyles?(go)
 
 ## Render?(go)
@@ -19,8 +15,6 @@ daslk
 ## hash?(go)
 
 ## ComputeNodeStyle?(go)
-
-## initNodes?(go)
 
 ## InitNode?(go)
 

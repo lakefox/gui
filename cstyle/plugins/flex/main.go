@@ -1,6 +1,7 @@
 package flex
 
 import (
+	"fmt"
 	"gui/cstyle"
 	"gui/element"
 	"gui/utils"
@@ -225,7 +226,9 @@ func order(p element.Node, elements []element.Node, direction string, reversed, 
 			tMax += elMax.(float32) + elMS.(float32) + elME.(float32)
 		}
 
-		pMax, _ := utils.GetStructField(&p, dir)
+		pMax, err := utils.GetStructField(&p, dir)
+		fmt.Printf("HERE %v\n", p)
+		utils.Check(err)
 
 		// Resize node to fit
 		var newSize float32

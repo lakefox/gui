@@ -26,7 +26,7 @@ export function parseCodeText(codeText) {
 
 export function detectLanguage(codeText) {
     // For simplicity, let's assume we have some predefined patterns for each language
-    if (/function/.test(codeText)) {
+    if (/function\s+\w+\(.*\)/.test(codeText)) {
         return "javascript";
     } else if (/def\s+\w+\(.*\):/.test(codeText)) {
         return "python";

@@ -17,10 +17,7 @@ import (
 	"os"
 	"slices"
 	"sort"
-	"strconv"
 	"strings"
-
-	"golang.org/x/net/html"
 )
 
 type Plugin struct {
@@ -49,79 +46,6 @@ func (c *CSS) StyleSheet(path string) {
 func (c *CSS) StyleTag(css string) {
 	styles := parser.ParseCSS(css)
 	c.StyleSheets = append(c.StyleSheets, styles)
-}
-
-func (c *CSS) CreateDocument(doc *html.Node) element.Node {
-	id := doc.FirstChild.Data + "0"
-	n := doc.FirstChild
-	node := element.Node{
-		Parent: &element.Node{
-			Properties: element.Properties{
-				Id:     "ROOT",
-				X:      0,
-				Y:      0,
-				Width:  c.Width,
-				Height: c.Height,
-				EM:     16,
-			},
-
-			Style: map[string]string{
-				"width":  strconv.FormatFloat(float64(c.Width), 'f', -1, 32) + "px",
-				"height": strconv.FormatFloat(float64(c.Height), 'f', -1, 32) + "px",
-			},
-		},
-		Properties: element.Properties{
-			Id: id,
-			X:  0,
-			Y:  0,
-		},
-	}
-	i := 0
-	for child := n.FirstChild; child != nil; child = child.NextSibling {
-		if child.Type == html.ElementNode {
-			node.Children = append(node.Children, CreateNode(node, child, fmt.Sprint(i)))
-			i++
-		}
-	}
-	return initNodes(&node, *c)
-}
-
-func CreateNode(parent element.Node, n *html.Node, slug string) element.Node {
-	id := n.Data + slug
-	node := element.Node{
-		Parent:    &parent,
-		TagName:   n.Data,
-		InnerText: utils.GetInnerText(n),
-		Properties: element.Properties{
-			Id: id,
-		},
-	}
-	for _, attr := range n.Attr {
-		if attr.Key == "class" {
-			classes := strings.Split(attr.Val, " ")
-			for _, class := range classes {
-				node.ClassList.Add(class)
-			}
-		} else if attr.Key == "id" {
-			node.Id = attr.Val
-		} else if attr.Key == "contenteditable" && (attr.Val == "" || attr.Val == "true") {
-			node.Properties.Editable = true
-		} else if attr.Key == "href" {
-			node.Href = attr.Val
-		} else if attr.Key == "src" {
-			node.Src = attr.Val
-		} else if attr.Key == "title" {
-			node.Title = attr.Val
-		}
-	}
-	i := 0
-	for child := n.FirstChild; child != nil; child = child.NextSibling {
-		if child.Type == html.ElementNode {
-			node.Children = append(node.Children, CreateNode(node, child, slug+fmt.Sprint(i)))
-			i++
-		}
-	}
-	return node
 }
 
 var inheritedProps = []string{
@@ -323,9 +247,34 @@ func (c *CSS) ComputeNodeStyle(n *element.Node) *element.Node {
 		y -= m.Bottom
 	}
 
+	bold, italic := false, false
+
+	if n.Style["font-weight"] == "bold" {
+		bold = true
+	}
+
+	if n.Style["font-style"] == "italic" {
+		italic = true
+	}
+
+	if n.Properties.Text.Font == nil {
+		f, _ := font.LoadFont(n.Style["font-family"], int(n.Properties.EM), bold, italic)
+		letterSpacing, _ := utils.ConvertToPixels(n.Style["letter-spacing"], n.Properties.EM, width)
+		wordSpacing, _ := utils.ConvertToPixels(n.Style["word-spacing"], n.Properties.EM, width)
+		lineHeight, _ := utils.ConvertToPixels(n.Style["line-height"], n.Properties.EM, width)
+		if lineHeight == 0 {
+			lineHeight = n.Properties.EM + 3
+		}
+
+		n.Properties.Text.LineHeight = int(lineHeight)
+		n.Properties.Text.Font = f
+		n.Properties.Text.WordSpacing = int(wordSpacing)
+		n.Properties.Text.LetterSpacing = int(letterSpacing)
+	}
+
 	if len(n.Children) == 0 {
 		// Confirm text exists
-		if len(n.InnerText) > 0 {
+		if len(n.InnerText) > 0 && !utils.IsParent(*n, "head") {
 			innerWidth := width
 			innerHeight := height
 			genTextNode(n, &innerWidth, &innerHeight, p)
@@ -378,21 +327,6 @@ func (c *CSS) ComputeNodeStyle(n *element.Node) *element.Node {
 	}
 
 	return n
-}
-
-func initNodes(n *element.Node, c CSS) element.Node {
-	n = InitNode(n, c)
-	for i, ch := range n.Children {
-		// if ch.Properties.Type == html.ElementNode {
-		ch.Parent = n
-		cn := initNodes(&ch, c)
-
-		n.Children[i] = cn
-
-		// }
-	}
-
-	return *n
 }
 
 func InitNode(n *element.Node, c CSS) *element.Node {
