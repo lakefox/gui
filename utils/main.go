@@ -96,14 +96,17 @@ func GetWH(n element.Node) WidthHeight {
 		pwh = GetWH(*n.Parent)
 	} else {
 		pwh = WidthHeight{}
-		for _, attr := range n.Properties.Node.Attr {
-			val, _ := strconv.ParseFloat(attr.Val, 32)
-			if attr.Key == "Width" {
-				pwh.Width = float32(val)
-			}
-			if attr.Key == "Height" {
-				pwh.Height = float32(val)
-			}
+		if n.Style["width"] != "" {
+			str := strings.TrimSuffix(n.Style["width"], "px")
+			// Convert the string to float32
+			f, _ := strconv.ParseFloat(str, 32)
+			pwh.Width = float32(f)
+		}
+		if n.Style["height"] != "" {
+			str := strings.TrimSuffix(n.Style["height"], "px")
+			// Convert the string to float32
+			f, _ := strconv.ParseFloat(str, 32)
+			pwh.Height = float32(f)
 		}
 	}
 
@@ -476,4 +479,18 @@ func GetInnerText(n *html.Node) string {
 	getText(n)
 
 	return result.String()
+}
+
+func GetPositionOffsetNode(n *element.Node) *element.Node {
+	pos := n.Style["position"]
+
+	if pos == "relative" {
+		return n
+	} else {
+		if n.Parent.Style != nil {
+			return GetPositionOffsetNode(n.Parent)
+		} else {
+			return nil
+		}
+	}
 }

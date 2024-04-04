@@ -60,22 +60,18 @@ See [QuerySelector](./#queryselectorgo). `QuerySelectorAll` works the exact same
 
 It first starts off by splitting the `selectString` in to parts divided by `>` this is becuase when you have a selector like `blockquote > p` you need to start at the first level (`p`) to compare the current node to see if you will need to continue to check the parents of the element with the next selector.
 
-> s := []string{}
+> selectors := []string{}
 > if n.Properties.Focusable {
 > if n.Properties.Focused {
-> s = append(s, ":focus")
+> selectors = append(selectors, ":focus")
 > }
 > }
 > classes := n.ClassList.Classes
 > for \_, v := range classes {
-> s = append(s, "."+v)
+> selectors = append(selectors, "."+v)
 > }
 
 Then we need to build the selectors, so we start by creating an array to store them in (`s`) and we check to see if the element is focusable and if the element is focused. If so we add the `:focus` selector to the list. This is important because when targeting a `:focus`ed element with a querySelector that is the text that is past. We then do the same for classes.
-
-> selectors := selector.GetCSSSelectors(n.Properties.Node, s)
-
-Next we use the [`GetCSSSelectors`](./#getcssselectorsgo) method in this package to generate any selectors assigned to the `net/html` Node.
 
 > if n.Id != "" {
 > selectors = append(selectors, "#"+n.Id)
@@ -100,17 +96,13 @@ If we are on the last selector in the split selector (parts) or if we have a par
 
 If we are not on the last element and the selector matches for this Node then we can remove the last element from `parts` as we have already checked to make sure it matches and join it be `>` charectors as that is what it was split by at the beginning. Then we just recall the function passing the parent as the Node.
 
-## GetCSSSelectors?(go)
-
-`GetCSSSelectors` purpose is to generate all possible selectors for a `net/html` Node. It is used inside of the element package interally to the [`TestSelector`](./#testselectorgo) function. It does this buy taking the classes, id's, and attributes and creating an array of their string equalivents (.class, #id, and [value="somevalue"]).
-
 ## SplitSelector?(go)
 
 `SplitSelector` works by simply spliting a CSS selector into it's individual parts see below for an example:
 
 ```go
 func main() {
-	fmt.Println(SplitSelector("p.text[name='first']"))
+ fmt.Println(SplitSelector("p.text[name='first']"))
 }
 ```
 

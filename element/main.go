@@ -7,8 +7,6 @@ import (
 	"strings"
 
 	"golang.org/x/image/font"
-
-	"golang.org/x/net/html"
 )
 
 type Node struct {
@@ -22,6 +20,7 @@ type Node struct {
 	Href      string
 	Src       string
 	Title     string
+	Attribute map[string]string
 
 	ScrollY       float32
 	Value         string
@@ -38,8 +37,6 @@ type Node struct {
 }
 
 type Properties struct {
-	Node           *html.Node
-	Type           html.NodeType
 	Id             string
 	X              float32
 	Y              float32
@@ -116,30 +113,84 @@ type Shadow struct {
 	Color ic.RGBA
 }
 
-func (n *Node) GetAttribute(name string) string {
-	attributes := make(map[string]string)
+// func (n *Node) GetAttribute(name string) string {
+// 	attributes := make(map[string]string)
 
-	for _, attr := range n.Properties.Node.Attr {
-		attributes[attr.Key] = attr.Val
-	}
-	return attributes[name]
+// 	for _, attr := range n.Properties.Node.Attr {
+// 		attributes[attr.Key] = attr.Val
+// 	}
+// 	return attributes[name]
+// }
+
+// func (n *Node) SetAttribute(key, value string) {
+// 	// Iterate through the attributes
+// 	for i, attr := range n.Properties.Node.Attr {
+// 		// If the attribute key matches, update its value
+// 		if attr.Key == key {
+// 			n.Properties.Node.Attr[i].Val = value
+// 			return
+// 		}
+// 	}
+
+// 	// If the attribute key was not found, add a new attribute
+// 	n.Properties.Node.Attr = append(n.Properties.Node.Attr, html.Attribute{
+// 		Key: key,
+// 		Val: value,
+// 	})
+// }
+
+func (n *Node) GetAttribute(name string) string {
+	return n.Attribute[name]
 }
 
 func (n *Node) SetAttribute(key, value string) {
-	// Iterate through the attributes
-	for i, attr := range n.Properties.Node.Attr {
-		// If the attribute key matches, update its value
-		if attr.Key == key {
-			n.Properties.Node.Attr[i].Val = value
-			return
-		}
-	}
+	n.Attribute[key] = value
+}
 
-	// If the attribute key was not found, add a new attribute
-	n.Properties.Node.Attr = append(n.Properties.Node.Attr, html.Attribute{
-		Key: key,
-		Val: value,
-	})
+func (n *Node) CreateElement(name string) Node {
+	return Node{
+		TagName:   name,
+		InnerText: "",
+		Children:  []Node{},
+		Style:     map[string]string{},
+		Id:        "",
+		ClassList: ClassList{
+			Classes: []string{},
+			Value:   "",
+		},
+		Href:      "",
+		Src:       "",
+		Title:     "",
+		Attribute: map[string]string{},
+		Value:     "",
+		Properties: Properties{
+			Id:     "",
+			X:      0,
+			Y:      0,
+			Hash:   "",
+			Width:  0,
+			Height: 0,
+			Border: Border{
+				Width: "0px",
+				Style: "solid",
+				Color: ic.RGBA{
+					R: 0,
+					G: 0,
+					B: 0,
+					A: 0,
+				},
+				Radius: "0px",
+			},
+			EventListeners: map[string][]func(Event){},
+			EM:             16,
+			Text:           Text{},
+			Focusable:      false,
+			Focused:        false,
+			Editable:       false,
+			Hover:          false,
+			Selected:       []float32{},
+		},
+	}
 }
 
 func (n *Node) QuerySelectorAll(selectString string) *[]*Node {
@@ -177,20 +228,19 @@ func (n *Node) QuerySelector(selectString string) *Node {
 func TestSelector(selectString string, n *Node) bool {
 	parts := strings.Split(selectString, ">")
 
-	s := []string{}
+	selectors := []string{}
 	if n.Properties.Focusable {
 		if n.Properties.Focused {
-			s = append(s, ":focus")
+			selectors = append(selectors, ":focus")
 		}
 	}
 
 	classes := n.ClassList.Classes
 
 	for _, v := range classes {
-		s = append(s, "."+v)
+		selectors = append(selectors, "."+v)
 	}
-	// fmt.Println(n.Properties.Node)
-	selectors := selector.GetCSSSelectors(n.Properties.Node, s)
+
 	if n.Id != "" {
 		selectors = append(selectors, "#"+n.Id)
 	}

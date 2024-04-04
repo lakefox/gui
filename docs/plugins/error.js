@@ -19,6 +19,7 @@ async function popup() {
     let cont = div`class="${css.window}"`;
     // ${div`innerText="Run Code" class="${css.heading}"`}
     // ${textarea`class="${css.textarea}"`}
+    let all = await getAll();
     let w = Fmt`${cont}
                     ${div`class="${css.bar}"`}
                         ${input`class="${css.searchBar}" placeholder="Search" type="search"`}
@@ -36,7 +37,7 @@ async function popup() {
                                     );
                                     if (ta[0].value != "") {
                                         // Debug
-                                        debug(ta[0].value, cont);
+                                        debug(ta[0].value, cont, all);
                                     } else if (ta[1].value != "") {
                                         // Run
                                     }
@@ -46,8 +47,7 @@ async function popup() {
     document.querySelector(`.${css.searchBar}`).focus();
 }
 
-async function debug(code, cont) {
-    let all = await getAll();
+async function debug(code, cont, all) {
     cont.classList.toggle(css.fullscreen);
     cont.clear();
     let error = getError(code);
@@ -203,8 +203,10 @@ async function getAll() {
             functions[res.language].push(...res.functions);
         }
 
-        documents[pages[i].getAttribute("href")] = { functions, code };
+        documents[pages[i].getAttribute("href")] = { functions, code, frag };
     }
+
+    console.log(documents);
 
     return documents;
 }
@@ -469,6 +471,7 @@ let css = style(/*css*/ `
             }
         };
     } else {
+        let open = false;
         document.addEventListener("keydown", function (event) {
             // Check if Ctrl key is pressed on Windows or Command key on Mac
             const isCtrlOrCmdPressed =
@@ -479,12 +482,15 @@ let css = style(/*css*/ `
             const isKPressed = event.key === "k" || event.keyCode === 75;
 
             // If both conditions are true, execute your code here
-            if (isCtrlOrCmdPressed && isKPressed) {
+            if (isCtrlOrCmdPressed && isKPressed && !open) {
+                event.preventDefault();
+                open = true;
                 // Your code here
                 console.log("Ctrl or Command + K pressed");
                 popup();
             } else if (event.key == "Escape") {
                 let w = document.querySelector(`.${css.window}`);
+                open = false;
                 w.parentElement.removeChild(w);
             }
         });

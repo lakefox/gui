@@ -8,10 +8,10 @@
         master.css-->open
         gui-->index.html;
         gui-->master.css;
-        gui-->document.CreateElement;
-        document.CreateElement-->new;
-        open-->document;
-        new-->document;
+        gui-->new;
+        open-->new;
+        new-->window;
+        window-->document;
         document-->gui.display;
         script-->document;
 ```

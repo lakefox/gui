@@ -32,6 +32,4 @@ daslk
 
 ## genTextNode?(go)
 
-## GetPositionOffsetNode?(go)
-
 <{./main.go}>

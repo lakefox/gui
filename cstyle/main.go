@@ -63,11 +63,6 @@ func (c *CSS) CreateDocument(doc *html.Node) element.Node {
 				Width:  c.Width,
 				Height: c.Height,
 				EM:     16,
-				Type:   3,
-				Node: &html.Node{Attr: []html.Attribute{
-					{Key: "Width", Val: fmt.Sprint(c.Width)},
-					{Key: "Height", Val: fmt.Sprint(c.Height)},
-				}},
 			},
 
 			Style: map[string]string{
@@ -76,11 +71,9 @@ func (c *CSS) CreateDocument(doc *html.Node) element.Node {
 			},
 		},
 		Properties: element.Properties{
-			Node: n,
-			Id:   id,
-			X:    0,
-			Y:    0,
-			Type: 3,
+			Id: id,
+			X:  0,
+			Y:  0,
 		},
 	}
 	i := 0
@@ -100,9 +93,7 @@ func CreateNode(parent element.Node, n *html.Node, slug string) element.Node {
 		TagName:   n.Data,
 		InnerText: utils.GetInnerText(n),
 		Properties: element.Properties{
-			Id:   id,
-			Type: n.Type,
-			Node: n,
+			Id: id,
 		},
 	}
 	for _, attr := range n.Attr {
@@ -270,7 +261,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node) *element.Node {
 	p := utils.GetMP(*n, "padding")
 
 	if styleMap["position"] == "absolute" {
-		base := GetPositionOffsetNode(n)
+		base := utils.GetPositionOffsetNode(n)
 		if styleMap["top"] != "" {
 			v, _ := utils.ConvertToPixels(styleMap["top"], float32(n.Properties.EM), n.Parent.Properties.Width)
 			y = v + base.Properties.Y
@@ -392,13 +383,13 @@ func (c *CSS) ComputeNodeStyle(n *element.Node) *element.Node {
 func initNodes(n *element.Node, c CSS) element.Node {
 	n = InitNode(n, c)
 	for i, ch := range n.Children {
-		if ch.Properties.Type == html.ElementNode {
-			ch.Parent = n
-			cn := initNodes(&ch, c)
+		// if ch.Properties.Type == html.ElementNode {
+		ch.Parent = n
+		cn := initNodes(&ch, c)
 
-			n.Children[i] = cn
+		n.Children[i] = cn
 
-		}
+		// }
 	}
 
 	return *n
@@ -575,18 +566,4 @@ func genTextNode(n *element.Node, width, height *float32, p utils.MarginPadding)
 		*height = h
 	}
 
-}
-
-func GetPositionOffsetNode(n *element.Node) *element.Node {
-	pos := n.Style["position"]
-
-	if pos == "relative" {
-		return n
-	} else {
-		if n.Parent.Properties.Node != nil {
-			return GetPositionOffsetNode(n.Parent)
-		} else {
-			return nil
-		}
-	}
 }

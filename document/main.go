@@ -108,11 +108,11 @@ func (doc Document) Open(index string, script func(*element.Node)) {
 	}
 }
 
-func (doc Document) CreateElement(t string) element.Node {
-	n := element.Node{TagName: t, Properties: element.Properties{Node: &html.Node{}}}
-	cstyle.InitNode(&n, doc.CSS)
-	return n
-}
+// func (doc Document) CreateElement(t string) element.Node {
+// 	n := element.Node{TagName: t, Properties: element.Properties{Node: &html.Node{}}}
+// 	cstyle.InitNode(&n, doc.CSS)
+// 	return n
+// }
 
 func parse(path string) Window {
 	file, err := os.Open(path)

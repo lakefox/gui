@@ -22,7 +22,7 @@ func Init() cstyle.Plugin {
 			m := utils.GetMP(*n, "margin")
 
 			if styleMap["position"] == "absolute" {
-				base := GetPositionOffsetNode(n)
+				base := utils.GetPositionOffsetNode(n)
 				if styleMap["top"] != "" {
 					v, _ := utils.ConvertToPixels(styleMap["top"], float32(n.Properties.EM), n.Parent.Properties.Width)
 					y = v + base.Properties.Y
@@ -89,19 +89,5 @@ func Init() cstyle.Plugin {
 			n.Properties.Width = width
 			n.Properties.Height = height
 		},
-	}
-}
-
-func GetPositionOffsetNode(n *element.Node) *element.Node {
-	pos := n.Style["position"]
-
-	if pos == "relative" {
-		return n
-	} else {
-		if n.Parent.Properties.Node != nil {
-			return GetPositionOffsetNode(n.Parent)
-		} else {
-			return nil
-		}
 	}
 }

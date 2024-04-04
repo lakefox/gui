@@ -24,10 +24,10 @@
         master.css--&gt;open
         gui--&gt;index.html;
         gui--&gt;master.css;
-        gui--&gt;document.CreateElement;
-        document.CreateElement--&gt;new;
-        open--&gt;document;
-        new--&gt;document;
+        gui--&gt;new;
+        open--&gt;new;
+        new--&gt;window;
+        window--&gt;document;
         document--&gt;gui.display;
         script--&gt;document;
 </pre><h2 id="opengo"><a class="anchor" href="#opengo">#</a> Open?(go)</h2>
@@ -152,12 +152,12 @@
 </span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">108</span><span>	}
 </span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">109</span><span>}
 </span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">110</span><span>
-</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">111</span><span><span style="color:#66d9ef">func</span> (<span style="color:#a6e22e">doc</span> <span style="color:#a6e22e">Document</span>) <span style="color:#a6e22e">CreateElement</span>(<span style="color:#a6e22e">t</span> <span style="color:#66d9ef">string</span>) <span style="color:#a6e22e">element</span>.<span style="color:#a6e22e">Node</span> {
-</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">112</span><span>	<span style="color:#a6e22e">n</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">element</span>.<span style="color:#a6e22e">Node</span>{<span style="color:#a6e22e">TagName</span>: <span style="color:#a6e22e">t</span>, <span style="color:#a6e22e">Properties</span>: <span style="color:#a6e22e">element</span>.<span style="color:#a6e22e">Properties</span>{<span style="color:#a6e22e">Node</span>: <span style="color:#f92672">&amp;</span><span style="color:#a6e22e">html</span>.<span style="color:#a6e22e">Node</span>{}}}
-</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">113</span><span>	<span style="color:#a6e22e">cstyle</span>.<span style="color:#a6e22e">InitNode</span>(<span style="color:#f92672">&amp;</span><span style="color:#a6e22e">n</span>, <span style="color:#a6e22e">doc</span>.<span style="color:#a6e22e">CSS</span>)
-</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">114</span><span>	<span style="color:#66d9ef">return</span> <span style="color:#a6e22e">n</span>
-</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">115</span><span>}
-</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">116</span><span>
+</span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">111</span><span><span style="color:#75715e">// func (doc Document) CreateElement(t string) element.Node {
+</span></span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">112</span><span><span style="color:#75715e">// 	n := element.Node{TagName: t, Properties: element.Properties{Node: &amp;html.Node{}}}
+</span></span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">113</span><span><span style="color:#75715e">// 	cstyle.InitNode(&amp;n, doc.CSS)
+</span></span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">114</span><span><span style="color:#75715e">// 	return n
+</span></span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">115</span><span><span style="color:#75715e">// }
+</span></span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">116</span><span><span style="color:#75715e"></span>
 </span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">117</span><span><span style="color:#66d9ef">func</span> <span style="color:#a6e22e">parse</span>(<span style="color:#a6e22e">path</span> <span style="color:#66d9ef">string</span>) <span style="color:#a6e22e">Window</span> {
 </span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">118</span><span>	<span style="color:#a6e22e">file</span>, <span style="color:#a6e22e">err</span> <span style="color:#f92672">:=</span> <span style="color:#a6e22e">os</span>.<span style="color:#a6e22e">Open</span>(<span style="color:#a6e22e">path</span>)
 </span></span><span style="display:flex;"><span style="white-space:pre;user-select:none;margin-right:0.4em;padding:0 0.4em 0 0.4em;color:#7f7f7f">119</span><span>	<span style="color:#a6e22e">check</span>(<span style="color:#a6e22e">err</span>)
