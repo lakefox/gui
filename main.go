@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"gui/cstyle"
 	"gui/cstyle/plugins/block"
+	"gui/cstyle/plugins/flex"
 	"gui/cstyle/plugins/inline"
 	"gui/window"
 
@@ -60,7 +61,7 @@ func New() Window {
 	// css.AddPlugin(position.Init())
 	css.AddPlugin(inline.Init())
 	css.AddPlugin(block.Init())
-	// css.AddPlugin(flex.Init())
+	css.AddPlugin(flex.Init())
 
 	el := element.Node{}
 	document := el.CreateElement("ROOT")
@@ -73,7 +74,7 @@ func New() Window {
 	}
 }
 
-func View(data Window, width, height int32) {
+func View(data *Window, width, height int32) {
 	data.Document.Style["width"] = strconv.Itoa(int(width)) + "px"
 	data.Document.Style["height"] = strconv.Itoa(int(height)) + "px"
 

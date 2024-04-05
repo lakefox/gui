@@ -12,6 +12,8 @@ daslk
 
 ## AddPlugin?(go)
 
+See [/cstyle/plugins/](/cstyle/plugins/)
+
 ## hash?(go)
 
 ## ComputeNodeStyle?(go)

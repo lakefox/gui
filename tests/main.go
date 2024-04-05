@@ -14,5 +14,5 @@ func main() {
 		fmt.Println("click", e)
 	})
 
-	gui.View(window, 850, 400)
+	gui.View(&window, 850, 400)
 }

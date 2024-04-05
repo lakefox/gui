@@ -1,7 +1,6 @@
 package flex
 
 import (
-	"fmt"
 	"gui/cstyle"
 	"gui/element"
 	"gui/utils"
@@ -15,6 +14,7 @@ func Init() cstyle.Plugin {
 			"display":         "flex",
 			"justify-content": "*",
 			"align-content":   "*",
+			"align-items":     "*",
 			"flex-wrap":       "*",
 			"flex-direction":  "*",
 		},
@@ -227,7 +227,6 @@ func order(p element.Node, elements []element.Node, direction string, reversed, 
 		}
 
 		pMax, err := utils.GetStructField(&p, dir)
-		fmt.Printf("HERE %v\n", p)
 		utils.Check(err)
 
 		// Resize node to fit
