@@ -13,52 +13,6 @@ import (
 	"golang.org/x/net/html"
 )
 
-func ComputeStyleString(n element.Node) string {
-	styles := map[string]string{}
-	wh := GetWH(n)
-	styles["width"] = fmt.Sprint(wh.Width)
-	styles["width"] = fmt.Sprint(wh.Height)
-	m := GetMP(n, "marign")
-	styles["margin-top"] = fmt.Sprint(m.Top)
-	styles["margin-left"] = fmt.Sprint(m.Left)
-	styles["margin-right"] = fmt.Sprint(m.Right)
-	styles["margin-bottom"] = fmt.Sprint(m.Bottom)
-	p := GetMP(n, "padding")
-	styles["padding-top"] = fmt.Sprint(p.Top)
-	styles["padding-left"] = fmt.Sprint(p.Left)
-	styles["padding-right"] = fmt.Sprint(p.Right)
-	styles["padding-bottom"] = fmt.Sprint(p.Bottom)
-	return MapToInline(styles)
-}
-
-func ComputeStyleMap(n element.Node) map[string]float32 {
-	inline := InlineToMap(n.Style["computed"])
-	parsed := map[string]float32{}
-	mt, _ := strconv.ParseFloat(inline["margin-top"], 32)
-	parsed["margin-top"] = float32(mt)
-	ml, _ := strconv.ParseFloat(inline["margin-left"], 32)
-	parsed["margin-left"] = float32(ml)
-	mr, _ := strconv.ParseFloat(inline["margin-right"], 32)
-	parsed["margin-right"] = float32(mr)
-	mb, _ := strconv.ParseFloat(inline["margin-bottom"], 32)
-	parsed["margin-bottom"] = float32(mb)
-
-	pt, _ := strconv.ParseFloat(inline["padding-top"], 32)
-	parsed["padding-top"] = float32(pt)
-	pl, _ := strconv.ParseFloat(inline["padding-left"], 32)
-	parsed["padding-left"] = float32(pl)
-	pr, _ := strconv.ParseFloat(inline["padding-right"], 32)
-	parsed["padding-right"] = float32(pr)
-	pb, _ := strconv.ParseFloat(inline["padding-bottom"], 32)
-	parsed["padding-bottom"] = float32(pb)
-
-	width, _ := strconv.ParseFloat(inline["width"], 32)
-	parsed["width"] = float32(width)
-	height, _ := strconv.ParseFloat(inline["height"], 32)
-	parsed["height"] = float32(height)
-	return parsed
-}
-
 // MapToInlineCSS converts a map[string]string to a string formatted like inline CSS style
 func MapToInline(m map[string]string) string {
 	var cssStrings []string
@@ -96,21 +50,53 @@ func GetWH(n element.Node) WidthHeight {
 		pwh = GetWH(*n.Parent)
 	} else {
 		pwh = WidthHeight{}
-		if n.Style["width"] != "" {
-			str := strings.TrimSuffix(n.Style["width"], "px")
-			// Convert the string to float32
-			f, _ := strconv.ParseFloat(str, 32)
-			pwh.Width = float32(f)
+		if n.Properties.Computed["width"] == 0 {
+			if n.Style["width"] != "" {
+				str := strings.TrimSuffix(n.Style["width"], "px")
+				// Convert the string to float32
+				f, _ := strconv.ParseFloat(str, 32)
+				pwh.Width = float32(f)
+			}
+		} else {
+			pwh.Width = n.Properties.Computed["width"]
 		}
-		if n.Style["height"] != "" {
-			str := strings.TrimSuffix(n.Style["height"], "px")
-			// Convert the string to float32
-			f, _ := strconv.ParseFloat(str, 32)
-			pwh.Height = float32(f)
+		if n.Properties.Computed["width"] == 0 {
+
+			if n.Style["height"] != "" {
+				str := strings.TrimSuffix(n.Style["height"], "px")
+				// Convert the string to float32
+				f, _ := strconv.ParseFloat(str, 32)
+				pwh.Height = float32(f)
+			}
+		} else {
+			pwh.Height = n.Properties.Computed["height"]
 		}
 	}
+	var width float32
+	if n.Properties.Computed["width"] == 0 {
+		if n.Style["width"] == "" {
+			n.Style["width"] = "100%"
 
-	width, _ := ConvertToPixels(n.Style["width"], fs, pwh.Width)
+		}
+		fmt.Println("0width", n.TagName, n.Style["width"], pwh.Width)
+		width, _ = ConvertToPixels(n.Style["width"], fs, pwh.Width)
+		fmt.Println(width)
+		n.Properties.Computed["width"] = width
+	} else {
+		width, _ = ConvertToPixels(n.Style["width"], fs, pwh.Width)
+		n.Properties.Computed["width"] = width
+
+		// width = n.Properties.Computed["width"]
+	}
+
+	var height float32
+	if n.Properties.Computed["height"] == 0 {
+		height, _ = ConvertToPixels(n.Style["height"], fs, pwh.Height)
+		n.Properties.Computed["height"] = height
+	} else {
+		height = n.Properties.Computed["height"]
+	}
+
 	if n.Style["min-width"] != "" {
 		minWidth, _ := ConvertToPixels(n.Style["min-width"], fs, pwh.Width)
 		width = Max(width, minWidth)
@@ -120,8 +106,6 @@ func GetWH(n element.Node) WidthHeight {
 		maxWidth, _ := ConvertToPixels(n.Style["max-width"], fs, pwh.Width)
 		width = Min(width, maxWidth)
 	}
-
-	height, _ := ConvertToPixels(n.Style["height"], fs, pwh.Height)
 	if n.Style["min-height"] != "" {
 		minHeight, _ := ConvertToPixels(n.Style["min-height"], fs, pwh.Height)
 		height = Max(height, minHeight)
@@ -135,12 +119,6 @@ func GetWH(n element.Node) WidthHeight {
 		Width:  width,
 		Height: height,
 	}
-}
-
-func SetWH(width, height float32) {
-	// could have a calculated style so map[string]string{"computed":"width: 100;x: 100;etc..",}
-	// then make a function that can parse/update all of them as needed..
-	// might still run into the issue of things not always being updated
 }
 
 type MarginPadding struct {
@@ -186,8 +164,8 @@ func GetMP(n element.Node, t string) MarginPadding {
 	if t == "margin" {
 		if n.Style["margin"] == "auto" && n.Style["margin-left"] == "" && n.Style["margin-right"] == "" {
 			// this dont work
-			m.Left = Max((n.Parent.Properties.Width-wh.Width)/2, 0)
-			m.Right = Max((n.Parent.Properties.Width-wh.Width)/2, 0)
+			m.Left = Max((n.Parent.Properties.Computed["width"]-wh.Width)/2, 0)
+			m.Right = Max((n.Parent.Properties.Computed["width"]-wh.Width)/2, 0)
 		}
 	}
 
@@ -241,6 +219,15 @@ func convertMarginToIndividualProperties(margin string) (string, string, string,
 	return left, right, top, bottom
 }
 
+func AsPX(n element.Node, value string) float32 {
+	if n.Style[value] != "" {
+		v, _ := ConvertToPixels(n.Style[value], n.Properties.EM, n.Properties.Computed["width"])
+		return v
+	} else {
+		return 0
+	}
+}
+
 // ConvertToPixels converts a CSS measurement to pixels.
 func ConvertToPixels(value string, em, max float32) (float32, error) {
 	unitFactors := map[string]float32{
@@ -254,28 +241,25 @@ func ConvertToPixels(value string, em, max float32) (float32, error) {
 		"cm": 37.79527559,
 	}
 
-	re := regexp.MustCompile(`calc\(([^)]*)\)|^(\d+(?:\.\d+)?)\s*([a-zA-Z\%]+)$`)
-	match := re.FindStringSubmatch(value)
-
-	if match != nil {
-		if len(match[1]) > 0 {
-			calcResult, err := evaluateCalcExpression(match[1], em, max)
-			if err != nil {
-				return 0, err
-			}
-			return calcResult, nil
+	if strings.HasPrefix(value, "calc(") {
+		// Handle calculation expression
+		calcResult, err := evaluateCalcExpression(value[5:len(value)-1], em, max)
+		if err != nil {
+			return 0, err
 		}
-
-		if len(match[2]) > 0 && len(match[3]) > 0 {
-			numericValue, err := strconv.ParseFloat(match[2], 64)
-			if err != nil {
-				return 0, fmt.Errorf("error parsing numeric value: %v", err)
+		return calcResult, nil
+	} else {
+		// Extract numeric value and unit
+		for k, v := range unitFactors {
+			if strings.HasSuffix(value, k) {
+				cutStr, _ := strings.CutSuffix(value, k)
+				numericValue, _ := strconv.ParseFloat(cutStr, 64)
+				return float32(numericValue) * v, nil
 			}
-			return float32(numericValue) * unitFactors[match[3]], nil
 		}
+		return 0, fmt.Errorf("unable to parse value")
 	}
 
-	return 0, fmt.Errorf("invalid input format: %s", value)
 }
 
 // evaluateCalcExpression recursively evaluates 'calc()' expressions

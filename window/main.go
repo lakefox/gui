@@ -83,15 +83,15 @@ func (wm *WindowManager) LoadTextures(nodes []element.Node) {
 func (wm *WindowManager) Draw(nodes []element.Node) {
 
 	for _, node := range nodes {
-		bw, _ := utils.ConvertToPixels(node.Properties.Border.Width, node.Properties.EM, node.Properties.Width)
-		rad, _ := utils.ConvertToPixels(node.Properties.Border.Radius, node.Properties.EM, node.Properties.Width)
+		bw, _ := utils.ConvertToPixels(node.Properties.Border.Width, node.Properties.EM, node.Properties.Computed["width"])
+		rad, _ := utils.ConvertToPixels(node.Properties.Border.Radius, node.Properties.EM, node.Properties.Computed["width"])
 
 		p := utils.GetMP(node, "padding")
 
 		rect := rl.NewRectangle(node.Properties.X+bw,
 			node.Properties.Y+bw,
-			node.Properties.Width-(bw+bw),
-			(node.Properties.Height+(p.Top+p.Bottom))-(bw+bw),
+			node.Properties.Computed["width"]-(bw+bw),
+			(node.Properties.Computed["height"]+(p.Top+p.Bottom))-(bw+bw),
 		)
 
 		rl.DrawRectangleRoundedLines(rect, rad/200, 1000, bw, node.Properties.Border.Color)

@@ -58,6 +58,7 @@ func New() Window {
 	}
 
 	css.StyleTag(mastercss)
+	// This is still apart of computestyle
 	// css.AddPlugin(position.Init())
 	css.AddPlugin(inline.Init())
 	css.AddPlugin(block.Init())
@@ -75,11 +76,13 @@ func New() Window {
 }
 
 func View(data *Window, width, height int32) {
+	data.Document.Properties.Computed["width"] = float32(width)
+	data.Document.Properties.Computed["height"] = float32(height)
 	data.Document.Style["width"] = strconv.Itoa(int(width)) + "px"
 	data.Document.Style["height"] = strconv.Itoa(int(height)) + "px"
 
 	wm := window.NewWindowManager()
-	wm.FPS = true
+	// wm.FPS = true
 
 	wm.OpenWindow(width, height)
 	defer wm.CloseWindow()
@@ -107,6 +110,8 @@ func View(data *Window, width, height int32) {
 
 			data.Document.Style["width"] = strconv.Itoa(int(width)) + "px"
 			data.Document.Style["height"] = strconv.Itoa(int(height)) + "px"
+			data.Document.Properties.Computed["width"] = float32(width)
+			data.Document.Properties.Computed["height"] = float32(height)
 		}
 
 		eventStore = events.GetEvents(&data.Document.Children[0], eventStore)

@@ -39,12 +39,13 @@ type Node struct {
 }
 
 type Properties struct {
-	Id             string
-	X              float32
-	Y              float32
-	Hash           string
-	Width          float32
-	Height         float32
+	Id       string
+	Computed map[string]float32
+	X        float32
+	Y        float32
+	Hash     string
+	// Width          float32
+	// Height         float32
 	Border         Border
 	EventListeners map[string][]func(Event)
 	EM             float32
@@ -128,7 +129,7 @@ func (n *Node) CreateElement(name string) Node {
 		TagName:   name,
 		InnerText: "",
 		Children:  []Node{},
-		Style:     map[string]string{},
+		Style:     make(map[string]string),
 		Id:        "",
 		ClassList: ClassList{
 			Classes: []string{},
@@ -137,15 +138,16 @@ func (n *Node) CreateElement(name string) Node {
 		Href:      "",
 		Src:       "",
 		Title:     "",
-		Attribute: map[string]string{},
+		Attribute: make(map[string]string),
 		Value:     "",
 		Properties: Properties{
-			Id:     "",
-			X:      0,
-			Y:      0,
-			Hash:   "",
-			Width:  0,
-			Height: 0,
+			Id:       "",
+			X:        0,
+			Y:        0,
+			Hash:     "",
+			Computed: make(map[string]float32),
+			// Width:  0,
+			// Height: 0,
 			Border: Border{
 				Width: "0px",
 				Style: "solid",
@@ -157,7 +159,7 @@ func (n *Node) CreateElement(name string) Node {
 				},
 				Radius: "0px",
 			},
-			EventListeners: map[string][]func(Event){},
+			EventListeners: make(map[string][]func(Event)),
 			EM:             16,
 			Text:           Text{},
 			Focusable:      false,
@@ -220,6 +222,8 @@ func TestSelector(selectString string, n *Node) bool {
 	if n.Id != "" {
 		selectors = append(selectors, "#"+n.Id)
 	}
+
+	selectors = append(selectors, n.TagName)
 
 	part := selector.SplitSelector(strings.TrimSpace(parts[len(parts)-1]))
 

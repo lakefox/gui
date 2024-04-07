@@ -14,7 +14,7 @@ func Init() cstyle.Plugin {
 		Level: 0,
 		Handler: func(n *element.Node) {
 			styleMap := n.Style
-			width, height := n.Properties.Width, n.Properties.Height
+			width, height := n.Properties.Computed["width"], n.Properties.Computed["height"]
 			x, y := n.Properties.X, n.Properties.Y
 
 			var top, left, right, bottom bool = false, false, false, false
@@ -24,23 +24,23 @@ func Init() cstyle.Plugin {
 			if styleMap["position"] == "absolute" {
 				base := utils.GetPositionOffsetNode(n)
 				if styleMap["top"] != "" {
-					v, _ := utils.ConvertToPixels(styleMap["top"], float32(n.Properties.EM), n.Parent.Properties.Width)
+					v, _ := utils.ConvertToPixels(styleMap["top"], float32(n.Properties.EM), n.Parent.Properties.Computed["width"])
 					y = v + base.Properties.Y
 					top = true
 				}
 				if styleMap["left"] != "" {
-					v, _ := utils.ConvertToPixels(styleMap["left"], float32(n.Properties.EM), n.Parent.Properties.Width)
+					v, _ := utils.ConvertToPixels(styleMap["left"], float32(n.Properties.EM), n.Parent.Properties.Computed["width"])
 					x = v + base.Properties.X
 					left = true
 				}
 				if styleMap["right"] != "" {
-					v, _ := utils.ConvertToPixels(styleMap["right"], float32(n.Properties.EM), n.Parent.Properties.Width)
-					x = (base.Properties.Width - width) - v
+					v, _ := utils.ConvertToPixels(styleMap["right"], float32(n.Properties.EM), n.Parent.Properties.Computed["width"])
+					x = (base.Properties.Computed["width"] - width) - v
 					right = true
 				}
 				if styleMap["bottom"] != "" {
-					v, _ := utils.ConvertToPixels(styleMap["bottom"], float32(n.Properties.EM), n.Parent.Properties.Width)
-					y = (base.Properties.Height - height) - v
+					v, _ := utils.ConvertToPixels(styleMap["bottom"], float32(n.Properties.EM), n.Parent.Properties.Computed["width"])
+					y = (base.Properties.Computed["height"] - height) - v
 					bottom = true
 				}
 			} else {
@@ -52,17 +52,17 @@ func Init() cstyle.Plugin {
 								if sibling.Style["display"] == "inline" {
 									y = sibling.Properties.Y
 								} else {
-									y = sibling.Properties.Y + sibling.Properties.Height
+									y = sibling.Properties.Y + sibling.Properties.Computed["height"]
 								}
 							} else {
-								y = sibling.Properties.Y + sibling.Properties.Height
+								y = sibling.Properties.Y + sibling.Properties.Computed["height"]
 							}
 						}
 						break
 					} else if styleMap["display"] != "inline" {
 						mc := utils.GetMP(*n, "margin")
 						p := utils.GetMP(*n, "padding")
-						y += mc.Top + mc.Bottom + p.Top + p.Bottom + v.Properties.Height
+						y += mc.Top + mc.Bottom + p.Top + p.Bottom + v.Properties.Computed["height"]
 					}
 				}
 			}
@@ -86,8 +86,8 @@ func Init() cstyle.Plugin {
 
 			n.Properties.X = x
 			n.Properties.Y = y
-			n.Properties.Width = width
-			n.Properties.Height = height
+			n.Properties.Computed["width"] = width
+			n.Properties.Computed["height"] = height
 		},
 	}
 }

@@ -69,8 +69,8 @@ func loop(el *element.Node, data RLData, eventTracker *map[string]element.EventL
 
 	var isMouseOver bool
 
-	if el.Properties.X < data.MP.X && el.Properties.X+el.Properties.Width > data.MP.X {
-		if el.Properties.Y < data.MP.Y && el.Properties.Y+el.Properties.Height > data.MP.Y {
+	if el.Properties.X < data.MP.X && el.Properties.X+el.Properties.Computed["width"] > data.MP.X {
+		if el.Properties.Y < data.MP.Y && el.Properties.Y+el.Properties.Computed["height"] > data.MP.Y {
 			// Mouse is over element
 			isMouseOver = true
 			if !slices.Contains(el.ClassList.Classes, ":hover") {

@@ -2,17 +2,11 @@
 
 dsa
 
-## ComputeStyleString?(go)
-
-## ComputeStyleMap?(go)
-
 ## MapToInline?(go)
 
 ## InlineToMap?(go)
 
 ## GetWH?(go)
-
-## SetWH?(go)
 
 ## GetMP?(go)
 

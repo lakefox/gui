@@ -26,7 +26,7 @@ type Document struct {
 }
 
 func (doc Document) Open(index string, script func(*element.Node)) {
-	d := parse(index)
+	// d := parse(index)
 
 	wm := window.NewWindowManager()
 	wm.FPS = true
@@ -49,18 +49,18 @@ func (doc Document) Open(index string, script func(*element.Node)) {
 	doc.CSS.AddPlugin(block.Init())
 	doc.CSS.AddPlugin(flex.Init())
 
-	for _, v := range d.StyleSheets {
-		doc.CSS.StyleSheet(v)
-	}
+	// for _, v := range d.StyleSheets {
+	// 	doc.CSS.StyleSheet(v)
+	// }
 
-	for _, v := range d.StyleTags {
-		doc.CSS.StyleTag(v)
-	}
+	// for _, v := range d.StyleTags {
+	// 	doc.CSS.StyleTag(v)
+	// }
 
-	nodes := doc.CSS.CreateDocument(d.DOM)
-	root := &nodes
+	// nodes := doc.CSS.CreateDocument(d.DOM)
+	// root := &nodes
 
-	script(root)
+	// script(root)
 
 	// fmt.Println(nodes.Style)
 
@@ -73,28 +73,28 @@ func (doc Document) Open(index string, script func(*element.Node)) {
 		rl.BeginDrawing()
 
 		// Check if the window size has changed
-		newWidth := int32(rl.GetScreenWidth())
-		newHeight := int32(rl.GetScreenHeight())
+		// newWidth := int32(rl.GetScreenWidth())
+		// newHeight := int32(rl.GetScreenHeight())
 
-		if newWidth != screenWidth || newHeight != screenHeight {
-			rl.ClearBackground(rl.RayWhite)
-			// Window has been resized, handle the event
-			screenWidth = newWidth
-			screenHeight = newHeight
+		// if newWidth != screenWidth || newHeight != screenHeight {
+		// 	rl.ClearBackground(rl.RayWhite)
+		// 	// Window has been resized, handle the event
+		// 	screenWidth = newWidth
+		// 	screenHeight = newHeight
 
-			doc.CSS.Width = float32(screenWidth)
-			doc.CSS.Height = float32(screenHeight)
+		// 	doc.CSS.Width = float32(screenWidth)
+		// 	doc.CSS.Height = float32(screenHeight)
 
-			nodes = doc.CSS.CreateDocument(d.DOM)
-			root = &nodes
-			script(root)
-		}
+		// 	nodes = doc.CSS.CreateDocument(d.DOM)
+		// 	root = &nodes
+		// 	script(root)
+		// }
 
-		eventStore = events.GetEvents(root, eventStore)
-		doc.CSS.ComputeNodeStyle(root)
-		rd := doc.CSS.Render(*root)
-		wm.LoadTextures(rd)
-		wm.Draw(rd)
+		// eventStore = events.GetEvents(root, eventStore)
+		// doc.CSS.ComputeNodeStyle(root)
+		// rd := doc.CSS.Render(*root)
+		// wm.LoadTextures(rd)
+		// wm.Draw(rd)
 
 		events.RunEvents(eventStore)
 

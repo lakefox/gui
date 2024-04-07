@@ -16,12 +16,12 @@ func Init() cstyle.Plugin {
 			// If the element is display block and the width is unset then make it 100%
 
 			if n.Style["width"] == "" {
-				n.Properties.Width, _ = utils.ConvertToPixels("100%", n.Properties.EM, n.Parent.Properties.Width)
+				n.Properties.Computed["width"], _ = utils.ConvertToPixels("100%", n.Properties.EM, n.Parent.Properties.Computed["width"])
 				m := utils.GetMP(*n, "margin")
-				n.Properties.Width -= m.Right + m.Left
+				n.Properties.Computed["width"] -= m.Right + m.Left
 			} else {
 				p := utils.GetMP(*n, "padding")
-				n.Properties.Width += p.Right + p.Left
+				n.Properties.Computed["width"] += p.Right + p.Left
 			}
 		},
 	}
