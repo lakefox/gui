@@ -38,29 +38,50 @@ type Node struct {
 	Properties    Properties
 }
 
+type State struct {
+	// Id         string
+	X          float32
+	Y          float32
+	Width      float32
+	Height     float32
+	Border     Border
+	Text       Text
+	EM         float32
+	Background ic.RGBA
+	Hash       string
+	Margin     MarginPadding
+	Padding    MarginPadding
+}
+
 type Properties struct {
-	Id       string
-	Computed map[string]float32
-	X        float32
-	Y        float32
-	Hash     string
+	Id string
+	// Computed map[string]float32
+	// X        float32
+	// Y        float32
+	Hash string
 	// Width          float32
 	// Height         float32
-	Border         Border
+	// Border         Border
 	EventListeners map[string][]func(Event)
-	EM             float32
-	Text           Text
-	Focusable      bool
-	Focused        bool
-	Editable       bool
-	Hover          bool
-	Selected       []float32
-	Test           string
+	// EM             float32
+	// Text           Text
+	Focusable bool
+	Focused   bool
+	Editable  bool
+	Hover     bool
+	Selected  []float32
 }
 
 type ClassList struct {
 	Classes []string
 	Value   string
+}
+
+type MarginPadding struct {
+	Top    float32
+	Left   float32
+	Right  float32
+	Bottom float32
 }
 
 func (c *ClassList) Add(class string) {
@@ -90,6 +111,7 @@ type Text struct {
 	Font                font.Face
 	Color               ic.RGBA
 	Image               *image.RGBA
+	Text                string
 	Underlined          bool
 	Overlined           bool
 	LineThrough         bool
@@ -141,27 +163,9 @@ func (n *Node) CreateElement(name string) Node {
 		Attribute: make(map[string]string),
 		Value:     "",
 		Properties: Properties{
-			Id:       "",
-			X:        0,
-			Y:        0,
-			Hash:     "",
-			Computed: make(map[string]float32),
-			// Width:  0,
-			// Height: 0,
-			Border: Border{
-				Width: "0px",
-				Style: "solid",
-				Color: ic.RGBA{
-					R: 0,
-					G: 0,
-					B: 0,
-					A: 0,
-				},
-				Radius: "0px",
-			},
+			Id:             "",
+			Hash:           "",
 			EventListeners: make(map[string][]func(Event)),
-			EM:             16,
-			Text:           Text{},
 			Focusable:      false,
 			Focused:        false,
 			Editable:       false,

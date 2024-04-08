@@ -75,14 +75,36 @@ func New() Window {
 	}
 }
 
+func (w *Window) Render(state map[string]element.State) []element.State {
+	flatDoc := flatten(w.Document)
+	store := []element.State{}
+
+	for _, v := range flatDoc {
+		store = append(store, state[v.Properties.Id])
+	}
+	return store
+}
+
+func flatten(n element.Node) []element.Node {
+	var nodes []element.Node
+	nodes = append(nodes, n)
+
+	children := n.Children
+	if len(children) > 0 {
+		for _, ch := range children {
+			chNodes := flatten(ch)
+			nodes = append(nodes, chNodes...)
+		}
+	}
+	return nodes
+}
+
 func View(data *Window, width, height int32) {
-	data.Document.Properties.Computed["width"] = float32(width)
-	data.Document.Properties.Computed["height"] = float32(height)
 	data.Document.Style["width"] = strconv.Itoa(int(width)) + "px"
 	data.Document.Style["height"] = strconv.Itoa(int(height)) + "px"
 
 	wm := window.NewWindowManager()
-	// wm.FPS = true
+	wm.FPS = true
 
 	wm.OpenWindow(width, height)
 	defer wm.CloseWindow()
@@ -90,6 +112,8 @@ func View(data *Window, width, height int32) {
 	evts := map[string]element.EventList{}
 
 	eventStore := &evts
+
+	state := map[string]element.State{}
 
 	// Main game loop
 	for !wm.WindowShouldClose() {
@@ -110,13 +134,11 @@ func View(data *Window, width, height int32) {
 
 			data.Document.Style["width"] = strconv.Itoa(int(width)) + "px"
 			data.Document.Style["height"] = strconv.Itoa(int(height)) + "px"
-			data.Document.Properties.Computed["width"] = float32(width)
-			data.Document.Properties.Computed["height"] = float32(height)
 		}
 
-		eventStore = events.GetEvents(&data.Document.Children[0], eventStore)
-		data.CSS.ComputeNodeStyle(&data.Document.Children[0])
-		rd := data.CSS.Render(data.Document.Children[0])
+		eventStore = events.GetEvents(&data.Document.Children[0], &state, eventStore)
+		data.CSS.ComputeNodeStyle(&data.Document.Children[0], &state)
+		rd := data.Render(state)
 		wm.LoadTextures(rd)
 		wm.Draw(rd)
 

@@ -18,7 +18,7 @@ type RLData struct {
 	KP int32
 }
 
-func GetEvents(el *element.Node, prevEvents *map[string]element.EventList) *map[string]element.EventList {
+func GetEvents(el *element.Node, state *map[string]element.State, prevEvents *map[string]element.EventList) *map[string]element.EventList {
 	data := RLData{
 		MP: rl.GetMousePosition(),
 		LB: rl.IsMouseButtonDown(rl.MouseLeftButton),
@@ -28,7 +28,7 @@ func GetEvents(el *element.Node, prevEvents *map[string]element.EventList) *map[
 	}
 	// Mouse over
 	// fmt.Println(len(*prevEvents))
-	loop(el, data, prevEvents)
+	loop(el, state, data, prevEvents)
 	return prevEvents
 }
 
@@ -47,10 +47,13 @@ func RunEvents(events *map[string]element.EventList) {
 
 }
 
-func loop(el *element.Node, data RLData, eventTracker *map[string]element.EventList) *element.Node {
+func loop(el *element.Node, state *map[string]element.State, data RLData, eventTracker *map[string]element.EventList) *element.Node {
 	et := *eventTracker
 	eventList := []string{}
 	evt := et[el.Properties.Id].Event
+
+	s := *state
+	self := s[el.Properties.Id]
 
 	if evt.Target.Properties.Id == "" {
 		et[el.Properties.Id] = element.EventList{
@@ -69,8 +72,8 @@ func loop(el *element.Node, data RLData, eventTracker *map[string]element.EventL
 
 	var isMouseOver bool
 
-	if el.Properties.X < data.MP.X && el.Properties.X+el.Properties.Computed["width"] > data.MP.X {
-		if el.Properties.Y < data.MP.Y && el.Properties.Y+el.Properties.Computed["height"] > data.MP.Y {
+	if self.X < data.MP.X && self.X+self.Width > data.MP.X {
+		if self.Y < data.MP.Y && self.Y+self.Height > data.MP.Y {
 			// Mouse is over element
 			isMouseOver = true
 			if !slices.Contains(el.ClassList.Classes, ":hover") {
@@ -194,7 +197,7 @@ func loop(el *element.Node, data RLData, eventTracker *map[string]element.EventL
 
 	eventTracker = &et
 	for i, v := range el.Children {
-		el.Children[i] = *loop(&v, data, eventTracker)
+		el.Children[i] = *loop(&v, state, data, eventTracker)
 	}
 	return el
 }

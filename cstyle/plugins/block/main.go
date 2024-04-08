@@ -12,17 +12,23 @@ func Init() cstyle.Plugin {
 			"display": "block",
 		},
 		Level: 1,
-		Handler: func(n *element.Node) {
+		Handler: func(n *element.Node, state *map[string]element.State) {
+			s := *state
+			self := s[n.Properties.Id]
+			parent := s[n.Parent.Properties.Id]
+
 			// If the element is display block and the width is unset then make it 100%
 
 			if n.Style["width"] == "" {
-				n.Properties.Computed["width"], _ = utils.ConvertToPixels("100%", n.Properties.EM, n.Parent.Properties.Computed["width"])
+				self.Width, _ = utils.ConvertToPixels("100%", self.EM, parent.Width)
 				m := utils.GetMP(*n, "margin")
-				n.Properties.Computed["width"] -= m.Right + m.Left
+				self.Width -= m.Right + m.Left
 			} else {
 				p := utils.GetMP(*n, "padding")
-				n.Properties.Computed["width"] += p.Right + p.Left
+				self.Width += p.Right + p.Left
 			}
+			(*state)[n.Properties.Id] = self
+			(*state)[n.Parent.Properties.Id] = parent
 		},
 	}
 }

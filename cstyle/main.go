@@ -21,7 +21,7 @@ import (
 type Plugin struct {
 	Styles  map[string]string
 	Level   int
-	Handler func(*element.Node)
+	Handler func(*element.Node, *map[string]element.State)
 }
 
 type CSS struct {
@@ -117,39 +117,46 @@ func (c *CSS) GetStyles(n element.Node) map[string]string {
 	return styles
 }
 
-func (c *CSS) Render(doc element.Node) []element.Node {
-	return flatten(doc)
-}
-
 func (c *CSS) AddPlugin(plugin Plugin) {
 	c.Plugins = append(c.Plugins, plugin)
 }
 
-func CheckNode(n *element.Node) {
+func CheckNode(n *element.Node, state *map[string]element.State) {
+	s := *state
+	self := s[n.Properties.Id]
+
 	fmt.Println(n.TagName, n.Properties.Id)
-	fmt.Printf("ID: %v\n", n.Id)
-	fmt.Printf("Classes: %v\n", n.ClassList.Classes)
-	fmt.Printf("Text: %v\n", n.InnerText)
-	fmt.Printf("X: %v, Y: %v\n", n.Properties.X, n.Properties.Y)
-	fmt.Printf("Width: %v, Height: %v\n", n.Properties.Computed["width"], n.Properties.Computed["height"])
-	fmt.Printf("Styles: %v\n\n\n", n.Style)
-	w := utils.GetWH(*n)
-	fmt.Printf("Calc WH: %v, %v\n\n\n", w.Width, w.Height)
+	// fmt.Printf("ID: %v\n", n.Id)
+	// fmt.Printf("Classes: %v\n", n.ClassList.Classes)
+	fmt.Printf("Text: %v\n", self.Text.Text)
+	fmt.Printf("X: %v, Y: %v\n", self.X, self.Y)
+	fmt.Printf("Width: %v, Height: %v\n", self.Width, self.Height)
+	// fmt.Printf("Styles: %v\n\n\n", n.Style)
+	// w := utils.GetWH(*n)
+	// fmt.Printf("Calc WH: %v, %v\n\n\n", w.Width, w.Height)
 }
 
-func (c *CSS) ComputeNodeStyle(n *element.Node) *element.Node {
+func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State) *element.Node {
 	// Head is not renderable
 	if utils.IsParent(*n, "head") {
 		return n
 	}
 	plugins := c.Plugins
 	n.Style = c.GetStyles(*n)
+	s := *state
+	self := s[n.Properties.Id]
+	parent := s[n.Parent.Properties.Id]
+
+	self.Background = color.Parse(n.Style, "background")
+
+	fs, _ := utils.ConvertToPixels(n.Style["font-size"], parent.EM, parent.Width)
+	self.EM = fs
 
 	if n.Style["display"] == "none" {
-		n.Properties.X = 0
-		n.Properties.Y = 0
-		n.Properties.Computed["width"] = 0
-		n.Properties.Computed["height"] = 0
+		self.X = 0
+		self.Y = 0
+		self.Width = 0
+		self.Height = 0
 		return n
 	}
 
@@ -157,55 +164,59 @@ func (c *CSS) ComputeNodeStyle(n *element.Node) *element.Node {
 	width := wh.Width
 	height := wh.Height
 
-	x, y := n.Parent.Properties.X, n.Parent.Properties.Y
+	x, y := parent.X, parent.Y
 
 	var top, left, right, bottom bool = false, false, false, false
 
 	m := utils.GetMP(*n, "margin")
 	p := utils.GetMP(*n, "padding")
 
+	self.Margin = m
+	self.Padding = p
+
 	if n.Style["position"] == "absolute" {
-		base := utils.GetPositionOffsetNode(n)
+		bas := utils.GetPositionOffsetNode(n)
+		base := s[bas.Properties.Id]
 		if n.Style["top"] != "" {
-			v, _ := utils.ConvertToPixels(n.Style["top"], float32(n.Properties.EM), n.Parent.Properties.Computed["width"])
-			y = v + base.Properties.Y
+			v, _ := utils.ConvertToPixels(n.Style["top"], self.EM, parent.Width)
+			y = v + base.Y
 			top = true
 		}
 		if n.Style["left"] != "" {
-			v, _ := utils.ConvertToPixels(n.Style["left"], float32(n.Properties.EM), n.Parent.Properties.Computed["width"])
-			x = v + base.Properties.X
+			v, _ := utils.ConvertToPixels(n.Style["left"], self.EM, parent.Width)
+			x = v + base.X
 			left = true
 		}
 		if n.Style["right"] != "" {
-			v, _ := utils.ConvertToPixels(n.Style["right"], float32(n.Properties.EM), n.Parent.Properties.Computed["width"])
-			x = (base.Properties.Computed["width"] - width) - v
+			v, _ := utils.ConvertToPixels(n.Style["right"], self.EM, parent.Width)
+			x = (base.Width - width) - v
 			right = true
 		}
 		if n.Style["bottom"] != "" {
-			v, _ := utils.ConvertToPixels(n.Style["bottom"], float32(n.Properties.EM), n.Parent.Properties.Computed["width"])
-			y = (base.Properties.Computed["height"] - height) - v
+			v, _ := utils.ConvertToPixels(n.Style["bottom"], self.EM, parent.Width)
+			y = (base.Height - height) - v
 			bottom = true
 		}
 	} else {
 		for i, v := range n.Parent.Children {
 			if v.Properties.Id == n.Properties.Id {
 				if i-1 > 0 {
-					sibling := n.Parent.Children[i-1]
+					sib := n.Parent.Children[i-1]
+					sibling := s[sib.Properties.Id]
 					if n.Style["display"] == "inline" {
-						if sibling.Style["display"] == "inline" {
-							y = sibling.Properties.Y
+						if sib.Style["display"] == "inline" {
+							y = sibling.Y
 						} else {
-							y = sibling.Properties.Y + sibling.Properties.Computed["height"]
+							y = sibling.Y + sibling.Height
 						}
 					} else {
-						y = sibling.Properties.Y + sibling.Properties.Computed["height"]
+						y = sibling.Y + sibling.Height
 					}
 				}
 				break
 			} else if n.Style["display"] != "inline" {
-				mc := utils.GetMP(v, "margin")
-				pc := utils.GetMP(v, "padding")
-				y += mc.Top + mc.Bottom + pc.Top + pc.Bottom + v.Properties.Computed["height"]
+				vState := s[v.Properties.Id]
+				y += vState.Margin.Top + vState.Margin.Bottom + vState.Padding.Top + vState.Padding.Bottom + vState.Height
 			}
 		}
 	}
@@ -227,69 +238,48 @@ func (c *CSS) ComputeNodeStyle(n *element.Node) *element.Node {
 		y -= m.Bottom
 	}
 
-	bold, italic := false, false
-
-	if n.Style["font-weight"] == "bold" {
-		bold = true
-	}
-
-	if n.Style["font-style"] == "italic" {
-		italic = true
-	}
-
-	if n.Properties.Text.Font == nil {
-		f, _ := font.LoadFont(n.Style["font-family"], int(n.Properties.EM), bold, italic)
-		letterSpacing, _ := utils.ConvertToPixels(n.Style["letter-spacing"], n.Properties.EM, width)
-		wordSpacing, _ := utils.ConvertToPixels(n.Style["word-spacing"], n.Properties.EM, width)
-		lineHeight, _ := utils.ConvertToPixels(n.Style["line-height"], n.Properties.EM, width)
-		if lineHeight == 0 {
-			lineHeight = n.Properties.EM + 3
-		}
-
-		n.Properties.Text.LineHeight = int(lineHeight)
-		n.Properties.Text.Font = f
-		n.Properties.Text.WordSpacing = int(wordSpacing)
-		n.Properties.Text.LetterSpacing = int(letterSpacing)
-	}
-
 	if len(n.Children) == 0 {
 		// Confirm text exists
 		if len(n.InnerText) > 0 {
 			innerWidth := width
 			innerHeight := height
-			genTextNode(n, &innerWidth, &innerHeight, p)
+			genTextNode(n, &innerWidth, &innerHeight, p, state)
 			width = innerWidth + p.Left + p.Right
 			height = innerHeight
 		}
 	}
 
-	n.Properties.X = x
-	n.Properties.Y = y
-	n.Properties.Computed["width"] = width
-	n.Properties.Computed["height"] = height
+	self.X = x
+	self.Y = y
+	self.Width = width
+	self.Height = height
 
-	CheckNode(n)
+	(*state)[n.Properties.Id] = self
+	(*state)[n.Parent.Properties.Id] = parent
+
+	// CheckNode(n, state)
 
 	// Call children here
 
 	var childYOffset float32
 	for i, v := range n.Children {
 		v.Parent = n
-		n.Children[i] = *c.ComputeNodeStyle(&v)
+		n.Children[i] = *c.ComputeNodeStyle(&v, state)
 		if n.Style["height"] == "" {
-			if n.Children[i].Style["position"] != "absolute" && n.Children[i].Properties.Y > childYOffset {
-				childYOffset = n.Children[i].Properties.Y
-				m := utils.GetMP(n.Children[i], "margin")
-				p := utils.GetMP(n.Children[i], "padding")
-				n.Properties.Computed["height"] += n.Children[i].Properties.Computed["height"]
-				n.Properties.Computed["height"] += m.Top
-				n.Properties.Computed["height"] += m.Bottom
-				n.Properties.Computed["height"] += p.Top
-				n.Properties.Computed["height"] += p.Bottom
+			cState := s[n.Children[i].Properties.Id]
+			if n.Children[i].Style["position"] != "absolute" && cState.Y > childYOffset {
+				childYOffset = cState.Y
+				self.Height += cState.Height
+				self.Height += cState.Margin.Top
+				self.Height += cState.Margin.Bottom
+				self.Height += cState.Padding.Top
+				self.Height += cState.Padding.Bottom
 			}
 
 		}
 	}
+
+	(*state)[n.Properties.Id] = self
 
 	// Sorting the array by the Level field
 	sort.Slice(plugins, func(i, j int) bool {
@@ -304,70 +294,10 @@ func (c *CSS) ComputeNodeStyle(n *element.Node) *element.Node {
 			}
 		}
 		if matches {
-			v.Handler(n)
+			v.Handler(n, state)
 		}
 	}
 
-	return n
-}
-
-func InitNode(n *element.Node, c CSS) *element.Node {
-	n.Style = c.GetStyles(*n)
-	border, err := CompleteBorder(n.Style)
-	if err == nil {
-		n.Properties.Border = border
-	}
-
-	fs, _ := utils.ConvertToPixels(n.Style["font-size"], n.Parent.Properties.EM, n.Parent.Properties.Computed["width"])
-	n.Properties.EM = fs
-
-	width, _ := utils.ConvertToPixels(n.Style["width"], n.Properties.EM, n.Parent.Properties.Computed["width"])
-	if n.Style["min-width"] != "" {
-		minWidth, _ := utils.ConvertToPixels(n.Style["min-width"], n.Properties.EM, n.Parent.Properties.Computed["width"])
-		width = utils.Max(width, minWidth)
-	}
-
-	if n.Style["max-width"] != "" {
-		maxWidth, _ := utils.ConvertToPixels(n.Style["max-width"], n.Properties.EM, n.Parent.Properties.Computed["width"])
-		width = utils.Min(width, maxWidth)
-	}
-
-	height, _ := utils.ConvertToPixels(n.Style["height"], n.Properties.EM, n.Parent.Properties.Computed["height"])
-	if n.Style["min-height"] != "" {
-		minHeight, _ := utils.ConvertToPixels(n.Style["min-height"], n.Properties.EM, n.Parent.Properties.Computed["height"])
-		height = utils.Max(height, minHeight)
-	}
-
-	if n.Style["max-height"] != "" {
-		maxHeight, _ := utils.ConvertToPixels(n.Style["max-height"], n.Properties.EM, n.Parent.Properties.Computed["height"])
-		height = utils.Min(height, maxHeight)
-	}
-
-	n.Properties.Computed["width"] = width
-	n.Properties.Computed["height"] = height
-
-	bold, italic := false, false
-
-	if n.Style["font-weight"] == "bold" {
-		bold = true
-	}
-
-	if n.Style["font-style"] == "italic" {
-		italic = true
-	}
-
-	f, _ := font.LoadFont(n.Style["font-family"], int(n.Properties.EM), bold, italic)
-	letterSpacing, _ := utils.ConvertToPixels(n.Style["letter-spacing"], n.Properties.EM, width)
-	wordSpacing, _ := utils.ConvertToPixels(n.Style["word-spacing"], n.Properties.EM, width)
-	lineHeight, _ := utils.ConvertToPixels(n.Style["line-height"], n.Properties.EM, width)
-	if lineHeight == 0 {
-		lineHeight = n.Properties.EM + 3
-	}
-
-	n.Properties.Text.LineHeight = int(lineHeight)
-	n.Properties.Text.Font = f
-	n.Properties.Text.WordSpacing = int(wordSpacing)
-	n.Properties.Text.LetterSpacing = int(letterSpacing)
 	return n
 }
 
@@ -414,21 +344,36 @@ func CompleteBorder(cssProperties map[string]string) (element.Border, error) {
 	return border, err
 }
 
-func flatten(n element.Node) []element.Node {
-	var nodes []element.Node
-	nodes = append(nodes, n)
+func genTextNode(n *element.Node, width, height *float32, p element.MarginPadding, state *map[string]element.State) {
+	s := *state
+	self := s[n.Properties.Id]
+	parent := s[n.Parent.Properties.Id]
 
-	children := n.Children
-	if len(children) > 0 {
-		for _, ch := range children {
-			chNodes := flatten(ch)
-			nodes = append(nodes, chNodes...)
-		}
+	bold, italic := false, false
+
+	if n.Style["font-weight"] == "bold" {
+		bold = true
 	}
-	return nodes
-}
 
-func genTextNode(n *element.Node, width, height *float32, p utils.MarginPadding) {
+	if n.Style["font-style"] == "italic" {
+		italic = true
+	}
+
+	if self.Text.Font == nil {
+		f, _ := font.LoadFont(n.Style["font-family"], int(self.EM), bold, italic)
+		self.Text.Font = f
+	}
+
+	letterSpacing, _ := utils.ConvertToPixels(n.Style["letter-spacing"], self.EM, *width)
+	wordSpacing, _ := utils.ConvertToPixels(n.Style["word-spacing"], self.EM, *width)
+	lineHeight, _ := utils.ConvertToPixels(n.Style["line-height"], self.EM, *width)
+	if lineHeight == 0 {
+		lineHeight = self.EM + 3
+	}
+
+	self.Text.LineHeight = int(lineHeight)
+	self.Text.WordSpacing = int(wordSpacing)
+	self.Text.LetterSpacing = int(letterSpacing)
 	wb := " "
 
 	if n.Style["word-wrap"] == "break-word" {
@@ -439,45 +384,43 @@ func genTextNode(n *element.Node, width, height *float32, p utils.MarginPadding)
 		wb = ""
 	}
 
-	letterSpacing, _ := utils.ConvertToPixels(n.Style["letter-spacing"], n.Properties.EM, *width)
-	wordSpacing, _ := utils.ConvertToPixels(n.Style["word-spacing"], n.Properties.EM, *width)
-
 	var dt float32
 
 	if n.Style["text-decoration-thickness"] == "auto" || n.Style["text-decoration-thickness"] == "" {
 		dt = 2
 	} else {
-		dt, _ = utils.ConvertToPixels(n.Style["text-decoration-thickness"], n.Properties.EM, *width)
+		dt, _ = utils.ConvertToPixels(n.Style["text-decoration-thickness"], self.EM, *width)
 	}
 
 	col := color.Parse(n.Style, "font")
 
-	n.Properties.Text.Color = col
-	n.Properties.Text.Align = n.Style["text-align"]
-	n.Properties.Text.WordBreak = wb
-	n.Properties.Text.WordSpacing = int(wordSpacing)
-	n.Properties.Text.LetterSpacing = int(letterSpacing)
-	n.Properties.Text.WhiteSpace = n.Style["white-space"]
-	n.Properties.Text.DecorationThickness = int(dt)
-	n.Properties.Text.Overlined = n.Style["text-decoration"] == "overline"
-	n.Properties.Text.Underlined = n.Style["text-decoration"] == "underline"
-	n.Properties.Text.LineThrough = n.Style["text-decoration"] == "linethrough"
-	n.Properties.Text.EM = int(n.Properties.EM)
-	n.Properties.Text.Width = int(n.Parent.Properties.Computed["width"])
+	self.Text.Color = col
+	self.Text.Align = n.Style["text-align"]
+	self.Text.WordBreak = wb
+	self.Text.WordSpacing = int(wordSpacing)
+	self.Text.LetterSpacing = int(letterSpacing)
+	self.Text.WhiteSpace = n.Style["white-space"]
+	self.Text.DecorationThickness = int(dt)
+	self.Text.Overlined = n.Style["text-decoration"] == "overline"
+	self.Text.Underlined = n.Style["text-decoration"] == "underline"
+	self.Text.LineThrough = n.Style["text-decoration"] == "linethrough"
+	self.Text.EM = int(self.EM)
+	self.Text.Width = int(parent.Width)
+	self.Text.Text = n.InnerText
 
 	if n.Style["word-spacing"] == "" {
-		n.Properties.Text.WordSpacing = font.MeasureSpace(&n.Properties.Text)
+		self.Text.WordSpacing = font.MeasureSpace(&self.Text)
 	}
-	if n.Parent.Properties.Computed["width"] != 0 && n.Style["display"] != "inline" && n.Style["width"] == "" {
-		*width = (n.Parent.Properties.Computed["width"] - p.Right) - p.Left
+	if parent.Width != 0 && n.Style["display"] != "inline" && n.Style["width"] == "" {
+		*width = (parent.Width - p.Right) - p.Left
 	} else if n.Style["width"] == "" {
-		*width = utils.Max(*width, float32(font.MeasureLongest(n)))
+		*width = utils.Max(*width, float32(font.MeasureLongest(&self)))
 	} else if n.Style["width"] != "" {
-		*width, _ = utils.ConvertToPixels(n.Style["width"], n.Properties.EM, n.Parent.Properties.Computed["width"])
+		*width, _ = utils.ConvertToPixels(n.Style["width"], self.EM, parent.Width)
 	}
 
-	n.Properties.Text.Width = int(*width)
-	h := font.Render(n)
+	self.Text.Width = int(*width)
+	h := font.Render(&self)
 	if n.Style["height"] == "" {
 		*height = h
 	}

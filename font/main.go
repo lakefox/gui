@@ -111,26 +111,26 @@ func LoadFont(fontName string, fontSize int, bold, italic bool) (font.Face, erro
 	return truetype.NewFace(fnt, &options), nil
 }
 
-func MeasureLine(n *element.Node) (int, int) {
-	passed := false
-	lineOffset, nodeOffset := 0, 0
-	for _, v := range n.Parent.Children {
-		l := MeasureText(n, v.InnerText)
-		if v.Properties.Id == n.Properties.Id {
-			passed = true
-			lineOffset += l
-		} else {
-			if !passed {
-				nodeOffset += l
-			}
-			lineOffset += l
-		}
-	}
-	return lineOffset, nodeOffset
-}
+// func MeasureLine(n *element.Node) (int, int) {
+// 	passed := false
+// 	lineOffset, nodeOffset := 0, 0
+// 	for _, v := range n.Parent.Children {
+// 		l := MeasureText(n, v.InnerText)
+// 		if v.Properties.Id == n.Properties.Id {
+// 			passed = true
+// 			lineOffset += l
+// 		} else {
+// 			if !passed {
+// 				nodeOffset += l
+// 			}
+// 			lineOffset += l
+// 		}
+// 	}
+// 	return lineOffset, nodeOffset
+// }
 
-func MeasureText(n *element.Node, text string) int {
-	t := n.Properties.Text
+func MeasureText(s *element.State, text string) int {
+	t := s.Text
 	var width fixed.Int26_6
 
 	for _, runeValue := range text {
@@ -156,8 +156,8 @@ func MeasureSpace(t *element.Text) int {
 	return adv.Round()
 }
 
-func MeasureLongest(n *element.Node) int {
-	lines := getLines(n)
+func MeasureLongest(s *element.State) int {
+	lines := getLines(s)
 	var longestLine string
 	maxLength := 0
 
@@ -168,7 +168,7 @@ func MeasureLongest(n *element.Node) int {
 			longestLine = line
 		}
 	}
-	return MeasureText(n, longestLine)
+	return MeasureText(s, longestLine)
 }
 
 func getSystemFonts() ([]string, error) {
@@ -253,9 +253,9 @@ func getFontsRecursively(dir string, fontPaths *[]string) {
 	}
 }
 
-func Render(n *element.Node) float32 {
-	t := &n.Properties.Text
-	lines := getLines(n)
+func Render(s *element.State) float32 {
+	t := &s.Text
+	lines := getLines(s)
 
 	if t.LineHeight == 0 {
 		t.LineHeight = t.EM + 3
@@ -284,7 +284,7 @@ func Render(n *element.Node) float32 {
 			dr.Dot.X = 0
 			spaces := strings.Count(v, " ")
 			if spaces > 1 {
-				spacing := fixed.I((t.Width - MeasureText(n, v)) / spaces)
+				spacing := fixed.I((t.Width - MeasureText(s, v)) / spaces)
 
 				if spacing > 0 {
 					for _, word := range strings.Fields(v) {
@@ -304,16 +304,16 @@ func Render(n *element.Node) float32 {
 			if t.Align == "left" || t.Align == "" {
 				dr.Dot.X = 0
 			} else if t.Align == "center" {
-				dr.Dot.X = fixed.I((t.Width - MeasureText(n, v)) / 2)
+				dr.Dot.X = fixed.I((t.Width - MeasureText(s, v)) / 2)
 			} else if t.Align == "right" {
-				dr.Dot.X = fixed.I(t.Width - MeasureText(n, v))
+				dr.Dot.X = fixed.I(t.Width - MeasureText(s, v))
 			}
 			// dr.Dot.X = 0
 			drawString(*t, dr, v)
 		}
 		dr.Dot.Y += fh
 	}
-	n.Properties.Text.X = MeasureText(n, lines[len(lines)-1])
+	s.Text.X = MeasureText(s, lines[len(lines)-1])
 	return float32(t.LineHeight * len(lines))
 }
 
@@ -348,11 +348,11 @@ func drawString(t element.Text, dr *font.Drawer, v string) {
 	}
 }
 
-func wrap(n *element.Node, breaker string, breakNewLines bool) []string {
+func wrap(s *element.State, breaker string, breakNewLines bool) []string {
 	var start int = 0
 	strngs := []string{}
 	var text []string
-	broken := strings.Split(n.InnerText, breaker)
+	broken := strings.Split(s.Text.Text, breaker)
 	re := regexp.MustCompile(`[\r\n]+`)
 	if breakNewLines {
 		for _, v := range broken {
@@ -366,7 +366,7 @@ func wrap(n *element.Node, breaker string, breakNewLines bool) []string {
 	}
 	for i := 0; i < len(text); i++ {
 		seg := strings.Join(text[start:int(Min(float32(i+1), float32(len(text))))], breaker)
-		if MeasureText(n, seg) > n.Properties.Text.Width {
+		if MeasureText(s, seg) > s.Text.Width {
 			strngs = append(strngs, strings.Join(text[start:i], breaker))
 			start = i
 		}
@@ -425,33 +425,33 @@ func abs(x int) int {
 	return x
 }
 
-func getLines(n *element.Node) []string {
-	t := n.Properties.Text
-	text := n.InnerText
+func getLines(s *element.State) []string {
+	t := s.Text
+	text := s.Text.Text
 	var lines []string
 	if t.WhiteSpace == "nowrap" {
 		re := regexp.MustCompile(`\s+`)
-		n.InnerText = re.ReplaceAllString(text, " ")
-		lines = wrap(n, "<br />", false)
+		s.Text.Text = re.ReplaceAllString(text, " ")
+		lines = wrap(s, "<br />", false)
 	} else {
 		if t.WhiteSpace == "pre" {
 			re := regexp.MustCompile("\t")
-			n.InnerText = re.ReplaceAllString(text, "     ")
+			s.Text.Text = re.ReplaceAllString(text, "     ")
 			nl := regexp.MustCompile(`[\r\n]+`)
 			lines = nl.Split(text, -1)
 		} else if t.WhiteSpace == "pre-line" {
 			re := regexp.MustCompile(`\s+`)
-			n.InnerText = re.ReplaceAllString(text, " ")
-			lines = wrap(n, " ", true)
+			s.Text.Text = re.ReplaceAllString(text, " ")
+			lines = wrap(s, " ", true)
 		} else if t.WhiteSpace == "pre-wrap" {
-			lines = wrap(n, " ", true)
+			lines = wrap(s, " ", true)
 		} else {
 			re := regexp.MustCompile(`\s+`)
-			n.InnerText = re.ReplaceAllString(text, " ")
+			s.Text.Text = re.ReplaceAllString(text, " ")
 			nl := regexp.MustCompile(`[\r\n]+`)
-			n.InnerText = nl.ReplaceAllString(text, "")
+			s.Text.Text = nl.ReplaceAllString(text, "")
 			// n.InnerText = strings.TrimSpace(text)
-			lines = wrap(n, t.WordBreak, false)
+			lines = wrap(s, t.WordBreak, false)
 		}
 		for i, v := range lines {
 			lines[i] = v + t.WordBreak

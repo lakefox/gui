@@ -11,29 +11,39 @@ func Init() cstyle.Plugin {
 			"display": "inline",
 		},
 		Level: 1,
-		Handler: func(n *element.Node) {
-			copyOfX := n.Properties.X
+		Handler: func(n *element.Node, state *map[string]element.State) {
+			s := *state
+			self := s[n.Properties.Id]
+			parent := s[n.Parent.Properties.Id]
+
+			copyOfX := self.X
 			for i, v := range n.Parent.Children {
 				if v.Properties.Id == n.Properties.Id {
-					if n.Properties.X+n.Properties.Computed["width"]-2 > n.Parent.Properties.Computed["width"]+copyOfX && i > 0 {
-						n.Properties.Y += float32(n.Parent.Children[i-1].Properties.Computed["height"])
-						n.Properties.X = copyOfX
+					if self.X+self.Width-2 > parent.Width+copyOfX && i > 0 {
+						sibling := s[n.Parent.Children[i-1].Properties.Id]
+						self.Y += sibling.Height
+						self.X = copyOfX
 					}
 					if i > 0 {
 						if n.Parent.Children[i-1].Style["display"] == "inline" {
-							if n.Parent.Children[i-1].Properties.Text.X+n.Properties.Text.Width < int(n.Parent.Children[i-1].Properties.Computed["width"]) {
-								n.Properties.Y -= float32(n.Parent.Children[i-1].Properties.Text.LineHeight)
-								n.Properties.X += float32(n.Parent.Children[i-1].Properties.Text.X)
+							sibling := s[n.Parent.Children[i-1].Properties.Id]
+
+							if sibling.Text.X+self.Text.Width < int(sibling.Width) {
+								self.Y -= float32(sibling.Text.LineHeight)
+								self.X += float32(sibling.Text.X)
 							}
 						}
 					}
 					break
 				} else if v.Style["display"] == "inline" {
-					n.Properties.X += v.Properties.Computed["width"]
+					vState := s[v.Properties.Id]
+					self.X += vState.Width
 				} else {
-					n.Properties.X = copyOfX
+					self.X = copyOfX
 				}
 			}
+			(*state)[n.Properties.Id] = self
+			(*state)[n.Parent.Properties.Id] = parent
 		},
 	}
 }

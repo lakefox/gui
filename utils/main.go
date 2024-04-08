@@ -50,52 +50,50 @@ func GetWH(n element.Node) WidthHeight {
 		pwh = GetWH(*n.Parent)
 	} else {
 		pwh = WidthHeight{}
-		if n.Properties.Computed["width"] == 0 {
-			if n.Style["width"] != "" {
-				str := strings.TrimSuffix(n.Style["width"], "px")
-				// Convert the string to float32
-				f, _ := strconv.ParseFloat(str, 32)
-				pwh.Width = float32(f)
-			}
-		} else {
-			pwh.Width = n.Properties.Computed["width"]
+		// if n.Properties.Computed["width"] == 0 {
+		if n.Style["width"] != "" {
+			str := strings.TrimSuffix(n.Style["width"], "px")
+			// Convert the string to float32
+			f, _ := strconv.ParseFloat(str, 32)
+			pwh.Width = float32(f)
 		}
-		if n.Properties.Computed["width"] == 0 {
+		// } else {
+		// 	pwh.Width = n.Properties.Computed["width"]
+		// }
+		// if n.Properties.Computed["width"] == 0 {
 
-			if n.Style["height"] != "" {
-				str := strings.TrimSuffix(n.Style["height"], "px")
-				// Convert the string to float32
-				f, _ := strconv.ParseFloat(str, 32)
-				pwh.Height = float32(f)
-			}
-		} else {
-			pwh.Height = n.Properties.Computed["height"]
+		if n.Style["height"] != "" {
+			str := strings.TrimSuffix(n.Style["height"], "px")
+			// Convert the string to float32
+			f, _ := strconv.ParseFloat(str, 32)
+			pwh.Height = float32(f)
 		}
+		// } else {
+		// 	pwh.Height = n.Properties.Computed["height"]
+		// }
 	}
 	var width float32
-	if n.Properties.Computed["width"] == 0 {
-		if n.Style["width"] == "" {
-			n.Style["width"] = "100%"
+	// if n.Properties.Computed["width"] == 0 {
+	if n.Style["width"] == "" {
+		n.Style["width"] = "100%"
 
-		}
-		fmt.Println("0width", n.TagName, n.Style["width"], pwh.Width)
-		width, _ = ConvertToPixels(n.Style["width"], fs, pwh.Width)
-		fmt.Println(width)
-		n.Properties.Computed["width"] = width
-	} else {
-		width, _ = ConvertToPixels(n.Style["width"], fs, pwh.Width)
-		n.Properties.Computed["width"] = width
-
-		// width = n.Properties.Computed["width"]
 	}
+	width, _ = ConvertToPixels(n.Style["width"], fs, pwh.Width)
+	// n.Properties.Computed["width"] = width
+	// } else {
+	// 	width, _ = ConvertToPixels(n.Style["width"], fs, pwh.Width)
+	// 	n.Properties.Computed["width"] = width
+
+	// 	// width = n.Properties.Computed["width"]
+	// }
 
 	var height float32
-	if n.Properties.Computed["height"] == 0 {
-		height, _ = ConvertToPixels(n.Style["height"], fs, pwh.Height)
-		n.Properties.Computed["height"] = height
-	} else {
-		height = n.Properties.Computed["height"]
-	}
+	// if n.Properties.Computed["height"] == 0 {
+	height, _ = ConvertToPixels(n.Style["height"], fs, pwh.Height)
+	// n.Properties.Computed["height"] = height
+	// } else {
+	// height = n.Properties.Computed["height"]
+	// }
 
 	if n.Style["min-width"] != "" {
 		minWidth, _ := ConvertToPixels(n.Style["min-width"], fs, pwh.Width)
@@ -121,16 +119,9 @@ func GetWH(n element.Node) WidthHeight {
 	}
 }
 
-type MarginPadding struct {
-	Top    float32
-	Left   float32
-	Right  float32
-	Bottom float32
-}
-
-func GetMP(n element.Node, t string) MarginPadding {
+func GetMP(n element.Node, t string) element.MarginPadding {
 	fs := font.GetFontSize(n.Style)
-	m := MarginPadding{}
+	m := element.MarginPadding{}
 
 	wh := GetWH(n)
 
@@ -163,9 +154,9 @@ func GetMP(n element.Node, t string) MarginPadding {
 	}
 	if t == "margin" {
 		if n.Style["margin"] == "auto" && n.Style["margin-left"] == "" && n.Style["margin-right"] == "" {
-			// this dont work
-			m.Left = Max((n.Parent.Properties.Computed["width"]-wh.Width)/2, 0)
-			m.Right = Max((n.Parent.Properties.Computed["width"]-wh.Width)/2, 0)
+			pwh := GetWH(*n.Parent)
+			m.Left = Max((pwh.Width-wh.Width)/2, 0)
+			m.Right = m.Left
 		}
 	}
 
@@ -217,15 +208,6 @@ func convertMarginToIndividualProperties(margin string) (string, string, string,
 	}
 
 	return left, right, top, bottom
-}
-
-func AsPX(n element.Node, value string) float32 {
-	if n.Style[value] != "" {
-		v, _ := ConvertToPixels(n.Style[value], n.Properties.EM, n.Properties.Computed["width"])
-		return v
-	} else {
-		return 0
-	}
 }
 
 // ConvertToPixels converts a CSS measurement to pixels.

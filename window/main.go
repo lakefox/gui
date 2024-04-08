@@ -1,7 +1,6 @@
 package window
 
 import (
-	"gui/color"
 	"gui/element"
 	"gui/fps"
 	"gui/utils"
@@ -28,7 +27,7 @@ type WindowManager struct {
 	Fonts      map[string]rl.Font
 	FPS        bool
 	FPSCounter fps.FPSCounter
-	Textures   map[string]TextTexture
+	Textures   map[int]TextTexture
 }
 
 type TextTexture struct {
@@ -59,17 +58,17 @@ func (wm *WindowManager) CloseWindow() {
 	rl.CloseWindow()
 }
 
-func (wm *WindowManager) LoadTextures(nodes []element.Node) {
+func (wm *WindowManager) LoadTextures(nodes []element.State) {
 	if wm.Textures == nil {
-		wm.Textures = map[string]TextTexture{}
+		wm.Textures = map[int]TextTexture{}
 	}
-	for _, node := range nodes {
-		if node.Properties.Text.Image != nil {
-			if wm.Textures[node.Properties.Id].Text != node.InnerText {
-				rl.UnloadTexture(wm.Textures[node.Properties.Id].Image)
-				texture := rl.LoadTextureFromImage(rl.NewImageFromImage(node.Properties.Text.Image))
-				wm.Textures[node.Properties.Id] = TextTexture{
-					Text:  node.InnerText,
+	for i, node := range nodes {
+		if node.Text.Image != nil {
+			if wm.Textures[i].Text != node.Text.Text {
+				rl.UnloadTexture(wm.Textures[i].Image)
+				texture := rl.LoadTextureFromImage(rl.NewImageFromImage(node.Text.Image))
+				wm.Textures[i] = TextTexture{
+					Text:  node.Text.Text,
 					Image: texture,
 				}
 			}
@@ -80,26 +79,26 @@ func (wm *WindowManager) LoadTextures(nodes []element.Node) {
 }
 
 // Draw draws all nodes on the window
-func (wm *WindowManager) Draw(nodes []element.Node) {
+func (wm *WindowManager) Draw(nodes []element.State) {
 
-	for _, node := range nodes {
-		bw, _ := utils.ConvertToPixels(node.Properties.Border.Width, node.Properties.EM, node.Properties.Computed["width"])
-		rad, _ := utils.ConvertToPixels(node.Properties.Border.Radius, node.Properties.EM, node.Properties.Computed["width"])
+	for i, node := range nodes {
+		bw, _ := utils.ConvertToPixels(node.Border.Width, node.EM, node.Width)
+		rad, _ := utils.ConvertToPixels(node.Border.Radius, node.EM, node.Width)
 
-		p := utils.GetMP(node, "padding")
+		p := node.Padding
 
-		rect := rl.NewRectangle(node.Properties.X+bw,
-			node.Properties.Y+bw,
-			node.Properties.Computed["width"]-(bw+bw),
-			(node.Properties.Computed["height"]+(p.Top+p.Bottom))-(bw+bw),
+		rect := rl.NewRectangle(node.X+bw,
+			node.Y+bw,
+			node.Width-(bw+bw),
+			(node.Height+(p.Top+p.Bottom))-(bw+bw),
 		)
 
-		rl.DrawRectangleRoundedLines(rect, rad/200, 1000, bw, node.Properties.Border.Color)
-		rl.DrawRectangleRounded(rect, rad/200, 1000, color.Parse(node.Style, "background"))
+		rl.DrawRectangleRoundedLines(rect, rad/200, 1000, bw, node.Border.Color)
+		rl.DrawRectangleRounded(rect, rad/200, 1000, node.Background)
 
-		if node.Properties.Text.Image != nil {
-			r, g, b, a := node.Properties.Text.Color.RGBA()
-			rl.DrawTexture(wm.Textures[node.Properties.Id].Image, int32(node.Properties.X+p.Left+bw), int32(node.Properties.Y+p.Top), ic.RGBA{uint8(r), uint8(g), uint8(b), uint8(a)})
+		if node.Text.Image != nil {
+			r, g, b, a := node.Text.Color.RGBA()
+			rl.DrawTexture(wm.Textures[i].Image, int32(node.X+p.Left+bw), int32(node.Y+p.Top), ic.RGBA{uint8(r), uint8(g), uint8(b), uint8(a)})
 		}
 	}
 

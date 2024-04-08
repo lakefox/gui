@@ -19,17 +19,19 @@ func Init() cstyle.Plugin {
 			"flex-direction":  "*",
 		},
 		Level: 2,
-		Handler: func(n *element.Node) {
+		Handler: func(n *element.Node, state *map[string]element.State) {
+			s := *state
+			self := s[n.Properties.Id]
 
 			// Brief: justify does not align the bottom row correctly
 			//        y axis also needs to be done
 			verbs := strings.Split(n.Style["flex-direction"], "-")
 
-			orderedNode := order(*n, n.Children, verbs[0], len(verbs) > 1, n.Style["flex-wrap"] == "wrap")
+			orderedNode := order(*n, state, n.Children, verbs[0], len(verbs) > 1, n.Style["flex-wrap"] == "wrap")
 
 			// var i int
 
-			colWidth := n.Properties.Computed["width"] / float32(len(orderedNode))
+			colWidth := self.Width / float32(len(orderedNode))
 
 			var xOffset, yOffset float32
 			// if n.Style["justify-content"] == "space-evenly" {
@@ -44,10 +46,11 @@ func Init() cstyle.Plugin {
 			for a, column := range orderedNode {
 				var maxColumnHeight float32
 				for _, item := range column {
-					maxColumnHeight = utils.Max(item.Properties.Computed["height"], maxColumnHeight)
+					itemState := s[item.Properties.Id]
+					maxColumnHeight = utils.Max(itemState.Height, maxColumnHeight)
 				}
 
-				yOffset = n.Children[0].Properties.Y
+				yOffset = s[n.Children[0].Properties.Id].Y
 				for _, item := range column {
 					var i int
 					for c, v := range n.Children {
@@ -57,34 +60,36 @@ func Init() cstyle.Plugin {
 					}
 					posTrack[p] = i
 					p++
+					itemState := s[item.Properties.Id]
+					cState := s[n.Children[i].Properties.Id]
 					// n.Children[i] = item
 					if n.Style["justify-content"] == "space-between" {
-						cwV := utils.Max((colWidth - (item.Properties.Computed["width"])), 0)
+						cwV := utils.Max((colWidth - (itemState.Width)), 0)
 						if a == 0 {
-							n.Children[i].Properties.X += xOffset
+							cState.X += xOffset
 						} else if a == len(orderedNode)-1 {
-							n.Children[i].Properties.X += xOffset + cwV
+							cState.X += xOffset + cwV
 						} else {
-							n.Children[i].Properties.X += xOffset + cwV/2
+							cState.X += xOffset + cwV/2
 						}
 					} else if n.Style["justify-content"] == "flex-end" || n.Style["justify-content"] == "center" {
-						dif := n.Properties.Computed["width"] - (xOffset)
+						dif := self.Width - (xOffset)
 						if n.Style["justify-content"] == "center" {
 							dif = dif / 2
 						}
-						n.Children[i].Properties.X += dif
+						cState.X += dif
 					} else if n.Style["justify-content"] == "flex-start" || n.Style["justify-content"] == "" {
-						n.Children[i].Properties.X += xOffset
+						cState.X += xOffset
 					} else {
-						cwV := utils.Max((colWidth-(item.Properties.Computed["width"]))/2, 0)
+						cwV := utils.Max((colWidth-(itemState.Width))/2, 0)
 						var offset float32
 						if n.Style["justify-content"] == "space-evenly" {
 							offset = ((cwV * 2) / float32(len(orderedNode))) * float32(a)
 						}
-						n.Children[i].Properties.X += xOffset + (cwV - offset)
+						cState.X += xOffset + (cwV - offset)
 
 					}
-					n.Children[i].Properties.Y = yOffset
+					cState.Y = yOffset
 					yOffset += maxColumnHeight
 					i++
 
@@ -102,18 +107,20 @@ func Init() cstyle.Plugin {
 				var min, max, rows, col, currY float32
 				min = 1000000000000
 				for _, v := range n.Children {
-					min = utils.Min(min, v.Properties.Y)
-					max = utils.Max(max, v.Properties.Computed["height"]+v.Properties.Y)
-					if v.Properties.Y > currY {
+					vState := s[v.Properties.Id]
+					min = utils.Min(min, vState.Y)
+					max = utils.Max(max, vState.Height+vState.Y)
+					if vState.Y > currY {
 						rows++
-						currY = v.Properties.Y
+						currY = vState.Y
 					}
 				}
 
 				height := max - min
-				rowHeight := ((n.Properties.Computed["height"] - height) / rows)
+				rowHeight := ((self.Height - height) / rows)
 				for e := range n.Children {
 					i := posTrack[e]
+					cState := s[n.Children[i].Properties.Id]
 					row := float32(int(e % int(rows)))
 					if row == 0 {
 						col++
@@ -123,29 +130,32 @@ func Init() cstyle.Plugin {
 					}
 
 					if content == "center" {
-						n.Children[i].Properties.Y += (n.Properties.Computed["height"] - height) / 2
+						cState.Y += (self.Height - height) / 2
 					} else if content == "flex-end" {
-						n.Children[i].Properties.Y += (n.Properties.Computed["height"] - height)
+						cState.Y += (self.Height - height)
 					} else if content == "space-around" {
-						n.Children[i].Properties.Y += (rowHeight * row) + (rowHeight / 2)
+						cState.Y += (rowHeight * row) + (rowHeight / 2)
 					} else if content == "space-evenly" {
-						n.Children[i].Properties.Y += (rowHeight * row) + (rowHeight / 2)
+						cState.Y += (rowHeight * row) + (rowHeight / 2)
 					} else if content == "space-between" {
-						n.Children[i].Properties.Y += (((n.Properties.Computed["height"] - height) / (rows - 1)) * row)
+						cState.Y += (((self.Height - height) / (rows - 1)) * row)
 					} else if content == "stretch" {
-						n.Children[i].Properties.Y += (rowHeight * row)
+						cState.Y += (rowHeight * row)
 						if n.Children[i].Style["height"] == "" {
-							n.Children[i].Properties.Computed["height"] = n.Properties.Computed["height"] / rows
+							cState.Height = self.Height / rows
 						}
 					}
 				}
 
 			}
+			(*state)[n.Properties.Id] = self
 		},
 	}
 }
 
-func order(p element.Node, elements []element.Node, direction string, reversed, wrap bool) [][]element.Node {
+func order(p element.Node, state *map[string]element.State, elements []element.Node, direction string, reversed, wrap bool) [][]element.Node {
+	s := *state
+	self := s[p.Properties.Id]
 	var dir, marginStart, marginEnd string
 	if direction == "column" {
 		dir = "Height"
@@ -156,7 +166,7 @@ func order(p element.Node, elements []element.Node, direction string, reversed, 
 		marginStart = "Left"
 		marginEnd = "Right"
 	}
-	max := p.Properties.Computed[dir]
+	max, _ := utils.GetStructField(&self, dir)
 
 	nodes := [][]element.Node{}
 
@@ -165,12 +175,13 @@ func order(p element.Node, elements []element.Node, direction string, reversed, 
 		if direction == "column" {
 			collector := []element.Node{}
 			for _, v := range elements {
+				vState := s[v.Properties.Id]
 				m := utils.GetMP(v, "margin")
-				elMax := v.Properties.Computed["height"]
+				elMax := vState.Height
 				elMS, _ := utils.GetStructField(&m, marginStart)
 				elME, _ := utils.GetStructField(&m, marginEnd)
 				tMax := elMax + elMS.(float32) + elME.(float32)
-				if counter+int(tMax) < int(max) {
+				if counter+int(tMax) < int(max.(float32)) {
 					collector = append(collector, v)
 				} else {
 					if reversed {
@@ -189,12 +200,13 @@ func order(p element.Node, elements []element.Node, direction string, reversed, 
 		} else {
 			var mod int
 			for _, v := range elements {
+				vState := s[v.Properties.Id]
 				m := utils.GetMP(v, "margin")
-				elMax := v.Properties.Computed["width"]
+				elMax := vState.Width
 				elMS, _ := utils.GetStructField(&m, marginStart)
 				elME, _ := utils.GetStructField(&m, marginEnd)
 				tMax := elMax + elMS.(float32) + elME.(float32)
-				if counter+int(tMax) < int(max) {
+				if counter+int(tMax) < int(max.(float32)) {
 					if len(nodes)-1 < mod {
 						nodes = append(nodes, []element.Node{v})
 					} else {
@@ -219,24 +231,26 @@ func order(p element.Node, elements []element.Node, direction string, reversed, 
 	} else {
 		var tMax float32
 		for _, v := range elements {
+			vState := s[v.Properties.Id]
 			m := utils.GetMP(v, "margin")
-			elMax := v.Properties.Computed[dir]
+			elMax, _ := utils.GetStructField(&vState, dir)
 			elMS, _ := utils.GetStructField(&m, marginStart)
 			elME, _ := utils.GetStructField(&m, marginEnd)
-			tMax += elMax + elMS.(float32) + elME.(float32)
+			tMax += elMax.(float32) + elMS.(float32) + elME.(float32)
 		}
 
-		pMax := p.Properties.Computed[dir]
+		pMax, _ := utils.GetStructField(&self, dir)
 
 		// Resize node to fit
 		var newSize float32
-		if tMax > pMax {
-			newSize = pMax / float32(len(elements))
+		if tMax > pMax.(float32) {
+			newSize = pMax.(float32) / float32(len(elements))
 		}
 		if dir == "Width" {
 			for _, v := range elements {
+				vState := s[v.Properties.Id]
 				if newSize != 0 {
-					v.Properties.Computed["width"] = newSize
+					vState.Width = newSize
 				}
 				nodes = append(nodes, []element.Node{v})
 			}
@@ -246,8 +260,9 @@ func order(p element.Node, elements []element.Node, direction string, reversed, 
 		} else {
 			nodes = append(nodes, []element.Node{})
 			for _, v := range elements {
+				vState := s[v.Properties.Id]
 				if newSize != 0 {
-					v.Properties.Computed["height"] = newSize
+					vState.Height = newSize
 				}
 				nodes[0] = append(nodes[0], v)
 			}
@@ -257,6 +272,7 @@ func order(p element.Node, elements []element.Node, direction string, reversed, 
 		}
 
 	}
+	(*state)[p.Properties.Id] = self
 
 	return nodes
 }
