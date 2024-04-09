@@ -126,14 +126,15 @@ func CheckNode(n *element.Node, state *map[string]element.State) {
 	self := s[n.Properties.Id]
 
 	fmt.Println(n.TagName, n.Properties.Id)
-	// fmt.Printf("ID: %v\n", n.Id)
-	// fmt.Printf("Classes: %v\n", n.ClassList.Classes)
+	fmt.Printf("ID: %v\n", n.Id)
+	fmt.Printf("Parent: %v\n", n.Parent.TagName)
+	fmt.Printf("Classes: %v\n", n.ClassList.Classes)
 	fmt.Printf("Text: %v\n", self.Text.Text)
 	fmt.Printf("X: %v, Y: %v\n", self.X, self.Y)
 	fmt.Printf("Width: %v, Height: %v\n", self.Width, self.Height)
-	// fmt.Printf("Styles: %v\n\n\n", n.Style)
-	// w := utils.GetWH(*n)
-	// fmt.Printf("Calc WH: %v, %v\n\n\n", w.Width, w.Height)
+	fmt.Printf("Styles: %v\n", n.Style)
+	fmt.Printf("Background: %v\n", self.Background)
+	fmt.Printf("Border: %v\n\n\n", self.Border)
 }
 
 func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State) *element.Node {
@@ -148,6 +149,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 	parent := s[n.Parent.Properties.Id]
 
 	self.Background = color.Parse(n.Style, "background")
+	self.Border, _ = CompleteBorder(n.Style)
 
 	fs, _ := utils.ConvertToPixels(n.Style["font-size"], parent.EM, parent.Width)
 	self.EM = fs
@@ -243,7 +245,8 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 		if len(n.InnerText) > 0 {
 			innerWidth := width
 			innerHeight := height
-			genTextNode(n, &innerWidth, &innerHeight, p, state)
+			(*state)[n.Properties.Id] = self
+			self = genTextNode(n, &innerWidth, &innerHeight, p, state)
 			width = innerWidth + p.Left + p.Right
 			height = innerHeight
 		}
@@ -344,7 +347,7 @@ func CompleteBorder(cssProperties map[string]string) (element.Border, error) {
 	return border, err
 }
 
-func genTextNode(n *element.Node, width, height *float32, p element.MarginPadding, state *map[string]element.State) {
+func genTextNode(n *element.Node, width, height *float32, p element.MarginPadding, state *map[string]element.State) element.State {
 	s := *state
 	self := s[n.Properties.Id]
 	parent := s[n.Parent.Properties.Id]
@@ -424,5 +427,7 @@ func genTextNode(n *element.Node, width, height *float32, p element.MarginPaddin
 	if n.Style["height"] == "" {
 		*height = h
 	}
+
+	return self
 
 }

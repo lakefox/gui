@@ -5,7 +5,7 @@ import (
 	"gui/selector"
 	"image"
 	ic "image/color"
-	"regexp"
+	"math/rand"
 	"strings"
 
 	"golang.org/x/image/font"
@@ -40,17 +40,18 @@ type Node struct {
 
 type State struct {
 	// Id         string
-	X          float32
-	Y          float32
-	Width      float32
-	Height     float32
-	Border     Border
-	Text       Text
-	EM         float32
-	Background ic.RGBA
-	Hash       string
-	Margin     MarginPadding
-	Padding    MarginPadding
+	X           float32
+	Y           float32
+	Width       float32
+	Height      float32
+	Border      Border
+	Text        Text
+	EM          float32
+	Background  ic.RGBA
+	Hash        string
+	Margin      MarginPadding
+	Padding     MarginPadding
+	RenderCount int
 }
 
 type Properties struct {
@@ -242,20 +243,10 @@ func TestSelector(selectString string, n *Node) bool {
 
 func (n *Node) AppendChild(c Node) {
 	c.Parent = n
-	// Set ID
-	// Define a regular expression to match numeric digits
-	re := regexp.MustCompile(`\d+`)
+	// Set Id
+	randomInt := rand.Intn(10000)
 
-	// Find all matches of numeric digits in the input string
-	matches := re.FindAllString(c.Parent.Properties.Id, -1)
-
-	// Concatenate all matches into a single string
-	numericPart := ""
-	for _, match := range matches {
-		numericPart += match
-	}
-
-	c.Properties.Id = c.TagName + numericPart + fmt.Sprint(len(c.Parent.Children))
+	c.Properties.Id = c.TagName + fmt.Sprint(randomInt, len(c.Parent.Children))
 
 	n.Children = append(n.Children, c)
 }

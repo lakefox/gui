@@ -6,7 +6,7 @@ Plugins add the ability to choose what parts of the HTML/CSS spec you add to you
 type Plugin struct {
 	Styles  map[string]string
 	Level   int
-	Handler func(*element.Node)
+	Handler func(*element.Node, *map[string]element.State)
 }
 ```
 

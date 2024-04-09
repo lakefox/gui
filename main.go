@@ -31,6 +31,7 @@ var mastercss string
 type Window struct {
 	CSS      cstyle.CSS
 	Document element.Node
+	Adapter  func()
 }
 
 func Open(path string) Window {
@@ -80,6 +81,10 @@ func (w *Window) Render(state map[string]element.State) []element.State {
 	store := []element.State{}
 
 	for _, v := range flatDoc {
+		// wont work unless state is a pointer to the og
+		// s := state[v.Properties.Id]
+		// s.RenderCount++
+		// state[v.Properties.Id] = s
 		store = append(store, state[v.Properties.Id])
 	}
 	return store

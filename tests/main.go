@@ -8,15 +8,16 @@ import (
 
 func main() {
 	window := gui.Open("./src/index.html")
+	// window.AddAdapter(raylib)
 	document := window.Document
 
-	document.AddEventListener("click", func(e element.Event) {
-		fmt.Println("click", e)
+	document.QuerySelector("body").AddEventListener("click", func(e element.Event) {
+		fmt.Println("click")
 		e.Target.Style["background"] = "red"
 	})
-	test := document.CreateElement("div")
-	test.InnerText = "hellodkljhsa"
-	document.QuerySelector("body").AppendChild(test)
+	// test := document.CreateElement("div")
+	// test.InnerText = "hellodkljhsa"
+	// document.QuerySelector("body").AppendChild(test)
 
 	gui.View(&window, 850, 400)
 

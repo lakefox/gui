@@ -21,12 +21,15 @@ func Init() cstyle.Plugin {
 
 			if n.Style["width"] == "" {
 				self.Width, _ = utils.ConvertToPixels("100%", self.EM, parent.Width)
-				m := utils.GetMP(*n, "margin")
-				self.Width -= m.Right + m.Left
-			} else {
-				p := utils.GetMP(*n, "padding")
-				self.Width += p.Right + p.Left
 			}
+			m := utils.GetMP(*n, "margin")
+			self.Width -= (m.Right + m.Left)
+			self.Height -= (m.Top + m.Bottom)
+
+			p := utils.GetMP(*n, "padding")
+			self.Width += (p.Right + p.Left)
+			self.Height += (p.Top + p.Bottom)
+
 			(*state)[n.Properties.Id] = self
 			(*state)[n.Parent.Properties.Id] = parent
 		},

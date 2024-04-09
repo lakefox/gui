@@ -93,8 +93,13 @@ func (wm *WindowManager) Draw(nodes []element.State) {
 			(node.Height+(p.Top+p.Bottom))-(bw+bw),
 		)
 
+		// node.Background.A = 125
+
 		rl.DrawRectangleRoundedLines(rect, rad/200, 1000, bw, node.Border.Color)
 		rl.DrawRectangleRounded(rect, rad/200, 1000, node.Background)
+
+		// fmt.Println(node.Text.Image == nil, node.Text.Text)
+		// fmt.Printf("%v\n", node.Text)
 
 		if node.Text.Image != nil {
 			r, g, b, a := node.Text.Color.RGBA()
