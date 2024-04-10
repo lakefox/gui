@@ -22,7 +22,6 @@ func Init() cstyle.Plugin {
 		Handler: func(n *element.Node, state *map[string]element.State) {
 			s := *state
 			self := s[n.Properties.Id]
-
 			// Brief: justify does not align the bottom row correctly
 			//        y axis also needs to be done
 			verbs := strings.Split(n.Style["flex-direction"], "-")
@@ -87,12 +86,11 @@ func Init() cstyle.Plugin {
 							offset = ((cwV * 2) / float32(len(orderedNode))) * float32(a)
 						}
 						cState.X += xOffset + (cwV - offset)
-
 					}
 					cState.Y = yOffset
 					yOffset += maxColumnHeight
+					(*state)[n.Children[i].Properties.Id] = cState
 					i++
-
 				}
 				xOffset += colWidth
 			}
@@ -145,6 +143,8 @@ func Init() cstyle.Plugin {
 							cState.Height = self.Height / rows
 						}
 					}
+					(*state)[n.Children[i].Properties.Id] = cState
+
 				}
 
 			}

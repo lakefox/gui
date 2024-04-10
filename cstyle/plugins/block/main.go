@@ -31,7 +31,6 @@ func Init() cstyle.Plugin {
 			self.Height += (p.Top + p.Bottom)
 
 			(*state)[n.Properties.Id] = self
-			(*state)[n.Parent.Properties.Id] = parent
 		},
 	}
 }

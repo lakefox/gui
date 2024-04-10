@@ -43,7 +43,6 @@ func Init() cstyle.Plugin {
 				}
 			}
 			(*state)[n.Properties.Id] = self
-			(*state)[n.Parent.Properties.Id] = parent
 		},
 	}
 }
