@@ -74,7 +74,7 @@ func GetWH(n element.Node) WidthHeight {
 	}
 	var width float32
 	// if n.Properties.Computed["width"] == 0 {
-	if n.Style["width"] == "" {
+	if n.Style["width"] == "" && n.Style["display"] != "inline" {
 		n.Style["width"] = "100%"
 
 	}
@@ -221,6 +221,7 @@ func ConvertToPixels(value string, em, max float32) (float32, error) {
 		"vw": max / 100,
 		"vh": max / 100,
 		"cm": 37.79527559,
+		"in": 96,
 	}
 
 	if strings.HasPrefix(value, "calc(") {
@@ -475,4 +476,17 @@ func IsParent(n element.Node, name string) bool {
 	} else {
 		return false
 	}
+}
+
+func ChildrenHaveText(n *element.Node) bool {
+	for _, child := range n.Children {
+		if len(strings.TrimSpace(child.InnerText)) != 0 {
+			return true
+		}
+		// Recursively check if any child nodes have text
+		if ChildrenHaveText(&child) {
+			return true
+		}
+	}
+	return false
 }

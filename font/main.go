@@ -111,11 +111,11 @@ func LoadFont(fontName string, fontSize int, bold, italic bool) (font.Face, erro
 	return truetype.NewFace(fnt, &options), nil
 }
 
-// func MeasureLine(n *element.Node) (int, int) {
+// func MeasureLine(n *element.Node, state *element.State) (int, int) {
 // 	passed := false
 // 	lineOffset, nodeOffset := 0, 0
 // 	for _, v := range n.Parent.Children {
-// 		l := MeasureText(n, v.InnerText)
+// 		l := MeasureText(state, v.InnerText)
 // 		if v.Properties.Id == n.Properties.Id {
 // 			passed = true
 // 			lineOffset += l
@@ -263,11 +263,13 @@ func Render(s *element.State) float32 {
 	// Use fully transparent color for the background
 	img := image.NewRGBA(image.Rect(0, 0, t.Width, t.LineHeight*(len(lines))))
 
+	// fmt.Println(t.Width, t.LineHeight, (len(lines)))
+
 	r, g, b, a := t.Color.RGBA()
 
-	draw.Draw(img, img.Bounds(), &image.Uniform{color.RGBA{uint8(r), uint8(g), uint8(b), 0}}, image.Point{}, draw.Over)
-
-	dot := fixed.Point26_6{X: fixed.I(0), Y: t.Font.Metrics().Ascent}
+	draw.Draw(img, img.Bounds(), &image.Uniform{color.RGBA{uint8(r), uint8(g), uint8(b), uint8(0)}}, image.Point{}, draw.Over)
+	// fmt.Println(int(t.Font.Metrics().Ascent))
+	dot := fixed.Point26_6{X: fixed.I(0), Y: (fixed.I(t.LineHeight+(t.EM/2)) / 2)}
 
 	dr := &font.Drawer{
 		Dst:  img,
@@ -280,6 +282,7 @@ func Render(s *element.State) float32 {
 	fh := fixed.I(t.LineHeight)
 
 	for _, v := range lines {
+		lineWidth := MeasureText(s, v)
 		if t.Align == "justify" {
 			dr.Dot.X = 0
 			spaces := strings.Count(v, " ")
@@ -293,11 +296,11 @@ func Render(s *element.State) float32 {
 					}
 				} else {
 					dr.Dot.X = 0
-					drawString(*t, dr, v)
+					drawString(*t, dr, v, lineWidth)
 				}
 			} else {
 				dr.Dot.X = 0
-				drawString(*t, dr, v)
+				drawString(*t, dr, v, lineWidth)
 			}
 
 		} else {
@@ -309,7 +312,7 @@ func Render(s *element.State) float32 {
 				dr.Dot.X = fixed.I(t.Width - MeasureText(s, v))
 			}
 			// dr.Dot.X = 0
-			drawString(*t, dr, v)
+			drawString(*t, dr, v, lineWidth)
 		}
 		dr.Dot.Y += fh
 	}
@@ -317,7 +320,7 @@ func Render(s *element.State) float32 {
 	return float32(t.LineHeight * len(lines))
 }
 
-func drawString(t element.Text, dr *font.Drawer, v string) {
+func drawString(t element.Text, dr *font.Drawer, v string, lineWidth int) {
 	underlinePosition := dr.Dot
 	for _, ch := range v {
 		if ch == ' ' {
@@ -335,15 +338,15 @@ func drawString(t element.Text, dr *font.Drawer, v string) {
 
 		if t.Underlined {
 			underlinePosition.Y = baseLineY + t.Font.Metrics().Descent
-			drawLine(t.Image, underlinePosition, dr.Dot.X, t.DecorationThickness, t.DecorationColor)
+			drawLine(t.Image, underlinePosition, fixed.Int26_6(lineWidth), t.DecorationThickness, t.DecorationColor)
 		}
 		if t.LineThrough {
 			underlinePosition.Y = baseLineY - (t.Font.Metrics().Descent)
-			drawLine(t.Image, underlinePosition, dr.Dot.X, t.DecorationThickness, t.DecorationColor)
+			drawLine(t.Image, underlinePosition, fixed.Int26_6(lineWidth), t.DecorationThickness, t.DecorationColor)
 		}
 		if t.Overlined {
 			underlinePosition.Y = baseLineY - t.Font.Metrics().Descent*3
-			drawLine(t.Image, underlinePosition, dr.Dot.X, t.DecorationThickness, t.DecorationColor)
+			drawLine(t.Image, underlinePosition, fixed.Int26_6(lineWidth), t.DecorationThickness, t.DecorationColor)
 		}
 	}
 }

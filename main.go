@@ -176,7 +176,7 @@ func CreateNode(node *html.Node, parent *element.Node) {
 				newNode.SetAttribute(attr.Key, attr.Val)
 			}
 		}
-		newNode.InnerText = utils.GetInnerText(node)
+		newNode.InnerText = strings.TrimSpace(utils.GetInnerText(node))
 		// Recursively traverse child nodes
 		for child := node.FirstChild; child != nil; child = child.NextSibling {
 			if child.Type == html.ElementNode {

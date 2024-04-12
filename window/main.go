@@ -90,7 +90,7 @@ func (wm *WindowManager) Draw(nodes []element.State) {
 		rect := rl.NewRectangle(node.X+bw,
 			node.Y+bw,
 			node.Width-(bw+bw),
-			(node.Height+(p.Top+p.Bottom))-(bw+bw),
+			(node.Height + (p.Top + p.Bottom)),
 		)
 
 		// node.Background.A = 125
@@ -103,7 +103,7 @@ func (wm *WindowManager) Draw(nodes []element.State) {
 
 		if node.Text.Image != nil {
 			r, g, b, a := node.Text.Color.RGBA()
-			rl.DrawTexture(wm.Textures[i].Image, int32(node.X+p.Left+bw), int32(node.Y+p.Top), ic.RGBA{uint8(r), uint8(g), uint8(b), uint8(a)})
+			rl.DrawTexture(wm.Textures[i].Image, int32(node.X+p.Left+bw), int32(node.Y+p.Top+bw), ic.RGBA{uint8(r), uint8(g), uint8(b), uint8(a)})
 		}
 	}
 

@@ -66,16 +66,6 @@ var inheritedProps = []string{
 	"display",
 }
 
-// need to get rid of the .props for the most part all styles should be computed dynamically
-// can keep like focusable and stuff that describes the element
-
-// currently the append child does not work due to the props and other stuff not existing so it fails
-// moving to a real time style compute would fix that
-
-// :hover is parsed correctly but because the hash func doesn't invalidate it becuase the val
-// is updated in the props. change to append :hover to style to create the effect
-//							or merge the class with the styles? idk have to think more
-
 func (c *CSS) GetStyles(n element.Node) map[string]string {
 	styles := map[string]string{}
 
@@ -110,6 +100,8 @@ func (c *CSS) GetStyles(n element.Node) map[string]string {
 
 		}
 	}
+
+	// !FLAG: why is this needed, the "attribute" is n.Style that should be mapped during init
 	inline := parser.ParseStyleAttribute(n.GetAttribute("style") + ";")
 	styles = utils.Merge(styles, inline)
 	// add hover and focus css events
@@ -143,6 +135,9 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 		return n
 	}
 	plugins := c.Plugins
+	// !FLAG: This should add to state.Style instead as the element.Node should be un effected by the engine
+	// 		  currently this adds styles to the style attribute that the use did not explisitly set
+
 	n.Style = c.GetStyles(*n)
 	s := *state
 	self := s[n.Properties.Id]
@@ -240,7 +235,9 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 		y -= m.Bottom
 	}
 
-	if len(n.Children) == 0 {
+	// fmt.Println(n.InnerText, len(n.Children))
+
+	if !utils.ChildrenHaveText(n) {
 		// Confirm text exists
 		if len(n.InnerText) > 0 {
 			innerWidth := width
@@ -390,7 +387,7 @@ func genTextNode(n *element.Node, width, height *float32, p element.MarginPaddin
 	var dt float32
 
 	if n.Style["text-decoration-thickness"] == "auto" || n.Style["text-decoration-thickness"] == "" {
-		dt = 2
+		dt = 3
 	} else {
 		dt, _ = utils.ConvertToPixels(n.Style["text-decoration-thickness"], self.EM, *width)
 	}
@@ -398,6 +395,7 @@ func genTextNode(n *element.Node, width, height *float32, p element.MarginPaddin
 	col := color.Parse(n.Style, "font")
 
 	self.Text.Color = col
+	self.Text.DecorationColor = color.Parse(n.Style, "decoration")
 	self.Text.Align = n.Style["text-align"]
 	self.Text.WordBreak = wb
 	self.Text.WordSpacing = int(wordSpacing)
@@ -423,6 +421,8 @@ func genTextNode(n *element.Node, width, height *float32, p element.MarginPaddin
 	}
 
 	self.Text.Width = int(*width)
+	self.Width = *width
+	fmt.Println(n.TagName, n.Style["width"], *width)
 	h := font.Render(&self)
 	if n.Style["height"] == "" {
 		*height = h

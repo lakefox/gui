@@ -391,7 +391,7 @@ func Parse(styles map[string]string, t string) ic.RGBA {
 	} else if t == "decoration" {
 		textDec, err := ParseRGBA(styles["text-decoration-color"])
 		if err != nil {
-			return ic.RGBA{0, 0, 0, 1}
+			return ic.RGBA{0, 0, 0, 255}
 		} else {
 			return textDec
 		}

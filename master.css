@@ -557,6 +557,8 @@ a {
     color: #0100ee;
     text-decoration: underline;
     cursor: auto;
+    text-decoration-thickness: 1px;
+    text-decoration-color: #0100ee;
 }
 a:active {
     color: #551a8b;
