@@ -30,6 +30,7 @@ func Init() cstyle.Plugin {
 					}
 					break
 				} else if vState.X+xCollect+vState.Width-2 > parent.Width+copyOfX && i > 0 {
+					// !ISSUE: Added the + xCollect and things got better but don't know why
 					xCollect = copyOfX + xCollect
 				} else {
 					xCollect += vState.Width

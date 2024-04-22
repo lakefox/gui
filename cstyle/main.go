@@ -101,7 +101,7 @@ func (c *CSS) GetStyles(n element.Node) map[string]string {
 		}
 	}
 
-	// !FLAG: why is this needed, the "attribute" is n.Style that should be mapped during init
+	// !ISSUE: why is this needed, the "attribute" is n.Style that should be mapped during init
 	// + when a user adds a style via the style attirbute it will just be in the .Style prop...
 	inline := parser.ParseStyleAttribute(n.GetAttribute("style") + ";")
 	styles = utils.Merge(styles, inline)
@@ -136,7 +136,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 		return n
 	}
 	plugins := c.Plugins
-	// !FLAG: This should add to state.Style instead as the element.Node should be un effected by the engine
+	// !ISSUE: This should add to state.Style instead as the element.Node should be un effected by the engine
 	// + currently this adds styles to the style attribute that the use did not explisitly set
 	// + this also applies to the margin/padding and border completer functions
 
