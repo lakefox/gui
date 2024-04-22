@@ -102,6 +102,7 @@ func (c *CSS) GetStyles(n element.Node) map[string]string {
 	}
 
 	// !FLAG: why is this needed, the "attribute" is n.Style that should be mapped during init
+	// + when a user adds a style via the style attirbute it will just be in the .Style prop...
 	inline := parser.ParseStyleAttribute(n.GetAttribute("style") + ";")
 	styles = utils.Merge(styles, inline)
 	// add hover and focus css events
@@ -136,7 +137,8 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 	}
 	plugins := c.Plugins
 	// !FLAG: This should add to state.Style instead as the element.Node should be un effected by the engine
-	// 		  currently this adds styles to the style attribute that the use did not explisitly set
+	// + currently this adds styles to the style attribute that the use did not explisitly set
+	// + this also applies to the margin/padding and border completer functions
 
 	n.Style = c.GetStyles(*n)
 	s := *state
@@ -257,16 +259,14 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 	(*state)[n.Properties.Id] = self
 	(*state)[n.Parent.Properties.Id] = parent
 
-	// CheckNode(n, state)
-
 	// Call children here
 
 	var childYOffset float32
 	for i, v := range n.Children {
 		v.Parent = n
 		n.Children[i] = *c.ComputeNodeStyle(&v, state)
+		cState := (*state)[n.Children[i].Properties.Id]
 		if n.Style["height"] == "" {
-			cState := s[n.Children[i].Properties.Id]
 			if n.Children[i].Style["position"] != "absolute" && cState.Y > childYOffset {
 				childYOffset = cState.Y
 				self.Height += cState.Height
@@ -275,7 +275,10 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 				self.Height += cState.Padding.Top
 				self.Height += cState.Padding.Bottom
 			}
-
+		}
+		// fmt.Println(n.TagName, self.Width, v.TagName, cState.Width)
+		if cState.Width > self.Width {
+			self.Width = cState.Width
 		}
 	}
 
@@ -297,6 +300,8 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 			v.Handler(n, state)
 		}
 	}
+
+	CheckNode(n, state)
 
 	return n
 }
@@ -422,7 +427,6 @@ func genTextNode(n *element.Node, width, height *float32, p element.MarginPaddin
 
 	self.Text.Width = int(*width)
 	self.Width = *width
-	fmt.Println(n.TagName, n.Style["width"], *width)
 	h := font.Render(&self)
 	if n.Style["height"] == "" {
 		*height = h

@@ -52,14 +52,17 @@ type State struct {
 	Margin      MarginPadding
 	Padding     MarginPadding
 	RenderCount int
+	Style       map[string]string
 }
+
+// !FLAG: Plan to get rid of this
 
 type Properties struct {
 	Id string
 	// Computed map[string]float32
 	// X        float32
 	// Y        float32
-	Hash string
+	// Hash string
 	// Width          float32
 	// Height         float32
 	// Border         Border
@@ -165,7 +168,6 @@ func (n *Node) CreateElement(name string) Node {
 		Value:     "",
 		Properties: Properties{
 			Id:             "",
-			Hash:           "",
 			EventListeners: make(map[string][]func(Event)),
 			Focusable:      false,
 			Focused:        false,
