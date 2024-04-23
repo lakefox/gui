@@ -45,7 +45,7 @@ function getFlags(doc) {
                 .filter((e) => parseInt(e).toString() != e)
                 .map((e, i, a) => {
                     let s = [];
-                    console.log(e);
+                    e = e.trim();
                     if (e.indexOf("// !ISSUE:") != -1) {
                         s.push(
                             e
@@ -54,11 +54,11 @@ function getFlags(doc) {
                                 .trim()
                         );
                         for (let k = i + 1; k < a.length; k++) {
-                            if (a[k].indexOf("// +") != -1) {
+                            if (a[k].trim().indexOf("// +") != -1) {
                                 s.push(
                                     a[k]
                                         .trim()
-                                        .slice(a[k].indexOf("// +") + 4)
+                                        .slice(a[k].trim().indexOf("// +") + 4)
                                         .trim()
                                 );
                             } else {
@@ -78,6 +78,7 @@ function getFlags(doc) {
 }
 
 function inject(el, flags, home = false) {
+    console.log(flags);
     if (flags.length > 0) {
         let html = div`class="${css.flag}"`;
         html.add(h2`innerText="ISSUES"`);

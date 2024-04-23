@@ -3,6 +3,7 @@ package gui
 import (
 	"bufio"
 	_ "embed"
+	"fmt"
 	"gui/cstyle"
 	"gui/cstyle/plugins/block"
 	"gui/cstyle/plugins/flex"
@@ -105,6 +106,7 @@ func flatten(n element.Node) []element.Node {
 }
 
 func View(data *Window, width, height int32) {
+	debug := false
 	data.Document.Style["width"] = strconv.Itoa(int(width)) + "px"
 	data.Document.Style["height"] = strconv.Itoa(int(height)) + "px"
 
@@ -121,7 +123,7 @@ func View(data *Window, width, height int32) {
 	state := map[string]element.State{}
 
 	// Main game loop
-	for !wm.WindowShouldClose() {
+	for !wm.WindowShouldClose() && !debug {
 		rl.BeginDrawing()
 
 		// Check if the window size has changed
@@ -206,8 +208,11 @@ func parseHTMLFromFile(path string) ([]string, []string, *html.Node) {
 		htmlContent += scanner.Text() + "\n"
 	}
 
-	// println(encapsulateText(htmlContent))
-	doc, _ := html.Parse(strings.NewReader(encapsulateText(htmlContent)))
+	fmt.Println(htmlContent)
+
+	htmlContent = removeHTMLComments(htmlContent)
+
+	doc, _ := html.Parse(strings.NewReader(encapsulateText(removeWhitespaceBetweenTags(htmlContent))))
 
 	// Extract stylesheet link tags and style tags
 	stylesheets := extractStylesheets(doc, filepath.Dir(path))
@@ -291,16 +296,19 @@ func localizePath(rootPath, filePath string) string {
 }
 
 func encapsulateText(htmlString string) string {
-	htmlString = removeHTMLComments(htmlString)
+	// !ISSUE: openOpen not correctly matching string after updating the next issue
 	openOpen := regexp.MustCompile(`(<\w+[^>]*>)([^<]+)(<\w+[^>]*>)`)
 	closeOpen := regexp.MustCompile(`(</\w+[^>]*>)([^<]+)(<\w+[^>]*>)`)
-	closeClose := regexp.MustCompile(`(</\w+[^>]*>)([^<]+)(</\w+[^>]*>)`)
+	closeClose := regexp.MustCompile(`(<\/\w+[^>]*>)([^<]+)(<\/\w+[^>]*>)`)
 	a := matchFactory(openOpen)
 	t := openOpen.ReplaceAllStringFunc(htmlString, a)
+	// fmt.Println(t)
 	b := matchFactory(closeOpen)
 	u := closeOpen.ReplaceAllStringFunc(t, b)
+	// fmt.Println(u)
 	c := matchFactory(closeClose)
 	v := closeClose.ReplaceAllStringFunc(u, c)
+	// fmt.Println(v)
 	return v
 }
 
@@ -331,6 +339,14 @@ func removeWhitespace(htmlString string) string {
 }
 
 func removeHTMLComments(htmlString string) string {
-	re := regexp.MustCompile(`<!--(.*?)-->`)
+	// !ISSUE: Updated from <!--(.*?)--> and broke the openOpen matching
+	re := regexp.MustCompile(`<!--[\s\S]*?-->`)
 	return re.ReplaceAllString(htmlString, "")
+}
+
+func removeWhitespaceBetweenTags(html string) string {
+	// Create a regular expression to match spaces between angle brackets
+	re := regexp.MustCompile(`>\s+<`)
+	// Replace all matches of spaces between angle brackets with "><"
+	return re.ReplaceAllString(html, "><")
 }

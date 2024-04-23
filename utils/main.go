@@ -42,6 +42,8 @@ type WidthHeight struct {
 	Height float32
 }
 
+// !ISSUE: Need to apply the margin and padding to the width/height
+// + right now the body width is 834 and the div inside is 850 bc the margin 8 isn't applied
 func GetWH(n element.Node) WidthHeight {
 	fs := font.GetFontSize(n.Style)
 
