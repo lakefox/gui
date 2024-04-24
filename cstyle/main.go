@@ -301,7 +301,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 		}
 	}
 
-	// CheckNode(n, state)
+	CheckNode(n, state)
 
 	return n
 }

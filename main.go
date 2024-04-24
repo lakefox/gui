@@ -111,7 +111,7 @@ func View(data *Window, width, height int32) {
 	data.Document.Style["height"] = strconv.Itoa(int(height)) + "px"
 
 	wm := window.NewWindowManager()
-	wm.FPS = true
+	wm.FPS = false
 
 	wm.OpenWindow(width, height)
 	defer wm.CloseWindow()
@@ -122,10 +122,14 @@ func View(data *Window, width, height int32) {
 
 	state := map[string]element.State{}
 
-	// Main game loop
-	for !wm.WindowShouldClose() && !debug {
-		rl.BeginDrawing()
+	shouldStop := false
 
+	// Main game loop
+	for !wm.WindowShouldClose() && !shouldStop {
+		rl.BeginDrawing()
+		if !shouldStop && debug {
+			shouldStop = true
+		}
 		// Check if the window size has changed
 		newWidth := int32(rl.GetScreenWidth())
 		newHeight := int32(rl.GetScreenHeight())
@@ -344,6 +348,7 @@ func removeHTMLComments(htmlString string) string {
 	return re.ReplaceAllString(htmlString, "")
 }
 
+// important to allow the notspans to be injected, the spaces after removing the comments cause the regexp to fail
 func removeWhitespaceBetweenTags(html string) string {
 	// Create a regular expression to match spaces between angle brackets
 	re := regexp.MustCompile(`>\s+<`)
