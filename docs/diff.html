@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Diff Viewer</title>
+        <style>
+            .added {
+                color: green;
+            }
+            .removed {
+                color: red;
+            }
+        </style>
+    </head>
+    <body>
+        <textarea id="text1" rows="10" cols="50">
+Lorem ipsum dolor sit amet,
+consectetur adipiscing elit.
+Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+</textarea
+        >
+        <textarea id="text2" rows="10" cols="50">
+Lorem ipsum dolor sit amet,
+consectetur adipiscing elit.
+Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
+Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+</textarea
+        >
+        <button onclick="showDiff()">Show Difference</button>
+        <div id="diffOutput"></div>
+        <script>
+            function showDiff() {
+                var text1 = document.getElementById("text1").value;
+                var text2 = document.getElementById("text2").value;
+                var diffOutput = document.getElementById("diffOutput");
+                var diff = customDiff(text1, text2);
+
+                diffOutput.innerHTML = "";
+
+                diff.forEach(function (part) {
+                    var span = document.createElement("span");
+                    span.textContent =
+                        (part.added ? "+" : part.removed ? "-" : " ") +
+                        " " +
+                        part.value;
+                    if (part.added) {
+                        span.classList.add("added");
+                    } else if (part.removed) {
+                        span.classList.add("removed");
+                    }
+                    diffOutput.appendChild(span);
+                });
+            }
+
+            function customDiff(text1, text2) {
+                var lines1 = text1.split("\n");
+                var lines2 = text2.split("\n");
+
+                var diff = [];
+                var minLength = Math.min(lines1.length, lines2.length);
+
+                for (var i = 0; i < minLength; i++) {
+                    if (lines1[i] !== lines2[i]) {
+                        diff.push({
+                            value: lines1[i],
+                            added: false,
+                            removed: true,
+                        });
+                        diff.push({
+                            value: lines2[i],
+                            added: true,
+                            removed: false,
+                        });
+                    } else {
+                        diff.push({
+                            value: lines1[i],
+                            added: false,
+                            removed: false,
+                        });
+                    }
+                }
+
+                for (var j = minLength; j < lines1.length; j++) {
+                    diff.push({
+                        value: lines1[j],
+                        added: false,
+                        removed: true,
+                    });
+                }
+
+                for (var k = minLength; k < lines2.length; k++) {
+                    diff.push({
+                        value: lines2[k],
+                        added: true,
+                        removed: false,
+                    });
+                }
+
+                return diff;
+            }
+        </script>
+    </body>
+</html>

@@ -18,11 +18,10 @@ func Init() cstyle.Plugin {
 			parent := s[n.Parent.Properties.Id]
 			copyOfX := self.X
 			copyOfY := self.Y
-			xCollect := copyOfX
-			// !ISSUE: Look at the if statements to see if they are properly selecting the correct elements
+			xCollect := float32(0)
+			// !ISSUE: Text doesn't break word
 			for i, v := range n.Parent.Children {
 				vState := s[v.Properties.Id]
-				// if the element is the element being calculated currently
 				if v.Style["display"] != "inline" {
 					xCollect = 0
 				} else {
@@ -38,27 +37,17 @@ func Init() cstyle.Plugin {
 							sibling := s[n.Parent.Children[i-1].Properties.Id]
 							self.Y += sibling.Height
 							self.X = copyOfX
-							xCollect = copyOfX
 						} else if i > 0 {
 							fmt.Println(n.Properties.Id, n.InnerText, "did not break", xCollect, self.X, self.Width, parent.Width)
 							self.X += xCollect
-							fmt.Println(self.X)
+							sibling := s[n.Parent.Children[i-1].Properties.Id]
+							if sibling.Height != self.Height {
+								self.Y += sibling.Height / 4
+							}
 						}
 						break
-					} else if vState.X+vState.Width > parent.Width+copyOfX && i > 0 {
-						xCollect = copyOfX
 					} else {
-						xCollect += vState.Width + vState.X
-						if vState.X+vState.Width+xCollect > parent.Width+parent.X {
-							// If the elements are on the same line add the width of the elemenet
-							if i > 0 {
-								sibling := s[n.Parent.Children[i-1].Properties.Id]
-								// !ISSUE: Commenting this out my help but can't decide
-								if n.Parent.Children[i-1].Style["display"] != "inline" {
-									self.Y += sibling.Height
-								}
-							}
-							// !ISSUE: when not added and just set equal it shift one that collides but when added it breaks the line everytime
+						if n.Parent.Children[i].Style["display"] == "inline" {
 							if colliderDetection(vState, self) {
 								xCollect += vState.Width
 							} else {
