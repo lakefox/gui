@@ -9,7 +9,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"sort"
 	"strconv"
@@ -111,24 +110,6 @@ func LoadFont(fontName string, fontSize int, bold, italic bool) (font.Face, erro
 	return truetype.NewFace(fnt, &options), nil
 }
 
-// func MeasureLine(n *element.Node, state *element.State) (int, int) {
-// 	passed := false
-// 	lineOffset, nodeOffset := 0, 0
-// 	for _, v := range n.Parent.Children {
-// 		l := MeasureText(state, v.InnerText)
-// 		if v.Properties.Id == n.Properties.Id {
-// 			passed = true
-// 			lineOffset += l
-// 		} else {
-// 			if !passed {
-// 				nodeOffset += l
-// 			}
-// 			lineOffset += l
-// 		}
-// 	}
-// 	return lineOffset, nodeOffset
-// }
-
 func MeasureText(s *element.State, text string) int {
 	t := s.Text
 	var width fixed.Int26_6
@@ -149,26 +130,6 @@ func MeasureText(s *element.State, text string) int {
 	}
 
 	return width.Round()
-}
-
-func MeasureSpace(t *element.Text) int {
-	adv, _ := t.Font.GlyphAdvance(' ')
-	return adv.Round()
-}
-
-func MeasureLongest(s *element.State) int {
-	lines := getLines(s)
-	var longestLine string
-	maxLength := 0
-
-	for _, line := range lines {
-		length := len(line)
-		if length > maxLength {
-			maxLength = length
-			longestLine = line
-		}
-	}
-	return MeasureText(s, longestLine)
 }
 
 func getSystemFonts() ([]string, error) {
@@ -253,16 +214,18 @@ func getFontsRecursively(dir string, fontPaths *[]string) {
 	}
 }
 
-func Render(s *element.State) float32 {
+func Render(s *element.State) (*image.RGBA, int) {
 	t := &s.Text
-	lines := getLines(s)
 	// fmt.Println(lines)
 
 	if t.LineHeight == 0 {
 		t.LineHeight = t.EM + 3
 	}
+
+	width := MeasureText(s, t.Text+" ")
+
 	// Use fully transparent color for the background
-	img := image.NewRGBA(image.Rect(0, 0, t.Width, t.LineHeight*(len(lines))))
+	img := image.NewRGBA(image.Rect(0, 0, width, t.LineHeight))
 
 	// fmt.Println(t.Width, t.LineHeight, (len(lines)))
 
@@ -280,45 +243,9 @@ func Render(s *element.State) float32 {
 	}
 	t.Image = img
 
-	fh := fixed.I(t.LineHeight)
+	drawString(*t, dr, t.Text, width)
 
-	for _, v := range lines {
-		lineWidth := MeasureText(s, v)
-		if t.Align == "justify" {
-			dr.Dot.X = 0
-			spaces := strings.Count(v, " ")
-			if spaces > 1 {
-				spacing := fixed.I((t.Width - MeasureText(s, v)) / spaces)
-
-				if spacing > 0 {
-					for _, word := range strings.Fields(v) {
-						dr.DrawString(word)
-						dr.Dot.X += spacing
-					}
-				} else {
-					dr.Dot.X = 0
-					drawString(*t, dr, v, lineWidth)
-				}
-			} else {
-				dr.Dot.X = 0
-				drawString(*t, dr, v, lineWidth)
-			}
-
-		} else {
-			if t.Align == "left" || t.Align == "" {
-				dr.Dot.X = 0
-			} else if t.Align == "center" {
-				dr.Dot.X = fixed.I((t.Width - MeasureText(s, v)) / 2)
-			} else if t.Align == "right" {
-				dr.Dot.X = fixed.I(t.Width - MeasureText(s, v))
-			}
-			// dr.Dot.X = 0
-			drawString(*t, dr, v, lineWidth)
-		}
-		dr.Dot.Y += fh
-	}
-	s.Text.X = MeasureText(s, lines[len(lines)-1])
-	return float32(t.LineHeight * len(lines))
+	return t.Image, width
 }
 
 func drawString(t element.Text, dr *font.Drawer, v string, lineWidth int) {
@@ -389,72 +316,6 @@ func drawLine(img draw.Image, start fixed.Point26_6, width fixed.Int26_6, thickn
 			y0 += sy
 		}
 	}
-}
-
-func wrap(s *element.State, breaker string, breakNewLines bool) []string {
-	var start int = 0
-	strngs := []string{}
-	var text []string
-	broken := strings.Split(s.Text.Text, breaker)
-	re := regexp.MustCompile(`[\r\n]+`)
-	if breakNewLines {
-		for _, v := range broken {
-			text = append(text, re.Split(v, -1)...)
-		}
-	} else {
-		text = append(text, broken...)
-	}
-	for i := 0; i < len(text); i++ {
-		text[i] = re.ReplaceAllString(text[i], "")
-	}
-	for i := 0; i < len(text); i++ {
-		seg := strings.Join(text[start:int(Min(float32(i+1), float32(len(text))))], breaker)
-		if MeasureText(s, seg) > s.Text.Width {
-			strngs = append(strngs, strings.Join(text[start:i], breaker))
-			start = i
-		}
-	}
-	if len(strngs) > 0 {
-		strngs = append(strngs, strings.Join(text[start:], breaker))
-	} else {
-		strngs = append(strngs, strings.Join(text[start:], breaker))
-	}
-	return strngs
-}
-
-func getLines(s *element.State) []string {
-	t := s.Text
-	text := s.Text.Text
-	var lines []string
-	if t.WhiteSpace == "nowrap" {
-		re := regexp.MustCompile(`\s+`)
-		s.Text.Text = re.ReplaceAllString(text, " ")
-		lines = wrap(s, "<br />", false)
-	} else {
-		if t.WhiteSpace == "pre" {
-			re := regexp.MustCompile("\t")
-			s.Text.Text = re.ReplaceAllString(text, "     ")
-			nl := regexp.MustCompile(`[\r\n]+`)
-			lines = nl.Split(text, -1)
-		} else if t.WhiteSpace == "pre-line" {
-			re := regexp.MustCompile(`\s+`)
-			s.Text.Text = re.ReplaceAllString(text, " ")
-			lines = wrap(s, " ", true)
-		} else if t.WhiteSpace == "pre-wrap" {
-			lines = wrap(s, " ", true)
-		} else {
-			re := regexp.MustCompile(`\s+`)
-			s.Text.Text = re.ReplaceAllString(text, " ")
-			nl := regexp.MustCompile(`[\r\n]+`)
-			s.Text.Text = nl.ReplaceAllString(text, "")
-			// n.InnerText = strings.TrimSpace(text)
-			lines = wrap(s, t.WordBreak, false)
-		}
-		for i, v := range lines {
-			lines[i] = v + t.WordBreak
-		}
-	}
-	return lines
 }
 
 func abs(x int) int {

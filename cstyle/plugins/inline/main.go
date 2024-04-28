@@ -18,32 +18,26 @@ func Init() cstyle.Plugin {
 			copyOfX := self.X
 			copyOfY := self.Y
 			xCollect := float32(0)
-			// !ISSUE: Text doesn't break word
 			for i, v := range n.Parent.Children {
 				vState := s[v.Properties.Id]
 				if v.Style["display"] != "inline" {
 					xCollect = 0
 				} else {
 					if v.Properties.Id == n.Properties.Id {
-						// then if the x coordinate of the current element plus the x shift from its prevous siblings and the width minus 2 pixels
-						// is greater than the width of the parent plus it's x value
-						// and it is not the first element
-						if self.X+xCollect+self.Width > parent.Width+parent.X && i > 0 {
-							// We need to shift the element
-							// then find the prevous sibling and add its height to the Y value to shift it downwards
-							// shift the element to the base x (which should be the parent x value) and reset the xCollect
-							// fmt.Println(n.Properties.Id, "broke", xCollect, self.X, self.Width, parent.Width, parent.X)
+						if self.X+xCollect+self.Width > ((parent.Width-parent.Padding.Left)+parent.Padding.Right)+parent.X && i > 0 {
+							// Break Node
 							sibling := s[n.Parent.Children[i-1].Properties.Id]
 							self.Y += sibling.Height
 							self.X = copyOfX
 						} else if i > 0 {
-							// fmt.Println(n.Properties.Id, n.InnerText, "did not break", xCollect, self.X, self.Width, parent.Width)
+							// Node did not break
 							self.X += xCollect
-							sibling := s[n.Parent.Children[i-1].Properties.Id]
-							if sibling.Height != self.Height {
-								self.Y += sibling.Height / 4
-							}
+							// sibling := s[n.Parent.Children[i-1].Properties.Id]
+							// if sibling.Height != self.Height {
+							// 	self.Y += sibling.Height / 4
+							// }
 						}
+						self.X += parent.Padding.Left
 						break
 					} else {
 						if n.Parent.Children[i].Style["display"] == "inline" {

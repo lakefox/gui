@@ -248,7 +248,7 @@ func (n *Node) AppendChild(c Node) {
 	// Set Id
 	randomInt := rand.Intn(10000)
 
-	c.Properties.Id = c.TagName + fmt.Sprint(randomInt, len(c.Parent.Children))
+	c.Properties.Id = c.TagName + fmt.Sprint(randomInt+len(c.Parent.Children))
 
 	n.Children = append(n.Children, c)
 }
@@ -258,9 +258,10 @@ func (n *Node) InsertAfter(c, tgt Node) {
 	// Set Id
 	randomInt := rand.Intn(10000)
 
-	c.Properties.Id = c.TagName + fmt.Sprint(randomInt, len(c.Parent.Children))
+	c.Properties.Id = c.TagName + fmt.Sprint(randomInt+len(c.Parent.Children))
 	nodeIndex := -1
 	for i, v := range n.Children {
+
 		if v.Properties.Id == tgt.Properties.Id {
 			nodeIndex = i
 			break
@@ -271,7 +272,6 @@ func (n *Node) InsertAfter(c, tgt Node) {
 	} else {
 		n.AppendChild(c)
 	}
-
 }
 
 func (n *Node) InsertBefore(c, tgt Node) {
@@ -279,7 +279,7 @@ func (n *Node) InsertBefore(c, tgt Node) {
 	// Set Id
 	randomInt := rand.Intn(10000)
 
-	c.Properties.Id = c.TagName + fmt.Sprint(randomInt, len(c.Parent.Children))
+	c.Properties.Id = c.TagName + fmt.Sprint(randomInt+len(c.Parent.Children))
 	nodeIndex := -1
 	for i, v := range n.Children {
 		if v.Properties.Id == tgt.Properties.Id {

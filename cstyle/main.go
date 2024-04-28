@@ -239,58 +239,31 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 
 	// fmt.Println(n.InnerText, len(n.Children))
 
-	if !utils.ChildrenHaveText(n) {
-		// Confirm text exists
-		if len(n.InnerText) > 0 {
-			words := strings.Split(n.InnerText, " ")
-			if len(words) != 1 && !strings.Contains(n.Properties.Id, "copy") && n.Style["display"] == "inline" {
-				n.InnerText = words[0]
-				n.Properties.Id = "copy" + n.Properties.Id
-				// slices.Reverse(words)
-				// !ISSUE: I thinkthis is a good route to take, might make a style prop for text that a plugins can be used to turn the groups
-				// + into psuedo elements but make them inline
-				// + that would take care of wrapping and it would also work for display block
-				for _, v := range words {
-					if len(strings.TrimSpace(v)) > 0 {
-						el := *n
-						el.InnerText = v
-						for k, val := range n.Style {
-							el.Style[k] = val
-						}
-						n.Parent.InsertAfter(el, *n)
-					}
-				}
-				// !ISSUE: can probally use flex to do it need to group text so it doesn't include block element
-				// + if there is a block element break then go on
-				// fmt.Println(n.Parent.Children)
-			}
-			innerWidth := width
-			innerHeight := height
-			(*state)[n.Properties.Id] = self
-			// !ISSUE: change genTextNode to basically a image generator for a word.
-			// + make it so this api can be used to also do images
-			self = genTextNode(n, &innerWidth, &innerHeight, p, state)
-			width = innerWidth + p.Left + p.Right
-			height = innerHeight
-		}
-	}
-
-	// if !utils.ChildrenHaveText(n) {
-	// 	// Confirm text exists
-	// 	if len(n.InnerText) > 0 {
-	// 		innerWidth := width
-	// 		innerHeight := height
-	// 		(*state)[n.Properties.Id] = self
-	// 		self = genTextNode(n, &innerWidth, &innerHeight, p, state)
-	// 		width = innerWidth + p.Left + p.Right
-	// 		height = innerHeight
-	// 	}
-	// }
-
 	self.X = x
 	self.Y = y
 	self.Width = width
-	self.Height = height
+	self.Height = height + self.Padding.Bottom
+	(*state)[n.Properties.Id] = self
+
+	if !utils.ChildrenHaveText(n) && len(n.InnerText) > 0 {
+		// Confirm text exists
+		words := strings.Split(strings.TrimSpace(n.InnerText), " ")
+		if len(words) != 1 {
+			if n.Style["display"] == "inline" {
+				n.InnerText = words[0]
+				el := *n
+				el.InnerText = strings.Join(words[1:], " ")
+				n.Parent.InsertAfter(el, *n)
+			}
+			// !ISSUE: change genTextNode to basically a image generator for a word.
+			// + make it so this api can be used to also do images
+			// + element.State.Texture?
+		}
+		if len(strings.TrimSpace(n.InnerText)) > 0 {
+			n.InnerText = strings.TrimSpace(n.InnerText)
+			self = genTextNode(n, state)
+		}
+	}
 
 	(*state)[n.Properties.Id] = self
 	(*state)[n.Parent.Properties.Id] = parent
@@ -298,7 +271,8 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 	// Call children here
 
 	var childYOffset float32
-	for i, v := range n.Children {
+	for i := 0; i < len(n.Children); i++ {
+		v := n.Children[i]
 		v.Parent = n
 		n.Children[i] = *c.ComputeNodeStyle(&v, state)
 		cState := (*state)[n.Children[i].Properties.Id]
@@ -337,7 +311,13 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 		}
 	}
 
-	CheckNode(n, state)
+	for i := range n.Children {
+		cState := (*state)[n.Children[i].Properties.Id]
+		cState.Y += self.Padding.Top
+		(*state)[n.Children[i].Properties.Id] = cState
+	}
+
+	// CheckNode(n, state)
 
 	return n
 }
@@ -385,7 +365,7 @@ func CompleteBorder(cssProperties map[string]string) (element.Border, error) {
 	return border, err
 }
 
-func genTextNode(n *element.Node, width, height *float32, p element.MarginPadding, state *map[string]element.State) element.State {
+func genTextNode(n *element.Node, state *map[string]element.State) element.State {
 	s := *state
 	self := s[n.Properties.Id]
 	parent := s[n.Parent.Properties.Id]
@@ -405,9 +385,9 @@ func genTextNode(n *element.Node, width, height *float32, p element.MarginPaddin
 		self.Text.Font = f
 	}
 
-	letterSpacing, _ := utils.ConvertToPixels(n.Style["letter-spacing"], self.EM, *width)
-	wordSpacing, _ := utils.ConvertToPixels(n.Style["word-spacing"], self.EM, *width)
-	lineHeight, _ := utils.ConvertToPixels(n.Style["line-height"], self.EM, *width)
+	letterSpacing, _ := utils.ConvertToPixels(n.Style["letter-spacing"], self.EM, parent.Width)
+	wordSpacing, _ := utils.ConvertToPixels(n.Style["word-spacing"], self.EM, parent.Width)
+	lineHeight, _ := utils.ConvertToPixels(n.Style["line-height"], self.EM, parent.Width)
 	if lineHeight == 0 {
 		lineHeight = self.EM + 3
 	}
@@ -430,7 +410,7 @@ func genTextNode(n *element.Node, width, height *float32, p element.MarginPaddin
 	if n.Style["text-decoration-thickness"] == "auto" || n.Style["text-decoration-thickness"] == "" {
 		dt = 3
 	} else {
-		dt, _ = utils.ConvertToPixels(n.Style["text-decoration-thickness"], self.EM, *width)
+		dt, _ = utils.ConvertToPixels(n.Style["text-decoration-thickness"], self.EM, parent.Width)
 	}
 
 	col := color.Parse(n.Style, "font")
@@ -453,21 +433,15 @@ func genTextNode(n *element.Node, width, height *float32, p element.MarginPaddin
 	if n.Style["word-spacing"] == "" {
 		self.Text.WordSpacing = font.MeasureSpace(&self.Text)
 	}
-	if parent.Width != 0 && n.Style["display"] != "inline" && n.Style["width"] == "" {
-		*width = (parent.Width - p.Right) - p.Left
-	} else if n.Style["width"] == "" {
-		*width = utils.Max(*width, float32(font.MeasureLongest(&self)))
-	} else if n.Style["width"] != "" {
-		*width, _ = utils.ConvertToPixels(n.Style["width"], self.EM, parent.Width)
-	}
 
-	self.Text.Width = int(*width)
-	self.Width = *width
-	h := font.Render(&self)
+	img, width := font.Render(&self)
+	self.Text.Image = img
+	self.Text.Width = int(width)
+	self.Width = float32(width)
+
 	if n.Style["height"] == "" {
-		*height = h
+		self.Height = float32(self.Text.LineHeight)
 	}
 
 	return self
-
 }

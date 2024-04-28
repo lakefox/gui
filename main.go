@@ -3,7 +3,6 @@ package gui
 import (
 	"bufio"
 	_ "embed"
-	"fmt"
 	"gui/cstyle"
 	"gui/cstyle/plugins/block"
 	"gui/cstyle/plugins/flex"
@@ -211,8 +210,6 @@ func parseHTMLFromFile(path string) ([]string, []string, *html.Node) {
 	for scanner.Scan() {
 		htmlContent += scanner.Text() + "\n"
 	}
-
-	fmt.Println(htmlContent)
 
 	htmlContent = removeHTMLComments(htmlContent)
 
