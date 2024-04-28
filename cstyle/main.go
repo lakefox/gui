@@ -242,14 +242,50 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 	if !utils.ChildrenHaveText(n) {
 		// Confirm text exists
 		if len(n.InnerText) > 0 {
+			words := strings.Split(n.InnerText, " ")
+			if len(words) != 1 && !strings.Contains(n.Properties.Id, "copy") && n.Style["display"] == "inline" {
+				n.InnerText = words[0]
+				n.Properties.Id = "copy" + n.Properties.Id
+				// slices.Reverse(words)
+				// !ISSUE: I thinkthis is a good route to take, might make a style prop for text that a plugins can be used to turn the groups
+				// + into psuedo elements but make them inline
+				// + that would take care of wrapping and it would also work for display block
+				for _, v := range words {
+					if len(strings.TrimSpace(v)) > 0 {
+						el := *n
+						el.InnerText = v
+						for k, val := range n.Style {
+							el.Style[k] = val
+						}
+						n.Parent.InsertAfter(el, *n)
+					}
+				}
+				// !ISSUE: can probally use flex to do it need to group text so it doesn't include block element
+				// + if there is a block element break then go on
+				// fmt.Println(n.Parent.Children)
+			}
 			innerWidth := width
 			innerHeight := height
 			(*state)[n.Properties.Id] = self
+			// !ISSUE: change genTextNode to basically a image generator for a word.
+			// + make it so this api can be used to also do images
 			self = genTextNode(n, &innerWidth, &innerHeight, p, state)
 			width = innerWidth + p.Left + p.Right
 			height = innerHeight
 		}
 	}
+
+	// if !utils.ChildrenHaveText(n) {
+	// 	// Confirm text exists
+	// 	if len(n.InnerText) > 0 {
+	// 		innerWidth := width
+	// 		innerHeight := height
+	// 		(*state)[n.Properties.Id] = self
+	// 		self = genTextNode(n, &innerWidth, &innerHeight, p, state)
+	// 		width = innerWidth + p.Left + p.Right
+	// 		height = innerHeight
+	// 	}
+	// }
 
 	self.X = x
 	self.Y = y

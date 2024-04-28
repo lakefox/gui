@@ -253,6 +253,61 @@ func (n *Node) AppendChild(c Node) {
 	n.Children = append(n.Children, c)
 }
 
+func (n *Node) InsertAfter(c, tgt Node) {
+	c.Parent = n
+	// Set Id
+	randomInt := rand.Intn(10000)
+
+	c.Properties.Id = c.TagName + fmt.Sprint(randomInt, len(c.Parent.Children))
+	nodeIndex := -1
+	for i, v := range n.Children {
+		if v.Properties.Id == tgt.Properties.Id {
+			nodeIndex = i
+			break
+		}
+	}
+	if nodeIndex > -1 {
+		n.Children = append(n.Children[:nodeIndex+1], append([]Node{c}, n.Children[nodeIndex+1:]...)...)
+	} else {
+		n.AppendChild(c)
+	}
+
+}
+
+func (n *Node) InsertBefore(c, tgt Node) {
+	c.Parent = n
+	// Set Id
+	randomInt := rand.Intn(10000)
+
+	c.Properties.Id = c.TagName + fmt.Sprint(randomInt, len(c.Parent.Children))
+	nodeIndex := -1
+	for i, v := range n.Children {
+		if v.Properties.Id == tgt.Properties.Id {
+			nodeIndex = i
+			break
+		}
+	}
+	if nodeIndex > 0 {
+		n.Children = append(n.Children[:nodeIndex], append([]Node{c}, n.Children[nodeIndex:]...)...)
+	} else {
+		n.AppendChild(c)
+	}
+
+}
+
+func (n *Node) Remove() {
+	nodeIndex := -1
+	for i, v := range n.Parent.Children {
+		if v.Properties.Id == n.Properties.Id {
+			nodeIndex = i
+			break
+		}
+	}
+	if nodeIndex > 0 {
+		n.Parent.Children = append(n.Parent.Children[:nodeIndex], n.Parent.Children[nodeIndex+1:]...)
+	}
+}
+
 func (n *Node) Focus() {
 	if n.Properties.Focusable {
 		n.Properties.Focused = true

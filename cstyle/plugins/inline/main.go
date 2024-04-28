@@ -1,7 +1,6 @@
 package inline
 
 import (
-	"fmt"
 	"gui/cstyle"
 	"gui/element"
 )
@@ -33,12 +32,12 @@ func Init() cstyle.Plugin {
 							// We need to shift the element
 							// then find the prevous sibling and add its height to the Y value to shift it downwards
 							// shift the element to the base x (which should be the parent x value) and reset the xCollect
-							fmt.Println(n.Properties.Id, "broke", xCollect, self.X, self.Width, parent.Width, parent.X)
+							// fmt.Println(n.Properties.Id, "broke", xCollect, self.X, self.Width, parent.Width, parent.X)
 							sibling := s[n.Parent.Children[i-1].Properties.Id]
 							self.Y += sibling.Height
 							self.X = copyOfX
 						} else if i > 0 {
-							fmt.Println(n.Properties.Id, n.InnerText, "did not break", xCollect, self.X, self.Width, parent.Width)
+							// fmt.Println(n.Properties.Id, n.InnerText, "did not break", xCollect, self.X, self.Width, parent.Width)
 							self.X += xCollect
 							sibling := s[n.Parent.Children[i-1].Properties.Id]
 							if sibling.Height != self.Height {

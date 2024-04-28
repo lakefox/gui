@@ -256,6 +256,7 @@ func getFontsRecursively(dir string, fontPaths *[]string) {
 func Render(s *element.State) float32 {
 	t := &s.Text
 	lines := getLines(s)
+	// fmt.Println(lines)
 
 	if t.LineHeight == 0 {
 		t.LineHeight = t.EM + 3
@@ -351,37 +352,6 @@ func drawString(t element.Text, dr *font.Drawer, v string, lineWidth int) {
 	}
 }
 
-func wrap(s *element.State, breaker string, breakNewLines bool) []string {
-	var start int = 0
-	strngs := []string{}
-	var text []string
-	broken := strings.Split(s.Text.Text, breaker)
-	re := regexp.MustCompile(`[\r\n]+`)
-	if breakNewLines {
-		for _, v := range broken {
-			text = append(text, re.Split(v, -1)...)
-		}
-	} else {
-		text = append(text, broken...)
-	}
-	for i := 0; i < len(text); i++ {
-		text[i] = re.ReplaceAllString(text[i], "")
-	}
-	for i := 0; i < len(text); i++ {
-		seg := strings.Join(text[start:int(Min(float32(i+1), float32(len(text))))], breaker)
-		if MeasureText(s, seg) > s.Text.Width {
-			strngs = append(strngs, strings.Join(text[start:i], breaker))
-			start = i
-		}
-	}
-	if len(strngs) > 0 {
-		strngs = append(strngs, strings.Join(text[start:], breaker))
-	} else {
-		strngs = append(strngs, strings.Join(text[start:], breaker))
-	}
-	return strngs
-}
-
 func drawLine(img draw.Image, start fixed.Point26_6, width fixed.Int26_6, thickness int, col color.Color) {
 	// Bresenham's line algorithm
 	x0, y0 := start.X.Round(), start.Y.Round()
@@ -421,11 +391,35 @@ func drawLine(img draw.Image, start fixed.Point26_6, width fixed.Int26_6, thickn
 	}
 }
 
-func abs(x int) int {
-	if x < 0 {
-		return -x
+func wrap(s *element.State, breaker string, breakNewLines bool) []string {
+	var start int = 0
+	strngs := []string{}
+	var text []string
+	broken := strings.Split(s.Text.Text, breaker)
+	re := regexp.MustCompile(`[\r\n]+`)
+	if breakNewLines {
+		for _, v := range broken {
+			text = append(text, re.Split(v, -1)...)
+		}
+	} else {
+		text = append(text, broken...)
 	}
-	return x
+	for i := 0; i < len(text); i++ {
+		text[i] = re.ReplaceAllString(text[i], "")
+	}
+	for i := 0; i < len(text); i++ {
+		seg := strings.Join(text[start:int(Min(float32(i+1), float32(len(text))))], breaker)
+		if MeasureText(s, seg) > s.Text.Width {
+			strngs = append(strngs, strings.Join(text[start:i], breaker))
+			start = i
+		}
+	}
+	if len(strngs) > 0 {
+		strngs = append(strngs, strings.Join(text[start:], breaker))
+	} else {
+		strngs = append(strngs, strings.Join(text[start:], breaker))
+	}
+	return strngs
 }
 
 func getLines(s *element.State) []string {
@@ -461,6 +455,13 @@ func getLines(s *element.State) []string {
 		}
 	}
 	return lines
+}
+
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
 }
 
 func Min(a, b float32) float32 {
