@@ -104,13 +104,15 @@ func flatten(n element.Node) []element.Node {
 	return nodes
 }
 
+// !ISSUE: Need to make it skip over non modified elements
+
 func View(data *Window, width, height int32) {
 	debug := false
 	data.Document.Style["width"] = strconv.Itoa(int(width)) + "px"
 	data.Document.Style["height"] = strconv.Itoa(int(height)) + "px"
 
 	wm := window.NewWindowManager()
-	wm.FPS = false
+	wm.FPS = true
 
 	wm.OpenWindow(width, height)
 	defer wm.CloseWindow()
@@ -297,7 +299,6 @@ func localizePath(rootPath, filePath string) string {
 }
 
 func encapsulateText(htmlString string) string {
-	// !ISSUE: openOpen not correctly matching string after updating the next issue
 	openOpen := regexp.MustCompile(`(<\w+[^>]*>)([^<]+)(<\w+[^>]*>)`)
 	closeOpen := regexp.MustCompile(`(</\w+[^>]*>)([^<]+)(<\w+[^>]*>)`)
 	closeClose := regexp.MustCompile(`(<\/\w+[^>]*>)([^<]+)(<\/\w+[^>]*>)`)
@@ -340,7 +341,6 @@ func removeWhitespace(htmlString string) string {
 }
 
 func removeHTMLComments(htmlString string) string {
-	// !ISSUE: Updated from <!--(.*?)--> and broke the openOpen matching
 	re := regexp.MustCompile(`<!--[\s\S]*?-->`)
 	return re.ReplaceAllString(htmlString, "")
 }

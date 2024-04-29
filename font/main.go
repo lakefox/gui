@@ -110,8 +110,7 @@ func LoadFont(fontName string, fontSize int, bold, italic bool) (font.Face, erro
 	return truetype.NewFace(fnt, &options), nil
 }
 
-func MeasureText(s *element.State, text string) int {
-	t := s.Text
+func MeasureText(t *element.Text, text string) int {
 	var width fixed.Int26_6
 
 	for _, runeValue := range text {
@@ -130,6 +129,11 @@ func MeasureText(s *element.State, text string) int {
 	}
 
 	return width.Round()
+}
+
+func MeasureSpace(t *element.Text) int {
+	adv, _ := t.Font.GlyphAdvance(' ')
+	return adv.Round()
 }
 
 func getSystemFonts() ([]string, error) {
@@ -214,15 +218,14 @@ func getFontsRecursively(dir string, fontPaths *[]string) {
 	}
 }
 
-func Render(s *element.State) (*image.RGBA, int) {
-	t := &s.Text
+func Render(t *element.Text) (*image.RGBA, int) {
 	// fmt.Println(lines)
 
 	if t.LineHeight == 0 {
 		t.LineHeight = t.EM + 3
 	}
 
-	width := MeasureText(s, t.Text+" ")
+	width := MeasureText(t, t.Text+" ")
 
 	// Use fully transparent color for the background
 	img := image.NewRGBA(image.Rect(0, 0, width, t.LineHeight))
@@ -241,14 +244,13 @@ func Render(s *element.State) (*image.RGBA, int) {
 		Face: t.Font,
 		Dot:  dot,
 	}
-	t.Image = img
 
-	drawString(*t, dr, t.Text, width)
+	drawn := drawString(*t, dr, t.Text, width, img)
 
-	return t.Image, width
+	return drawn, width
 }
 
-func drawString(t element.Text, dr *font.Drawer, v string, lineWidth int) {
+func drawString(t element.Text, dr *font.Drawer, v string, lineWidth int, img *image.RGBA) *image.RGBA {
 	underlinePosition := dr.Dot
 	for _, ch := range v {
 		if ch == ' ' {
@@ -264,19 +266,23 @@ func drawString(t element.Text, dr *font.Drawer, v string, lineWidth int) {
 		underlinePosition.X = 0
 		baseLineY := underlinePosition.Y
 
+		// !ISSUE: large text doesn't show underline
+		// + may need to increase the image height
+
 		if t.Underlined {
 			underlinePosition.Y = baseLineY + t.Font.Metrics().Descent
-			drawLine(t.Image, underlinePosition, fixed.Int26_6(lineWidth), t.DecorationThickness, t.DecorationColor)
+			drawLine(img, underlinePosition, fixed.Int26_6(lineWidth), t.DecorationThickness, t.DecorationColor)
 		}
 		if t.LineThrough {
 			underlinePosition.Y = baseLineY - (t.Font.Metrics().Descent)
-			drawLine(t.Image, underlinePosition, fixed.Int26_6(lineWidth), t.DecorationThickness, t.DecorationColor)
+			drawLine(img, underlinePosition, fixed.Int26_6(lineWidth), t.DecorationThickness, t.DecorationColor)
 		}
 		if t.Overlined {
 			underlinePosition.Y = baseLineY - t.Font.Metrics().Descent*3
-			drawLine(t.Image, underlinePosition, fixed.Int26_6(lineWidth), t.DecorationThickness, t.DecorationColor)
+			drawLine(img, underlinePosition, fixed.Int26_6(lineWidth), t.DecorationThickness, t.DecorationColor)
 		}
 	}
+	return img
 }
 
 func drawLine(img draw.Image, start fixed.Point26_6, width fixed.Int26_6, thickness int, col color.Color) {

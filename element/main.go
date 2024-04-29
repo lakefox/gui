@@ -45,9 +45,10 @@ type State struct {
 	Width       float32
 	Height      float32
 	Border      Border
-	Text        Text
+	Texture     *image.RGBA
 	EM          float32
 	Background  ic.RGBA
+	Color       ic.RGBA
 	Hash        string
 	Margin      MarginPadding
 	Padding     MarginPadding
@@ -114,7 +115,6 @@ type Border struct {
 type Text struct {
 	Font                font.Face
 	Color               ic.RGBA
-	Image               *image.RGBA
 	Text                string
 	Underlined          bool
 	Overlined           bool

@@ -122,7 +122,7 @@ func CheckNode(n *element.Node, state *map[string]element.State) {
 	fmt.Printf("ID: %v\n", n.Id)
 	fmt.Printf("Parent: %v\n", n.Parent.TagName)
 	fmt.Printf("Classes: %v\n", n.ClassList.Classes)
-	fmt.Printf("Text: %v\n", self.Text.Text)
+	fmt.Printf("Text: %v\n", n.InnerText)
 	fmt.Printf("X: %v, Y: %v\n", self.X, self.Y)
 	fmt.Printf("Width: %v, Height: %v\n", self.Width, self.Height)
 	fmt.Printf("Styles: %v\n", n.Style)
@@ -197,6 +197,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 			bottom = true
 		}
 	} else {
+		// !ISSUE: Blue square goes under a absoulutly positioned element when it should pass through
 		for i, v := range n.Parent.Children {
 			if v.Properties.Id == n.Properties.Id {
 				if i-1 > 0 {
@@ -238,8 +239,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 	}
 
 	// fmt.Println(n.InnerText, len(n.Children))
-
-	self.X = x
+	self.X = x + parent.Padding.Left
 	self.Y = y
 	self.Width = width
 	self.Height = height + self.Padding.Bottom
@@ -250,14 +250,12 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 		words := strings.Split(strings.TrimSpace(n.InnerText), " ")
 		if len(words) != 1 {
 			if n.Style["display"] == "inline" {
+				// !ISSUE: this works great and it is how I want it to work but it does modifiy the dom which is a no go
 				n.InnerText = words[0]
 				el := *n
 				el.InnerText = strings.Join(words[1:], " ")
 				n.Parent.InsertAfter(el, *n)
 			}
-			// !ISSUE: change genTextNode to basically a image generator for a word.
-			// + make it so this api can be used to also do images
-			// + element.State.Texture?
 		}
 		if len(strings.TrimSpace(n.InnerText)) > 0 {
 			n.InnerText = strings.TrimSpace(n.InnerText)
@@ -370,6 +368,8 @@ func genTextNode(n *element.Node, state *map[string]element.State) element.State
 	self := s[n.Properties.Id]
 	parent := s[n.Parent.Properties.Id]
 
+	text := element.Text{}
+
 	bold, italic := false, false
 
 	if n.Style["font-weight"] == "bold" {
@@ -380,9 +380,9 @@ func genTextNode(n *element.Node, state *map[string]element.State) element.State
 		italic = true
 	}
 
-	if self.Text.Font == nil {
+	if text.Font == nil {
 		f, _ := font.LoadFont(n.Style["font-family"], int(self.EM), bold, italic)
-		self.Text.Font = f
+		text.Font = f
 	}
 
 	letterSpacing, _ := utils.ConvertToPixels(n.Style["letter-spacing"], self.EM, parent.Width)
@@ -392,9 +392,9 @@ func genTextNode(n *element.Node, state *map[string]element.State) element.State
 		lineHeight = self.EM + 3
 	}
 
-	self.Text.LineHeight = int(lineHeight)
-	self.Text.WordSpacing = int(wordSpacing)
-	self.Text.LetterSpacing = int(letterSpacing)
+	text.LineHeight = int(lineHeight)
+	text.WordSpacing = int(wordSpacing)
+	text.LetterSpacing = int(letterSpacing)
 	wb := " "
 
 	if n.Style["word-wrap"] == "break-word" {
@@ -415,32 +415,34 @@ func genTextNode(n *element.Node, state *map[string]element.State) element.State
 
 	col := color.Parse(n.Style, "font")
 
-	self.Text.Color = col
-	self.Text.DecorationColor = color.Parse(n.Style, "decoration")
-	self.Text.Align = n.Style["text-align"]
-	self.Text.WordBreak = wb
-	self.Text.WordSpacing = int(wordSpacing)
-	self.Text.LetterSpacing = int(letterSpacing)
-	self.Text.WhiteSpace = n.Style["white-space"]
-	self.Text.DecorationThickness = int(dt)
-	self.Text.Overlined = n.Style["text-decoration"] == "overline"
-	self.Text.Underlined = n.Style["text-decoration"] == "underline"
-	self.Text.LineThrough = n.Style["text-decoration"] == "linethrough"
-	self.Text.EM = int(self.EM)
-	self.Text.Width = int(parent.Width)
-	self.Text.Text = n.InnerText
+	self.Color = col
+
+	text.Color = col
+	text.DecorationColor = color.Parse(n.Style, "decoration")
+	text.Align = n.Style["text-align"]
+	text.WordBreak = wb
+	text.WordSpacing = int(wordSpacing)
+	text.LetterSpacing = int(letterSpacing)
+	text.WhiteSpace = n.Style["white-space"]
+	text.DecorationThickness = int(dt)
+	text.Overlined = n.Style["text-decoration"] == "overline"
+	text.Underlined = n.Style["text-decoration"] == "underline"
+	text.LineThrough = n.Style["text-decoration"] == "linethrough"
+	text.EM = int(self.EM)
+	text.Width = int(parent.Width)
+	text.Text = n.InnerText
 
 	if n.Style["word-spacing"] == "" {
-		self.Text.WordSpacing = font.MeasureSpace(&self.Text)
+		text.WordSpacing = font.MeasureSpace(&text)
 	}
 
-	img, width := font.Render(&self)
-	self.Text.Image = img
-	self.Text.Width = int(width)
+	img, width := font.Render(&text)
+	self.Texture = img
+	// self.Text.Width = int(width)
 	self.Width = float32(width)
 
 	if n.Style["height"] == "" {
-		self.Height = float32(self.Text.LineHeight)
+		self.Height = float32(text.LineHeight)
 	}
 
 	return self

@@ -21,6 +21,7 @@ func Init() cstyle.Plugin {
 		},
 		Level: 2,
 		Handler: func(n *element.Node, state *map[string]element.State) {
+			// !ISSUE: align-items is not impleamented
 			s := *state
 			self := s[n.Properties.Id]
 			// Brief: justify does not align the bottom row correctly

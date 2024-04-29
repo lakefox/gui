@@ -3,6 +3,7 @@ package inline
 import (
 	"gui/cstyle"
 	"gui/element"
+	"gui/utils"
 )
 
 func Init() cstyle.Plugin {
@@ -24,20 +25,38 @@ func Init() cstyle.Plugin {
 					xCollect = 0
 				} else {
 					if v.Properties.Id == n.Properties.Id {
-						if self.X+xCollect+self.Width > ((parent.Width-parent.Padding.Left)+parent.Padding.Right)+parent.X && i > 0 {
+						if self.X+xCollect+self.Width > (parent.Width+parent.Padding.Right)+parent.X && i > 0 {
 							// Break Node
 							sibling := s[n.Parent.Children[i-1].Properties.Id]
 							self.Y += sibling.Height
 							self.X = copyOfX
+							tallest := float32(0)
+							endex := 0
+							for a := i; a > 0; a-- {
+								if s[n.Parent.Children[a].Properties.Id].Y != s[n.Parent.Children[i-1].Properties.Id].Y {
+									endex = a
+									break
+								} else {
+									tallest = utils.Max(tallest, s[n.Parent.Children[a].Properties.Id].Height)
+								}
+							}
+							// !ISSUE: Find a better way then -4
+							for a := i; a > endex-1; a-- {
+								p := (*state)[n.Parent.Children[a].Properties.Id]
+								if p.Height != tallest {
+									p.Y += (tallest - p.Height) - 5
+									(*state)[n.Parent.Children[a].Properties.Id] = p
+								}
+							}
+							for a := i; a < len(n.Parent.Children)-1; a++ {
+								p := (*state)[n.Parent.Children[a].Properties.Id]
+								p.Y += 7
+								(*state)[n.Parent.Children[a].Properties.Id] = p
+							}
 						} else if i > 0 {
 							// Node did not break
 							self.X += xCollect
-							// sibling := s[n.Parent.Children[i-1].Properties.Id]
-							// if sibling.Height != self.Height {
-							// 	self.Y += sibling.Height / 4
-							// }
 						}
-						self.X += parent.Padding.Left
 						break
 					} else {
 						if n.Parent.Children[i].Style["display"] == "inline" {

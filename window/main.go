@@ -4,6 +4,8 @@ import (
 	"gui/element"
 	"gui/fps"
 	"gui/utils"
+	"hash/fnv"
+	"image"
 	ic "image/color"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
@@ -27,11 +29,11 @@ type WindowManager struct {
 	Fonts      map[string]rl.Font
 	FPS        bool
 	FPSCounter fps.FPSCounter
-	Textures   map[int]TextTexture
+	Textures   map[int]Texture
 }
 
-type TextTexture struct {
-	Text  string
+type Texture struct {
+	Hash  uint64
 	Image rl.Texture2D
 }
 
@@ -60,15 +62,16 @@ func (wm *WindowManager) CloseWindow() {
 
 func (wm *WindowManager) LoadTextures(nodes []element.State) {
 	if wm.Textures == nil {
-		wm.Textures = map[int]TextTexture{}
+		wm.Textures = map[int]Texture{}
 	}
 	for i, node := range nodes {
-		if node.Text.Image != nil {
-			if wm.Textures[i].Text != node.Text.Text {
+		if node.Texture != nil {
+			hash := computeImageHash(node.Texture)
+			if wm.Textures[i].Hash != hash {
 				rl.UnloadTexture(wm.Textures[i].Image)
-				texture := rl.LoadTextureFromImage(rl.NewImageFromImage(node.Text.Image))
-				wm.Textures[i] = TextTexture{
-					Text:  node.Text.Text,
+				texture := rl.LoadTextureFromImage(rl.NewImageFromImage(node.Texture))
+				wm.Textures[i] = Texture{
+					Hash:  hash,
 					Image: texture,
 				}
 			}
@@ -104,8 +107,8 @@ func (wm *WindowManager) Draw(nodes []element.State) {
 		// fmt.Println(node.Text.Image == nil, node.Text.Text)
 		// fmt.Printf("%v\n", node.Text)
 
-		if node.Text.Image != nil {
-			r, g, b, a := node.Text.Color.RGBA()
+		if node.Texture != nil {
+			r, g, b, a := node.Color.RGBA()
 			rl.DrawTexture(wm.Textures[i].Image, int32(node.X+p.Left+bw), int32(node.Y+p.Top+bw), ic.RGBA{uint8(r), uint8(g), uint8(b), uint8(a)})
 		}
 	}
@@ -120,4 +123,17 @@ func (wm *WindowManager) Draw(nodes []element.State) {
 // WindowShouldClose returns true if the window should close
 func (wm *WindowManager) WindowShouldClose() bool {
 	return rl.WindowShouldClose()
+}
+
+func computeImageHash(img *image.RGBA) uint64 {
+	var hash uint64
+	hasher := fnv.New64a()
+
+	// Combine the pixel values to generate the hash
+	for _, pixel := range img.Pix {
+		hasher.Write([]byte{pixel})
+	}
+	hash = hasher.Sum64()
+
+	return hash
 }
