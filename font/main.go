@@ -266,11 +266,9 @@ func drawString(t element.Text, dr *font.Drawer, v string, lineWidth int, img *i
 		underlinePosition.X = 0
 		baseLineY := underlinePosition.Y
 
-		// !ISSUE: large text doesn't show underline
-		// + may need to increase the image height
-
 		if t.Underlined {
 			underlinePosition.Y = baseLineY + t.Font.Metrics().Descent
+			underlinePosition.Y = (underlinePosition.Y / 100) * 97
 			drawLine(img, underlinePosition, fixed.Int26_6(lineWidth), t.DecorationThickness, t.DecorationColor)
 		}
 		if t.LineThrough {

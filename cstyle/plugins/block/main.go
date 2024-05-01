@@ -3,7 +3,6 @@ package block
 import (
 	"gui/cstyle"
 	"gui/element"
-	"gui/utils"
 )
 
 func Init() cstyle.Plugin {
@@ -11,24 +10,28 @@ func Init() cstyle.Plugin {
 		Styles: map[string]string{
 			"display": "block",
 		},
-		Level: 1,
+		Level: 0,
 		Handler: func(n *element.Node, state *map[string]element.State) {
 			s := *state
 			self := s[n.Properties.Id]
-			parent := s[n.Parent.Properties.Id]
+			// parent := s[n.Parent.Properties.Id]
 
 			// If the element is display block and the width is unset then make it 100%
 
-			if n.Style["width"] == "" {
-				self.Width, _ = utils.ConvertToPixels("100%", self.EM, parent.Width)
-			}
-			m := utils.GetMP(*n, "margin")
-			self.Width -= (m.Right + m.Left)
-			self.Height -= (m.Top + m.Bottom)
+			// if self.Style["width"] == "" {
+			// 	self.Width, _ = utils.ConvertToPixels("100%", self.EM, parent.Width)
+			// 	fmt.Println(self.Margin)
 
-			p := utils.GetMP(*n, "padding")
-			self.Width += (p.Right + p.Left)
-			self.Height += (p.Top + p.Bottom)
+			// 	// self.Width -= (self.Padding.Right + self.Padding.Left)
+			// 	// self.Height -= (self.Padding.Top + self.Padding.Bottom)
+			// }
+
+			// if self.X+self.Width+(self.Border.Width*2) > parent.Width {
+			// 	self.Width = parent.Width
+			// 	self.Width -= (self.Margin.Right + self.Margin.Left)
+			// 	self.Width -= (self.Border.Width * 2)
+			// 	self.Height -= (self.Margin.Top + self.Margin.Bottom)
+			// }
 
 			(*state)[n.Properties.Id] = self
 		},

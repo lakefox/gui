@@ -42,6 +42,7 @@ type State struct {
 	// Id         string
 	X           float32
 	Y           float32
+	Z           float32
 	Width       float32
 	Height      float32
 	Border      Border
@@ -59,22 +60,13 @@ type State struct {
 // !FLAG: Plan to get rid of this
 
 type Properties struct {
-	Id string
-	// Computed map[string]float32
-	// X        float32
-	// Y        float32
-	// Hash string
-	// Width          float32
-	// Height         float32
-	// Border         Border
+	Id             string
 	EventListeners map[string][]func(Event)
-	// EM             float32
-	// Text           Text
-	Focusable bool
-	Focused   bool
-	Editable  bool
-	Hover     bool
-	Selected  []float32
+	Focusable      bool
+	Focused        bool
+	Editable       bool
+	Hover          bool
+	Selected       []float32
 }
 
 type ClassList struct {
@@ -106,7 +98,7 @@ func (c *ClassList) Remove(class string) {
 }
 
 type Border struct {
-	Width  string
+	Width  float32
 	Style  string
 	Color  ic.RGBA
 	Radius string

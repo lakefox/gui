@@ -123,6 +123,13 @@ func View(data *Window, width, height int32) {
 
 	state := map[string]element.State{}
 
+	state["ROOT"] = element.State{
+		Style: map[string]string{
+			"width":  strconv.Itoa(int(width)) + "px",
+			"height": strconv.Itoa(int(height)) + "px",
+		},
+	}
+
 	shouldStop := false
 
 	// Main game loop
@@ -144,8 +151,8 @@ func View(data *Window, width, height int32) {
 			data.CSS.Width = float32(width)
 			data.CSS.Height = float32(height)
 
-			data.Document.Style["width"] = strconv.Itoa(int(width)) + "px"
-			data.Document.Style["height"] = strconv.Itoa(int(height)) + "px"
+			state["ROOT"].Style["width"] = strconv.Itoa(int(width)) + "px"
+			state["ROOT"].Style["height"] = strconv.Itoa(int(height)) + "px"
 		}
 
 		eventStore = events.GetEvents(&data.Document.Children[0], &state, eventStore)

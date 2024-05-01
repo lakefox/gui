@@ -7,6 +7,8 @@ import (
 	"hash/fnv"
 	"image"
 	ic "image/color"
+	"slices"
+	"sort"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 )
@@ -83,33 +85,44 @@ func (wm *WindowManager) LoadTextures(nodes []element.State) {
 
 // Draw draws all nodes on the window
 func (wm *WindowManager) Draw(nodes []element.State) {
+	indexes := []float32{0}
+	for a := 0; a < len(indexes); a++ {
+		for i, node := range nodes {
 
-	for i, node := range nodes {
-		bw, _ := utils.ConvertToPixels(node.Border.Width, node.EM, node.Width)
-		rad, _ := utils.ConvertToPixels(node.Border.Radius, node.EM, node.Width)
+			if node.Z == indexes[a] {
+				rad, _ := utils.ConvertToPixels(node.Border.Radius, node.EM, node.Width)
 
-		p := node.Padding
+				p := node.Padding
 
-		rect := rl.NewRectangle(node.X+bw,
-			node.Y+bw,
-			node.Width-(bw+bw),
-			(node.Height + (p.Top + p.Bottom)),
-		)
+				rect := rl.NewRectangle(node.X+node.Border.Width,
+					node.Y+node.Border.Width,
+					node.Width-(node.Border.Width+node.Border.Width),
+					(node.Height),
+				)
 
-		// node.Background.A = 100
-		// node.Background.R = uint8((255 / len(nodes)) * i)
-		// node.Background.G = uint8((255 / len(nodes)) * i)
-		// node.Background.B = uint8((255 / len(nodes)) * i)
+				// node.Background.A = 100
+				// node.Background.R = uint8((255 / len(nodes)) * i)
+				// node.Background.G = uint8((255 / len(nodes)) * i)
+				// node.Background.B = uint8((255 / len(nodes)) * i)
 
-		rl.DrawRectangleRoundedLines(rect, rad/200, 1000, bw, node.Border.Color)
-		rl.DrawRectangleRounded(rect, rad/200, 1000, node.Background)
+				rl.DrawRectangleRoundedLines(rect, rad/200, 1000, node.Border.Width, node.Border.Color)
+				rl.DrawRectangleRounded(rect, rad/200, 1000, node.Background)
 
-		// fmt.Println(node.Text.Image == nil, node.Text.Text)
-		// fmt.Printf("%v\n", node.Text)
+				// fmt.Println(node.Text.Image == nil, node.Text.Text)
+				// fmt.Printf("%v\n", node.Text)
 
-		if node.Texture != nil {
-			r, g, b, a := node.Color.RGBA()
-			rl.DrawTexture(wm.Textures[i].Image, int32(node.X+p.Left+bw), int32(node.Y+p.Top+bw), ic.RGBA{uint8(r), uint8(g), uint8(b), uint8(a)})
+				if node.Texture != nil {
+					r, g, b, a := node.Color.RGBA()
+					rl.DrawTexture(wm.Textures[i].Image, int32(node.X+p.Left+node.Border.Width), int32(node.Y+p.Top+node.Border.Width), ic.RGBA{uint8(r), uint8(g), uint8(b), uint8(a)})
+				}
+			} else {
+				if !slices.Contains(indexes, node.Z) {
+					indexes = append(indexes, node.Z)
+					sort.Slice(indexes, func(i, j int) bool {
+						return indexes[i] < indexes[j]
+					})
+				}
+			}
 		}
 	}
 

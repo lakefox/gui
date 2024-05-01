@@ -22,10 +22,10 @@ func Init() cstyle.Plugin {
 
 			var top, left, right, bottom bool = false, false, false, false
 
-			m := utils.GetMP(*n, "margin")
+			m := self.Margin
 
 			if n.Style["position"] == "absolute" {
-				bas := utils.GetPositionOffsetNode(n)
+				bas := utils.GetPositionOffsetNode(n, state)
 				base := s[bas.Properties.Id]
 				if n.Style["top"] != "" {
 					v, _ := utils.ConvertToPixels(n.Style["top"], self.EM, parent.Width)
@@ -65,10 +65,8 @@ func Init() cstyle.Plugin {
 						}
 						break
 					} else if n.Style["display"] != "inline" {
-						mc := utils.GetMP(v, "margin")
-						pc := utils.GetMP(v, "padding")
 						vState := s[v.Properties.Id]
-						y += mc.Top + mc.Bottom + pc.Top + pc.Bottom + vState.Height
+						y += vState.Margin.Top + vState.Margin.Bottom + vState.Padding.Top + vState.Padding.Bottom + vState.Height
 					}
 				}
 			}

@@ -3,7 +3,6 @@ package utils
 import (
 	"fmt"
 	"gui/element"
-	"gui/font"
 	"math"
 	"reflect"
 	"regexp"
@@ -42,121 +41,116 @@ type WidthHeight struct {
 	Height float32
 }
 
-// !ISSUE: Need to apply the margin and padding to the width/height
-// + right now the body width is 834 and the div inside is 850 bc the margin 8 isn't applied
-func GetWH(n element.Node) WidthHeight {
-	fs := font.GetFontSize(n.Style)
+func GetWH(n element.Node, state *map[string]element.State) WidthHeight {
+	s := *state
+	self := s[n.Properties.Id]
+
+	if self.Style == nil {
+		self.Style = map[string]string{}
+	}
+
+	fs := self.EM
 
 	var pwh WidthHeight
 	if n.Parent != nil {
-		pwh = GetWH(*n.Parent)
+		pwh = GetWH(*n.Parent, state)
 	} else {
 		pwh = WidthHeight{}
-		// if n.Properties.Computed["width"] == 0 {
-		if n.Style["width"] != "" {
-			str := strings.TrimSuffix(n.Style["width"], "px")
+		if self.Style["width"] != "" {
+			str := strings.TrimSuffix(self.Style["width"], "px")
 			// Convert the string to float32
 			f, _ := strconv.ParseFloat(str, 32)
 			pwh.Width = float32(f)
 		}
-		// } else {
-		// 	pwh.Width = n.Properties.Computed["width"]
-		// }
-		// if n.Properties.Computed["width"] == 0 {
 
-		if n.Style["height"] != "" {
-			str := strings.TrimSuffix(n.Style["height"], "px")
+		if self.Style["height"] != "" {
+			str := strings.TrimSuffix(self.Style["height"], "px")
 			// Convert the string to float32
 			f, _ := strconv.ParseFloat(str, 32)
 			pwh.Height = float32(f)
 		}
-		// } else {
-		// 	pwh.Height = n.Properties.Computed["height"]
-		// }
 	}
-	var width float32
-	// if n.Properties.Computed["width"] == 0 {
-	if n.Style["width"] == "" && n.Style["display"] != "inline" {
-		n.Style["width"] = "100%"
 
-	}
-	width, _ = ConvertToPixels(n.Style["width"], fs, pwh.Width)
-	// n.Properties.Computed["width"] = width
-	// } else {
-	// 	width, _ = ConvertToPixels(n.Style["width"], fs, pwh.Width)
-	// 	n.Properties.Computed["width"] = width
+	width, _ := ConvertToPixels(self.Style["width"], fs, pwh.Width)
+	height, _ := ConvertToPixels(self.Style["height"], fs, pwh.Height)
 
-	// 	// width = n.Properties.Computed["width"]
-	// }
-
-	var height float32
-	// if n.Properties.Computed["height"] == 0 {
-	height, _ = ConvertToPixels(n.Style["height"], fs, pwh.Height)
-	// n.Properties.Computed["height"] = height
-	// } else {
-	// height = n.Properties.Computed["height"]
-	// }
-
-	if n.Style["min-width"] != "" {
-		minWidth, _ := ConvertToPixels(n.Style["min-width"], fs, pwh.Width)
+	if self.Style["min-width"] != "" {
+		minWidth, _ := ConvertToPixels(self.Style["min-width"], fs, pwh.Width)
 		width = Max(width, minWidth)
 	}
 
-	if n.Style["max-width"] != "" {
-		maxWidth, _ := ConvertToPixels(n.Style["max-width"], fs, pwh.Width)
+	if self.Style["max-width"] != "" {
+		maxWidth, _ := ConvertToPixels(self.Style["max-width"], fs, pwh.Width)
 		width = Min(width, maxWidth)
 	}
-	if n.Style["min-height"] != "" {
-		minHeight, _ := ConvertToPixels(n.Style["min-height"], fs, pwh.Height)
+	if self.Style["min-height"] != "" {
+		minHeight, _ := ConvertToPixels(self.Style["min-height"], fs, pwh.Height)
 		height = Max(height, minHeight)
 	}
 
-	if n.Style["max-height"] != "" {
-		maxHeight, _ := ConvertToPixels(n.Style["max-height"], fs, pwh.Height)
+	if self.Style["max-height"] != "" {
+		maxHeight, _ := ConvertToPixels(self.Style["max-height"], fs, pwh.Height)
 		height = Min(height, maxHeight)
 	}
-	return WidthHeight{
+
+	wh := WidthHeight{
 		Width:  width,
 		Height: height,
 	}
+
+	if n.Parent != nil {
+		wh.Width += self.Padding.Left + self.Padding.Right
+		wh.Height += self.Padding.Top + self.Padding.Bottom
+		// fmt.Println(n.Properties.Id, wh, p)
+	}
+
+	if self.Style["width"] == "100%" {
+		wh.Width -= (self.Margin.Right + self.Margin.Left)
+	}
+
+	if self.Style["height"] == "100%" {
+		wh.Height -= (self.Margin.Top + self.Margin.Bottom)
+	}
+
+	return wh
 }
 
-func GetMP(n element.Node, t string) element.MarginPadding {
-	fs := font.GetFontSize(n.Style)
+func GetMP(n element.Node, wh WidthHeight, state *map[string]element.State, t string) element.MarginPadding {
+	s := *state
+	self := s[n.Properties.Id]
+	fs := self.EM
 	m := element.MarginPadding{}
 
-	wh := GetWH(n)
-
-	if n.Style[t] != "" {
-		left, right, top, bottom := convertMarginToIndividualProperties(n.Style[t])
-		if n.Style[t+"-left"] == "" {
-			n.Style[t+"-left"] = left
+	if self.Style[t] != "" {
+		left, right, top, bottom := convertMarginToIndividualProperties(self.Style[t])
+		if self.Style[t+"-left"] == "" {
+			self.Style[t+"-left"] = left
 		}
-		if n.Style[t+"-right"] == "" {
-			n.Style[t+"-right"] = right
+		if self.Style[t+"-right"] == "" {
+			self.Style[t+"-right"] = right
 		}
-		if n.Style[t+"-top"] == "" {
-			n.Style[t+"-top"] = top
+		if self.Style[t+"-top"] == "" {
+			self.Style[t+"-top"] = top
 		}
-		if n.Style[t+"-bottom"] == "" {
-			n.Style[t+"-bottom"] = bottom
+		if self.Style[t+"-bottom"] == "" {
+			self.Style[t+"-bottom"] = bottom
 		}
 	}
-	if n.Style[t+"-left"] != "" || n.Style[t+"-right"] != "" {
-		l, _ := ConvertToPixels(n.Style[t+"-left"], fs, wh.Width)
-		r, _ := ConvertToPixels(n.Style[t+"-right"], fs, wh.Width)
+	if self.Style[t+"-left"] != "" || self.Style[t+"-right"] != "" {
+		l, _ := ConvertToPixels(self.Style[t+"-left"], fs, wh.Width)
+		r, _ := ConvertToPixels(self.Style[t+"-right"], fs, wh.Width)
 		m.Left = l
 		m.Right = r
 	}
-	if n.Style[t+"-top"] != "" || n.Style[t+"-bottom"] != "" {
-		top, _ := ConvertToPixels(n.Style[t+"-top"], fs, wh.Height)
-		b, _ := ConvertToPixels(n.Style[t+"-bottom"], fs, wh.Height)
+	if self.Style[t+"-top"] != "" || self.Style[t+"-bottom"] != "" {
+		top, _ := ConvertToPixels(self.Style[t+"-top"], fs, wh.Height)
+		b, _ := ConvertToPixels(self.Style[t+"-bottom"], fs, wh.Height)
 		m.Top = top
 		m.Bottom = b
 	}
 	if t == "margin" {
-		if n.Style["margin"] == "auto" && n.Style["margin-left"] == "" && n.Style["margin-right"] == "" {
-			pwh := GetWH(*n.Parent)
+		if self.Style["margin"] == "auto" && self.Style["margin-left"] == "" && self.Style["margin-right"] == "" {
+			pwh := GetWH(*n.Parent, state)
 			m.Left = Max((pwh.Width-wh.Width)/2, 0)
 			m.Right = m.Left
 		}
@@ -450,15 +444,18 @@ func GetInnerText(n *html.Node) string {
 	return result.String()
 }
 
-func GetPositionOffsetNode(n *element.Node) *element.Node {
-	pos := n.Style["position"]
+func GetPositionOffsetNode(n *element.Node, state *map[string]element.State) *element.Node {
+	s := *state
+	self := s[n.Properties.Id]
+	parent := s[n.Parent.Properties.Id]
+	pos := self.Style["position"]
 
 	if pos == "relative" {
 		return n
 	} else {
 		if n.Parent.TagName != "ROOT" {
-			if n.Parent.Style != nil {
-				return GetPositionOffsetNode(n.Parent)
+			if parent.Style != nil {
+				return GetPositionOffsetNode(n.Parent, state)
 			} else {
 				return nil
 			}

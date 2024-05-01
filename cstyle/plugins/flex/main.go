@@ -26,16 +26,16 @@ func Init() cstyle.Plugin {
 			self := s[n.Properties.Id]
 			// Brief: justify does not align the bottom row correctly
 			//        y axis also needs to be done
-			verbs := strings.Split(n.Style["flex-direction"], "-")
+			verbs := strings.Split(self.Style["flex-direction"], "-")
 
-			orderedNode := order(*n, state, n.Children, verbs[0], len(verbs) > 1, n.Style["flex-wrap"] == "wrap")
+			orderedNode := order(*n, state, n.Children, verbs[0], len(verbs) > 1, self.Style["flex-wrap"] == "wrap")
 
 			// var i int
 
 			colWidth := self.Width / float32(len(orderedNode))
 
 			var xOffset, yOffset float32
-			// if n.Style["justify-content"] == "space-evenly" {
+			// if self.Style["justify-content"] == "space-evenly" {
 			// 	b, _ := utils.ConvertToPixels(n.Children[i].Properties.Border.Width, n.Children[i].Properties.EM, n.Properties.Computed["width"])
 			// 	cwV := utils.Max((colWidth-(n.Children[i].Properties.Computed["width"]+(b*2)))/2, 0)
 			// 	xOffset = cwV
@@ -64,7 +64,7 @@ func Init() cstyle.Plugin {
 					itemState := s[item.Properties.Id]
 					cState := s[n.Children[i].Properties.Id]
 					// n.Children[i] = item
-					if n.Style["justify-content"] == "space-between" {
+					if self.Style["justify-content"] == "space-between" {
 						cwV := utils.Max((colWidth - (itemState.Width)), 0)
 						fmt.Println(colWidth, (itemState.Width), cwV, xOffset)
 						if a == 0 {
@@ -74,18 +74,18 @@ func Init() cstyle.Plugin {
 						} else {
 							cState.X += cwV / 2
 						}
-					} else if n.Style["justify-content"] == "flex-end" || n.Style["justify-content"] == "center" {
+					} else if self.Style["justify-content"] == "flex-end" || self.Style["justify-content"] == "center" {
 						dif := self.Width - (xOffset)
-						if n.Style["justify-content"] == "center" {
+						if self.Style["justify-content"] == "center" {
 							dif = dif / 2
 						}
 						cState.X += dif
-					} else if n.Style["justify-content"] == "flex-start" || n.Style["justify-content"] == "" {
+					} else if self.Style["justify-content"] == "flex-start" || self.Style["justify-content"] == "" {
 						cState.X += xOffset
 					} else {
 						cwV := utils.Max((colWidth-(itemState.Width))/2, 0)
 						var offset float32
-						if n.Style["justify-content"] == "space-evenly" {
+						if self.Style["justify-content"] == "space-evenly" {
 							offset = ((cwV * 2) / float32(len(orderedNode))) * float32(a)
 						}
 						cState.X += xOffset + (cwV - offset)
@@ -98,10 +98,10 @@ func Init() cstyle.Plugin {
 				xOffset += colWidth
 			}
 
-			content := n.Style["align-content"]
+			content := self.Style["align-content"]
 
-			if n.Style["flex-direction"] == "column" {
-				content = n.Style["justify-content"]
+			if self.Style["flex-direction"] == "column" {
+				content = self.Style["justify-content"]
 			}
 
 			if content != "" && content != "flex-start" {
@@ -179,10 +179,9 @@ func order(p element.Node, state *map[string]element.State, elements []element.N
 			collector := []element.Node{}
 			for _, v := range elements {
 				vState := s[v.Properties.Id]
-				m := utils.GetMP(v, "margin")
 				elMax := vState.Height
-				elMS, _ := utils.GetStructField(&m, marginStart)
-				elME, _ := utils.GetStructField(&m, marginEnd)
+				elMS, _ := utils.GetStructField(&vState.Margin, marginStart)
+				elME, _ := utils.GetStructField(&vState.Margin, marginEnd)
 				tMax := elMax + elMS.(float32) + elME.(float32)
 				if counter+int(tMax) < int(max.(float32)) {
 					collector = append(collector, v)
@@ -204,10 +203,9 @@ func order(p element.Node, state *map[string]element.State, elements []element.N
 			var mod int
 			for _, v := range elements {
 				vState := s[v.Properties.Id]
-				m := utils.GetMP(v, "margin")
 				elMax := vState.Width
-				elMS, _ := utils.GetStructField(&m, marginStart)
-				elME, _ := utils.GetStructField(&m, marginEnd)
+				elMS, _ := utils.GetStructField(&vState.Margin, marginStart)
+				elME, _ := utils.GetStructField(&vState.Margin, marginEnd)
 				tMax := elMax + elMS.(float32) + elME.(float32)
 				if counter+int(tMax) < int(max.(float32)) {
 					if len(nodes)-1 < mod {
@@ -235,10 +233,9 @@ func order(p element.Node, state *map[string]element.State, elements []element.N
 		var tMax float32
 		for _, v := range elements {
 			vState := s[v.Properties.Id]
-			m := utils.GetMP(v, "margin")
 			elMax, _ := utils.GetStructField(&vState, dir)
-			elMS, _ := utils.GetStructField(&m, marginStart)
-			elME, _ := utils.GetStructField(&m, marginEnd)
+			elMS, _ := utils.GetStructField(&vState.Margin, marginStart)
+			elME, _ := utils.GetStructField(&vState.Margin, marginEnd)
 			tMax += elMax.(float32) + elMS.(float32) + elME.(float32)
 		}
 

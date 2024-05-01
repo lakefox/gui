@@ -21,54 +21,36 @@ func Init() cstyle.Plugin {
 			xCollect := float32(0)
 			for i, v := range n.Parent.Children {
 				vState := s[v.Properties.Id]
-				if v.Style["display"] != "inline" {
-					xCollect = 0
-				} else {
-					if v.Properties.Id == n.Properties.Id {
-						if self.X+xCollect+self.Width > (parent.Width+parent.Padding.Right)+parent.X && i > 0 {
-							// Break Node
-							sibling := s[n.Parent.Children[i-1].Properties.Id]
-							self.Y += sibling.Height
-							self.X = copyOfX
-							tallest := float32(0)
-							endex := 0
-							for a := i; a > 0; a-- {
-								if s[n.Parent.Children[a].Properties.Id].Y != s[n.Parent.Children[i-1].Properties.Id].Y {
-									endex = a
-									break
-								} else {
-									tallest = utils.Max(tallest, s[n.Parent.Children[a].Properties.Id].Height)
-								}
-							}
-							// !ISSUE: Find a better way then -4
-							for a := i; a > endex-1; a-- {
-								p := (*state)[n.Parent.Children[a].Properties.Id]
-								if p.Height != tallest {
-									p.Y += (tallest - p.Height) - 5
-									(*state)[n.Parent.Children[a].Properties.Id] = p
-								}
-							}
-							for a := i; a < len(n.Parent.Children)-1; a++ {
-								p := (*state)[n.Parent.Children[a].Properties.Id]
-								p.Y += 7
-								(*state)[n.Parent.Children[a].Properties.Id] = p
-							}
-						} else if i > 0 {
-							// Node did not break
-							self.X += xCollect
-						}
-						break
+				if vState.Style["position"] != "absolute" {
+					if vState.Style["display"] != "inline" {
+						xCollect = 0
 					} else {
-						if n.Parent.Children[i].Style["display"] == "inline" {
-							if colliderDetection(vState, self) {
-								xCollect += vState.Width
-							} else {
-								xCollect = 0
+						if v.Properties.Id == n.Properties.Id {
+							if self.X+xCollect+self.Width > ((parent.Width)-parent.Padding.Right)+parent.X && i > 0 {
+								// Break Node
+								sibling := s[n.Parent.Children[i-1].Properties.Id]
+								self.Y += sibling.Height
+								self.X = copyOfX
+								alignText(n, s, i, state)
+							} else if i > 0 {
+								// Node did not break
+								self.X += xCollect
+							}
+							break
+						} else {
+							if vState.Style["display"] == "inline" {
+								if colliderDetection(vState, self) {
+									xCollect += vState.Width
+								} else {
+									xCollect = 0
+								}
 							}
 						}
 					}
 				}
 			}
+			// !ISSUE: need to align after the end of the block not just the breaks
+			// alignText(n, s, len(n.Parent.Children)-1, state)
 			propagateOffsets(n, copyOfX, copyOfY, self, state)
 			(*state)[n.Properties.Id] = self
 		},
@@ -94,4 +76,30 @@ func colliderDetection(s1, s2 element.State) bool {
 	s2Min := s2.Y
 	s2Max := s2.Y + s2.Height
 	return s1Min > s2Min && s1Min < s2Max || s1Max > s2Min && s1Min < s2Max || s2Min > s1Min && s2Min < s1Max || s2Max > s1Min && s2Min < s1Max
+}
+
+func alignText(n *element.Node, s map[string]element.State, i int, state *map[string]element.State) {
+	tallest := float32(0)
+	endex := 0
+	for a := i; a > 0; a-- {
+		if s[n.Parent.Children[a].Properties.Id].Y != s[n.Parent.Children[i-1].Properties.Id].Y {
+			endex = a
+			break
+		} else {
+			tallest = utils.Max(tallest, s[n.Parent.Children[a].Properties.Id].Height)
+		}
+	}
+	// !ISSUE: Find a better way then -4
+	for a := i; a > endex-1; a-- {
+		p := (*state)[n.Parent.Children[a].Properties.Id]
+		if p.Height != tallest {
+			p.Y += (tallest - p.Height) - 5
+			(*state)[n.Parent.Children[a].Properties.Id] = p
+		}
+	}
+	for a := i; a < len(n.Parent.Children)-1; a++ {
+		p := (*state)[n.Parent.Children[a].Properties.Id]
+		p.Y += 7
+		(*state)[n.Parent.Children[a].Properties.Id] = p
+	}
 }
