@@ -52,7 +52,7 @@ var inheritedProps = []string{
 	"font-weight",
 	"letter-spacing",
 	"line-height",
-	"text-align",
+	// "text-align",
 	"text-indent",
 	"text-justify",
 	"text-shadow",
@@ -127,6 +127,7 @@ func CheckNode(n *element.Node, state *map[string]element.State) {
 
 	fmt.Println(n.TagName, n.Properties.Id)
 	fmt.Printf("ID: %v\n", n.Id)
+	fmt.Printf("EM: %v\n", self.EM)
 	fmt.Printf("Parent: %v\n", n.Parent.TagName)
 	fmt.Printf("Classes: %v\n", n.ClassList.Classes)
 	fmt.Printf("Text: %v\n", n.InnerText)
@@ -137,22 +138,36 @@ func CheckNode(n *element.Node, state *map[string]element.State) {
 	fmt.Printf("Border: %v\n\n\n", self.Border)
 }
 
-func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State) *element.Node {
+func (c *CSS) ComputeNodeStyle(node *element.Node, state *map[string]element.State) *element.Node {
+
 	// Head is not renderable
-	if utils.IsParent(*n, "head") {
-		return n
+	if utils.IsParent(*node, "head") {
+		return node
 	}
+
+	// !TODO: Make a plugin type system that can rewrite nodes and matches by more than just tagname
+	// + should be ran here once a node is loaded
 	plugins := c.Plugins
-	// !ISSUE: This should add to state.Style instead as the element.Node should be un effected by the engine
-	// + currently this adds styles to the style attribute that the use did not explisitly set
-	// + this also applies to the margin/padding and border completer functions
 
 	s := *state
-	self := s[n.Properties.Id]
-	parent := s[n.Parent.Properties.Id]
+	self := s[node.Properties.Id]
+	parent := s[node.Parent.Properties.Id]
 
-	// !ISSUE: BREAKING
-	self.Style = c.GetStyles(*n)
+	var n *element.Node
+
+	// !ISSUE: For some reason node is still being tainted
+	// + if the user changes the innerText of the swap parent then how does the swap get updated????
+	// + in theory it should be invalided when the main invalidator runs
+	if self.Swap.Properties.Id != "" {
+		n = &self.Swap
+		// fmt.Println("Swapped: ", n.Properties.Id, n.InnerText)
+		// CheckNode(node, state)
+		// CheckNode(&self.Swap, state)
+	} else {
+		n = node
+		// fmt.Println("Back: ", n.Properties.Id, n.InnerText)
+		self.Style = c.GetStyles(*n)
+	}
 
 	self.Background = color.Parse(self.Style, "background")
 	self.Border, _ = CompleteBorder(self.Style, self, parent)
@@ -189,6 +204,11 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 	height := wh.Height
 
 	x, y := parent.X, parent.Y
+	offsetX, offsetY := utils.GetXY(n, state)
+	x += offsetX
+	y += offsetY
+
+	// !NOTE: Maybe make a get xy offset function...
 
 	var top, left, right, bottom bool = false, false, false, false
 
@@ -238,7 +258,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 									y = sibling.Y + sibling.Height
 								}
 							} else {
-								y = sibling.Y + sibling.Height
+								y = sibling.Y + sibling.Height + (sibling.Border.Width * 2) + sibling.Margin.Bottom
 							}
 						}
 
@@ -246,10 +266,9 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 					break
 				} else if self.Style["display"] != "inline" {
 					vState := s[v.Properties.Id]
-					y += vState.Margin.Top + vState.Margin.Bottom + vState.Padding.Top + vState.Padding.Bottom + vState.Height + (vState.Border.Width * 2)
+					y += vState.Margin.Top + vState.Margin.Bottom + vState.Padding.Top + vState.Padding.Bottom + vState.Height + (self.Border.Width)
 				}
 			}
-
 		}
 	}
 
@@ -270,7 +289,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 		y -= m.Bottom
 	}
 
-	self.X = x + parent.Padding.Left
+	self.X = x
 	self.Y = y
 	self.Width = width
 	self.Height = height
@@ -279,15 +298,26 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 	if !utils.ChildrenHaveText(n) && len(n.InnerText) > 0 {
 		// Confirm text exists
 		words := strings.Split(strings.TrimSpace(n.InnerText), " ")
-		// !ISSUE: Doesn't break the h1 element for some reason
 		if len(words) != 1 {
+			// !ISSUE: Still doesn't work great
+			if self.Swap.Properties.Id == "" {
+				self.Swap = *n
+				n = &self.Swap
+			}
 			if self.Style["display"] == "inline" {
-				// !ISSUE: this works great and it is how I want it to work but it does modifiy the dom which is a no go
 				n.InnerText = words[0]
 				el := *n
 				el.InnerText = strings.Join(words[1:], " ")
 				n.Parent.InsertAfter(el, *n)
+			} else {
+				el := n.CreateElement("notaspan")
+				el.InnerText = n.InnerText
+				n.AppendChild(el)
+				self.Style["font-size"] = parent.Style["font-size"]
+				self.EM = parent.EM
+				n.InnerText = ""
 			}
+			(*state)[n.Properties.Id] = self
 		}
 		if len(strings.TrimSpace(n.InnerText)) > 0 {
 			n.InnerText = strings.TrimSpace(n.InnerText)
@@ -305,11 +335,12 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 		v := n.Children[i]
 		v.Parent = n
 		n.Children[i] = *c.ComputeNodeStyle(&v, state)
+
 		cState := (*state)[n.Children[i].Properties.Id]
 		if self.Style["height"] == "" {
 			if cState.Style["position"] != "absolute" && cState.Y+cState.Height > childYOffset {
 				childYOffset = cState.Y + cState.Height
-				self.Height = (cState.Y - self.Y) + cState.Height
+				self.Height = (cState.Y - self.Border.Width) - (self.Y) + cState.Height
 				self.Height += cState.Margin.Top
 				self.Height += cState.Margin.Bottom
 				self.Height += cState.Padding.Top
@@ -321,30 +352,9 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 		}
 	}
 
+	self.Height += self.Padding.Bottom
+
 	(*state)[n.Properties.Id] = self
-
-	// !ISSUE: Align Text
-	// if n.Style["text-align"] == "center" {
-	// 	minX := float32(9e15)
-	// 	maxXW := float32(0)
-	// 	fmt.Println(n.Properties.Id, len(n.Children))
-	// 	for _, v := range n.Children {
-	// 		cState := (*state)[v.Properties.Id]
-	// 		if cState.X < minX {
-	// 			minX = cState.X
-	// 		}
-	// 		if (cState.X + cState.Width) > maxXW {
-	// 			maxXW = cState.X + cState.Width
-	// 		}
-	// 	}
-	// 	for _, v := range n.Children {
-	// 		cState := (*state)[v.Properties.Id]
-	// 		cState.X += (self.Width - (maxXW - minX)) / 2
-	// 		(*state)[v.Properties.Id] = cState
-	// 	}
-	// }
-
-	// (*state)[n.Properties.Id] = self
 
 	// Sorting the array by the Level field
 	sort.Slice(plugins, func(i, j int) bool {
@@ -359,15 +369,9 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 			}
 		}
 		if matches {
-			// !ISSUE: Might save memory by making a state map tree and passing that instead of the node it's self
+			// !NOTE: Might save memory by making a state map tree and passing that instead of the node it's self
 			v.Handler(n, state)
 		}
-	}
-
-	for i := range n.Children {
-		cState := (*state)[n.Children[i].Properties.Id]
-		cState.Y += self.Padding.Top
-		(*state)[n.Children[i].Properties.Id] = cState
 	}
 
 	// CheckNode(n, state)

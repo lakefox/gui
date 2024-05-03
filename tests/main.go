@@ -16,7 +16,7 @@ func main() {
 	document.QuerySelector("body").AddEventListener("click", func(e element.Event) {
 		fmt.Println("click")
 		// fmt.Println(document.QuerySelector("body").Style)
-		document.QuerySelector("body").Style["background"] = "red"
+		fmt.Println(document.QuerySelector("h1").Children)
 		// fmt.Println(document.QuerySelector("body").Style)
 	})
 	// test := document.CreateElement("div")

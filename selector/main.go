@@ -7,6 +7,8 @@ import (
 	"golang.org/x/net/html"
 )
 
+// !ISSUE: Create :not and other selectors
+
 func GetInitCSSSelectors(node *html.Node, selectors []string) []string {
 	if node.Type == html.ElementNode {
 		selectors = append(selectors, node.Data)

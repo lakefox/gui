@@ -516,6 +516,10 @@ sup {
     vertical-align: super;
     font-size: smaller;
 }
+br {
+    display: block;
+    height: 1em;
+}
 nobr {
     white-space: nowrap;
 }

@@ -68,6 +68,7 @@ func (wm *WindowManager) LoadTextures(nodes []element.State) {
 	}
 	for i, node := range nodes {
 		if node.Texture != nil {
+			// !TODO: Make a faster hash algo that minimises the time to detect if a image is different
 			hash := computeImageHash(node.Texture)
 			if wm.Textures[i].Hash != hash {
 				rl.UnloadTexture(wm.Textures[i].Image)
@@ -96,7 +97,7 @@ func (wm *WindowManager) Draw(nodes []element.State) {
 
 				rect := rl.NewRectangle(node.X+node.Border.Width,
 					node.Y+node.Border.Width,
-					node.Width-(node.Border.Width+node.Border.Width),
+					node.Width,
 					(node.Height),
 				)
 

@@ -27,16 +27,47 @@ let css = style(/*css*/ `
         for (let i = 0; i < anchors.length; i++) {
             const element = anchors[i];
 
-            let flags = getFlags(docs[element.getAttribute("href")]);
-            inject(element, flags, true);
+            let doc = docs[element.getAttribute("href")];
+
+            let flagDefs = findMatches(doc.querySelector("body").innerText);
+
+            for (let b = 0; b < flagDefs.length; b++) {
+                let flags = getFlags(doc, flagDefs[b].fullMatch);
+                inject(element, flagDefs[b].word, flags, true);
+            }
         }
     } else {
-        let flags = getFlags(document);
-        inject(document.querySelector("h1"), flags);
+        let flagDefs = findMatches(document.body.innerText);
+
+        for (let b = 0; b < flagDefs.length; b++) {
+            let flags = getFlags(document, flagDefs[b].fullMatch);
+            inject(document.querySelector("h1"), flagDefs[b].word, flags);
+        }
     }
 })();
 
-function getFlags(doc) {
+function findMatches(text) {
+    const regex = /\/\/\s*!([A-Za-z]+)\b:/g;
+    const matches = [];
+    const foundWords = new Set(); // Keep track of found words
+    let match;
+
+    while ((match = regex.exec(text)) !== null) {
+        const word = match[1];
+        if (!foundWords.has(word)) {
+            // Check if word is already found
+            matches.push({
+                fullMatch: match[0],
+                word: word,
+            });
+            foundWords.add(word); // Add word to found set
+        }
+    }
+
+    return matches;
+}
+
+function getFlags(doc, flag = "// !ISSUE:") {
     return [...doc.querySelectorAll("pre code")]
         .map((el) => {
             return el.innerText
@@ -46,11 +77,11 @@ function getFlags(doc) {
                 .map((e, i, a) => {
                     let s = [];
                     e = e.trim();
-                    if (e.indexOf("// !ISSUE:") != -1) {
+                    if (e.indexOf(flag) != -1) {
                         s.push(
                             e
                                 .trim()
-                                .slice(e.indexOf("// !ISSUE:") + 10)
+                                .slice(e.indexOf(flag) + 10)
                                 .trim()
                         );
                         for (let k = i + 1; k < a.length; k++) {
@@ -77,11 +108,11 @@ function getFlags(doc) {
         .flat();
 }
 
-function inject(el, flags, home = false) {
+function inject(el, name, flags, home = false) {
     console.log(flags);
     if (flags.length > 0) {
         let html = div`class="${css.flag}"`;
-        html.add(h2`innerText="ISSUES"`);
+        html.add(h2`innerText="${name.toUpperCase()}"`);
 
         for (let i = 0; i < flags.length; i++) {
             const flag = flags[i];

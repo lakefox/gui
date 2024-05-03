@@ -40,21 +40,21 @@ type Node struct {
 
 type State struct {
 	// Id         string
-	X           float32
-	Y           float32
-	Z           float32
-	Width       float32
-	Height      float32
-	Border      Border
-	Texture     *image.RGBA
-	EM          float32
-	Background  ic.RGBA
-	Color       ic.RGBA
-	Hash        string
-	Margin      MarginPadding
-	Padding     MarginPadding
-	RenderCount int
-	Style       map[string]string
+	X          float32
+	Y          float32
+	Z          float32
+	Width      float32
+	Height     float32
+	Border     Border
+	Texture    *image.RGBA
+	EM         float32
+	Background ic.RGBA
+	Color      ic.RGBA
+	Hash       string
+	Margin     MarginPadding
+	Padding    MarginPadding
+	Style      map[string]string
+	Swap       Node
 }
 
 // !FLAG: Plan to get rid of this

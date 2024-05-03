@@ -4,7 +4,6 @@ import (
 	"bufio"
 	_ "embed"
 	"gui/cstyle"
-	"gui/cstyle/plugins/block"
 	"gui/cstyle/plugins/flex"
 	"gui/cstyle/plugins/inline"
 	"gui/window"
@@ -62,7 +61,8 @@ func New() Window {
 	// This is still apart of computestyle
 	// css.AddPlugin(position.Init())
 	css.AddPlugin(inline.Init())
-	css.AddPlugin(block.Init())
+	// css.AddPlugin(block.Init())
+	// css.AddPlugin(textAlign.Init())
 	css.AddPlugin(flex.Init())
 
 	el := element.Node{}
@@ -134,6 +134,7 @@ func View(data *Window, width, height int32) {
 
 	// Main game loop
 	for !wm.WindowShouldClose() && !shouldStop {
+		// fmt.Println("######################")
 		rl.BeginDrawing()
 		if !shouldStop && debug {
 			shouldStop = true

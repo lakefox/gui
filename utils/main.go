@@ -36,6 +36,23 @@ func InlineToMap(cssString string) map[string]string {
 	return cssMap
 }
 
+func GetXY(n *element.Node, state *map[string]element.State) (float32, float32) {
+	s := *state
+	// self := s[n.Properties.Id]
+
+	offsetX := float32(0)
+	offsetY := float32(0)
+
+	if n.Parent != nil {
+		parent := s[n.Parent.Properties.Id]
+		// x, y := GetXY(n.Parent, state)
+		offsetX += parent.Border.Width + parent.Padding.Left
+		offsetY += parent.Border.Width + parent.Padding.Top
+	}
+
+	return offsetX, offsetY
+}
+
 type WidthHeight struct {
 	Width  float32
 	Height float32
@@ -105,7 +122,7 @@ func GetWH(n element.Node, state *map[string]element.State) WidthHeight {
 	}
 
 	if self.Style["width"] == "100%" {
-		wh.Width -= (self.Margin.Right + self.Margin.Left)
+		wh.Width -= (self.Margin.Right + self.Margin.Left + (self.Border.Width * 2))
 	}
 
 	if self.Style["height"] == "100%" {
