@@ -3,7 +3,6 @@ package inline
 import (
 	"gui/cstyle"
 	"gui/element"
-	"gui/utils"
 )
 
 func Init() cstyle.Plugin {
@@ -31,7 +30,6 @@ func Init() cstyle.Plugin {
 								sibling := s[n.Parent.Children[i-1].Properties.Id]
 								self.Y += sibling.Height
 								self.X = copyOfX
-								alignText(n, s, i, state)
 							} else if i > 0 {
 								// Node did not break
 								self.X += xCollect
@@ -49,9 +47,8 @@ func Init() cstyle.Plugin {
 					}
 				}
 			}
-			// !ISSUE: need to align after the end of the block not just the breaks
-			// alignText(n, s, len(n.Parent.Children)-1, state)
 			propagateOffsets(n, copyOfX, copyOfY, self, state)
+			self.Style["inlineText"] = "true"
 			(*state)[n.Properties.Id] = self
 		},
 	}
@@ -76,30 +73,4 @@ func colliderDetection(s1, s2 element.State) bool {
 	s2Min := s2.Y
 	s2Max := s2.Y + s2.Height
 	return s1Min > s2Min && s1Min < s2Max || s1Max > s2Min && s1Min < s2Max || s2Min > s1Min && s2Min < s1Max || s2Max > s1Min && s2Min < s1Max
-}
-
-func alignText(n *element.Node, s map[string]element.State, i int, state *map[string]element.State) {
-	tallest := float32(0)
-	endex := 0
-	for a := i; a > 0; a-- {
-		if s[n.Parent.Children[a].Properties.Id].Y != s[n.Parent.Children[i-1].Properties.Id].Y {
-			endex = a
-			break
-		} else {
-			tallest = utils.Max(tallest, s[n.Parent.Children[a].Properties.Id].Height)
-		}
-	}
-	// !ISSUE: Find a better way then -4
-	for a := i; a > endex-1; a-- {
-		p := (*state)[n.Parent.Children[a].Properties.Id]
-		if p.Height != tallest {
-			p.Y += (tallest - p.Height) - 5
-			(*state)[n.Parent.Children[a].Properties.Id] = p
-		}
-	}
-	for a := i; a < len(n.Parent.Children)-1; a++ {
-		p := (*state)[n.Parent.Children[a].Properties.Id]
-		p.Y += 7
-		(*state)[n.Parent.Children[a].Properties.Id] = p
-	}
 }

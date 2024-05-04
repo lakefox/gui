@@ -6,6 +6,7 @@ import (
 	"gui/cstyle"
 	"gui/cstyle/plugins/flex"
 	"gui/cstyle/plugins/inline"
+	"gui/cstyle/plugins/textAlign"
 	"gui/window"
 
 	"gui/element"
@@ -62,7 +63,7 @@ func New() Window {
 	// css.AddPlugin(position.Init())
 	css.AddPlugin(inline.Init())
 	// css.AddPlugin(block.Init())
-	// css.AddPlugin(textAlign.Init())
+	css.AddPlugin(textAlign.Init())
 	css.AddPlugin(flex.Init())
 
 	el := element.Node{}

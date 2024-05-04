@@ -14,6 +14,7 @@ import (
 	"strings"
 )
 
+// !TODO: Make a fine selector to target tags and if it has children or not etc
 type Plugin struct {
 	Styles  map[string]string
 	Level   int
@@ -204,11 +205,10 @@ func (c *CSS) ComputeNodeStyle(node *element.Node, state *map[string]element.Sta
 	height := wh.Height
 
 	x, y := parent.X, parent.Y
+	// !NOTE: Would like to consolidate all XY function into this function like WH
 	offsetX, offsetY := utils.GetXY(n, state)
 	x += offsetX
 	y += offsetY
-
-	// !NOTE: Maybe make a get xy offset function...
 
 	var top, left, right, bottom bool = false, false, false, false
 
@@ -303,9 +303,11 @@ func (c *CSS) ComputeNodeStyle(node *element.Node, state *map[string]element.Sta
 			if self.Swap.Properties.Id == "" {
 				self.Swap = *n
 				n = &self.Swap
+				n.Style["inlineText"] = "true"
 			}
 			if self.Style["display"] == "inline" {
 				n.InnerText = words[0]
+				n.Style["inlineText"] = "true"
 				el := *n
 				el.InnerText = strings.Join(words[1:], " ")
 				n.Parent.InsertAfter(el, *n)

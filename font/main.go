@@ -29,7 +29,7 @@ func GetFontPath(fontName string, bold, italic bool) string {
 	// Check if a special font family is requested
 	switch fontName {
 	case "sans-serif":
-		return tryLoadSystemFont("Arial", bold, italic)
+		return tryLoadSystemFont("Helvetica", bold, italic)
 	case "monospace":
 		return tryLoadSystemFont("Andle Mono", bold, italic)
 	case "serif":
