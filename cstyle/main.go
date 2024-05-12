@@ -308,7 +308,7 @@ func (c *CSS) ComputeNodeStyle(node *element.Node, state *map[string]element.Sta
 			if self.Style["display"] == "inline" {
 				n.InnerText = words[0]
 				n.Style["inlineText"] = "true"
-				el := *n
+				el := n.CreateElement("notaspan")
 				el.InnerText = strings.Join(words[1:], " ")
 				n.Parent.InsertAfter(el, *n)
 			} else {
@@ -336,6 +336,7 @@ func (c *CSS) ComputeNodeStyle(node *element.Node, state *map[string]element.Sta
 	for i := 0; i < len(n.Children); i++ {
 		v := n.Children[i]
 		v.Parent = n
+		// This is were the tainting comes from
 		n.Children[i] = *c.ComputeNodeStyle(&v, state)
 
 		cState := (*state)[n.Children[i].Properties.Id]
@@ -366,7 +367,7 @@ func (c *CSS) ComputeNodeStyle(node *element.Node, state *map[string]element.Sta
 	for _, v := range plugins {
 		matches := true
 		for name, value := range v.Styles {
-			if self.Style[name] != value && !(value == "*") {
+			if self.Style[name] != value && !(value == "*") && self.Style[name] != "" {
 				matches = false
 			}
 		}
@@ -376,7 +377,46 @@ func (c *CSS) ComputeNodeStyle(node *element.Node, state *map[string]element.Sta
 		}
 	}
 
+	// !IMPORTAINT: Tomorrow the way textt should work is all free standing text should be in text elements, then the words should be notaspan
+	// + so in theory the inner/outerhtml methods can clean those and after the notspans are rendered (I don't know if removing them will do the same)
+	// + (thing as below) but the text should be a text element so it shows childNodes bc just children is repetitive
+	n.InnerHTML = utils.InnerHTML(*n)
+	tag, closing := utils.NodeToHTML(*n)
+	n.OuterHTML = tag + n.InnerHTML + closing
+
+	// !NOTE: I think that .Children can just act like .childNodes but the text needs to be joined into one "text" node for each line
+	// + So it is ok to modifey the DOM but only to make text nodes and do the innerHTML
+	// + also I think innerHTML should be the main source of truth, but if innerHTML == "" then generate the html and if it changes update the node
+	// + but if the DOM under it changes then you would need to update it aswell
+
 	// CheckNode(n, state)
+	// toRemove := make([]int, 0)
+	// for i := len(n.Children) - 1; i >= 1; i-- {
+	// 	v := n.Children[i]
+	// 	next := n.Children[i-1]
+	// 	if v.TagName == next.TagName {
+	// 		matches := true
+	// 		for k, t := range v.Style {
+	// 			if next.Style[k] != t {
+	// 				matches = false
+	// 			}
+	// 		}
+	// 		if matches {
+	// 			// fmt.Println(n.Properties.Id)
+	// 			n.Children[i-1].InnerText = n.Children[i-1].InnerText + " " + v.InnerText
+
+	// 			toRemove = append(toRemove, i)
+	// 		}
+	// 	}
+	// }
+	// for _, index := range toRemove {
+	// 	n.Children = append(n.Children[:index], n.Children[index+1:]...)
+	// }
+	// if len(toRemove) > 0 {
+	// 	for _, v := range n.Children {
+	// 		fmt.Println(v.InnerText)
+	// 	}
+	// }
 
 	return n
 }

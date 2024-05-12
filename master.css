@@ -32,6 +32,9 @@ span {
 notaspan {
     display: inline;
 }
+text {
+    display: inline;
+}
 body {
     display: block;
     margin: 8px;

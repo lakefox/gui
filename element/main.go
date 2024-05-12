@@ -14,6 +14,8 @@ import (
 type Node struct {
 	TagName   string
 	InnerText string
+	InnerHTML string
+	OuterHTML string
 	Parent    *Node
 	Children  []Node
 	Style     map[string]string
@@ -146,6 +148,8 @@ func (n *Node) CreateElement(name string) Node {
 	return Node{
 		TagName:   name,
 		InnerText: "",
+		OuterHTML: "",
+		InnerHTML: "",
 		Children:  []Node{},
 		Style:     make(map[string]string),
 		Id:        "",

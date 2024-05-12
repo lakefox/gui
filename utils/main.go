@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bytes"
 	"fmt"
 	"gui/element"
 	"math"
@@ -505,4 +506,93 @@ func ChildrenHaveText(n *element.Node) bool {
 		}
 	}
 	return false
+}
+
+func NodeToHTML(node element.Node) (string, string) {
+	// if node.TagName == "text" || node.TagName == "notaspan" {
+	// 	return node.InnerText + " ", ""
+	// }
+
+	var buffer bytes.Buffer
+	buffer.WriteString("<" + node.TagName)
+
+	if node.Properties.Editable {
+		buffer.WriteString(" contentEditable=\"true\"")
+	}
+
+	// Add ID if present
+	if node.Id != "" {
+		buffer.WriteString(" id=\"" + node.Id + "\"")
+	}
+
+	// Add class list if present
+	if len(node.ClassList.Classes) > 0 || node.ClassList.Value != "" {
+		classes := ""
+		for _, v := range node.ClassList.Classes {
+			if string(v[0]) != ":" {
+				classes += v + " "
+			}
+		}
+		classes = strings.TrimSpace(classes)
+		if len(classes) > 0 {
+			buffer.WriteString(" class=\"" + classes + "\"")
+		}
+	}
+
+	// Add style if present
+	if len(node.Style) > 0 {
+
+		style := ""
+		for key, value := range node.Style {
+			if key != "inlineText" {
+				style += key + ":" + value + ";"
+			}
+		}
+		style = strings.TrimSpace(style)
+
+		if len(style) > 0 {
+			buffer.WriteString(" style=\"" + style + "\"")
+		}
+	}
+
+	// Add other attributes if present
+	for key, value := range node.Attribute {
+		if strings.TrimSpace(value) != "" {
+			buffer.WriteString(" " + key + "=\"" + value + "\"")
+		}
+	}
+
+	buffer.WriteString(">")
+
+	// Add inner text if present
+	if node.InnerText != "" && !ChildrenHaveText(&node) {
+		buffer.WriteString(node.InnerText)
+	}
+	return buffer.String(), "</" + node.TagName + ">"
+}
+
+func OuterHTML(node element.Node) string {
+	var buffer bytes.Buffer
+
+	tag, closing := NodeToHTML(node)
+
+	buffer.WriteString(tag)
+
+	// Recursively add children
+	for _, child := range node.Children {
+		buffer.WriteString(OuterHTML(child))
+	}
+
+	buffer.WriteString(closing)
+
+	return buffer.String()
+}
+
+func InnerHTML(node element.Node) string {
+	var buffer bytes.Buffer
+	// Recursively add children
+	for _, child := range node.Children {
+		buffer.WriteString(OuterHTML(child))
+	}
+	return buffer.String()
 }

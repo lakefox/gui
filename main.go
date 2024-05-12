@@ -6,6 +6,7 @@ import (
 	"gui/cstyle"
 	"gui/cstyle/plugins/flex"
 	"gui/cstyle/plugins/inline"
+	"gui/cstyle/plugins/inlineText"
 	"gui/cstyle/plugins/textAlign"
 	"gui/window"
 
@@ -64,6 +65,7 @@ func New() Window {
 	css.AddPlugin(inline.Init())
 	// css.AddPlugin(block.Init())
 	css.AddPlugin(textAlign.Init())
+	css.AddPlugin(inlineText.Init())
 	css.AddPlugin(flex.Init())
 
 	el := element.Node{}
@@ -332,7 +334,7 @@ func matchFactory(re *regexp.Regexp) func(string) string {
 
 		// Process submatches
 		if len(removeWhitespace(submatches[2])) > 0 {
-			return submatches[1] + "<notaspan>" + submatches[2] + "</notaspan>" + submatches[3]
+			return submatches[1] + "<text>" + submatches[2] + "</text>" + submatches[3]
 		} else {
 			return match
 		}

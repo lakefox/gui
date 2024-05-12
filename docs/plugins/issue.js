@@ -29,7 +29,7 @@ let css = style(/*css*/ `
 
             let doc = docs[element.getAttribute("href")];
 
-            let flagDefs = findMatches(doc.querySelector("body").innerText);
+            let flagDefs = findMatches(doc.innerText);
 
             for (let b = 0; b < flagDefs.length; b++) {
                 let flags = getFlags(doc, flagDefs[b].fullMatch);
