@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"gui"
 	"gui/element"
+	"gui/utils"
 )
 
 func main() {
@@ -16,12 +17,12 @@ func main() {
 	document.QuerySelector("body").AddEventListener("click", func(e element.Event) {
 		fmt.Println("click")
 		// fmt.Println(document.QuerySelector("body").Style)
-		fmt.Println(document.QuerySelector("body").InnerHTML)
+		fmt.Println(utils.NodeToHTML(*document.QuerySelector("h1")))
 		// fmt.Println(document.QuerySelector("body").OuterHTML)
-		c := document.QuerySelector("h1").Children
-		for _, v := range c {
-			fmt.Println(v.TagName, v.InnerText)
-		}
+		// c := document.QuerySelector("h1").Children
+		// for _, v := range c {
+		// 	fmt.Println(v.TagName, v.InnerText)
+		// }
 		// fmt.Println(document.QuerySelector("body").Style)
 	})
 

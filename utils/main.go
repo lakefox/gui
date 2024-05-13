@@ -509,9 +509,9 @@ func ChildrenHaveText(n *element.Node) bool {
 }
 
 func NodeToHTML(node element.Node) (string, string) {
-	// if node.TagName == "text" || node.TagName == "notaspan" {
-	// 	return node.InnerText + " ", ""
-	// }
+	if node.TagName == "notaspan" {
+		return node.InnerText + " ", ""
+	}
 
 	var buffer bytes.Buffer
 	buffer.WriteString("<" + node.TagName)

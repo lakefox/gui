@@ -2,7 +2,11 @@ package gui
 
 import (
 	"bufio"
+	"bytes"
+	"crypto/sha256"
 	_ "embed"
+	"encoding/json"
+	"fmt"
 	"gui/cstyle"
 	"gui/cstyle/plugins/flex"
 	"gui/cstyle/plugins/inline"
@@ -135,6 +139,8 @@ func View(data *Window, width, height int32) {
 
 	shouldStop := false
 
+	var hash []byte
+
 	// Main game loop
 	for !wm.WindowShouldClose() && !shouldStop {
 		// fmt.Println("######################")
@@ -159,8 +165,16 @@ func View(data *Window, width, height int32) {
 			state["ROOT"].Style["height"] = strconv.Itoa(int(height)) + "px"
 		}
 
+		newHash, _ := hashStruct(&data.Document.Children[0])
 		eventStore = events.GetEvents(&data.Document.Children[0], &state, eventStore)
-		data.CSS.ComputeNodeStyle(&data.Document.Children[0], &state)
+		if !bytes.Equal(hash, newHash) {
+			fmt.Println("rteload")
+			hash = newHash
+			newDoc := CopyNode(data.Document.Children[0], &data.Document)
+			data.CSS.ComputeNodeStyle(&newDoc, &state)
+			// !NOTE: Add inner and outerhtml here
+		}
+
 		rd := data.Render(state)
 		wm.LoadTextures(rd)
 		wm.Draw(rd)
@@ -169,6 +183,36 @@ func View(data *Window, width, height int32) {
 
 		rl.EndDrawing()
 	}
+}
+
+func CopyNode(node element.Node, parent *element.Node) element.Node {
+	n := element.Node{}
+	n.TagName = node.TagName
+	n.InnerText = node.InnerText
+	n.Style = node.Style
+	n.Id = node.Id
+	n.ClassList = node.ClassList
+	n.Href = node.Href
+	n.Src = node.Src
+	n.Title = node.Title
+	n.Attribute = node.Attribute
+	n.Value = node.Value
+	n.ScrollY = node.ScrollY
+	n.InnerHTML = node.InnerHTML
+	n.OuterHTML = node.OuterHTML
+	n.Properties.Id = node.Properties.Id
+	n.Properties.Focusable = node.Properties.Focusable
+	n.Properties.Focused = node.Properties.Focused
+	n.Properties.Editable = node.Properties.Editable
+	n.Properties.Hover = node.Properties.Hover
+	n.Properties.Selected = node.Properties.Selected
+
+	n.Parent = parent
+
+	for _, v := range node.Children {
+		n.Children = append(n.Children, CopyNode(v, &n))
+	}
+	return n
 }
 
 func CreateNode(node *html.Node, parent *element.Node) {
@@ -362,4 +406,20 @@ func removeWhitespaceBetweenTags(html string) string {
 	re := regexp.MustCompile(`>\s+<`)
 	// Replace all matches of spaces between angle brackets with "><"
 	return re.ReplaceAllString(html, "><")
+}
+
+// Function to hash a struct using SHA-256
+func hashStruct(s interface{}) ([]byte, error) {
+	// Convert struct to JSON
+	jsonData, err := json.Marshal(s)
+	if err != nil {
+		return nil, err
+	}
+
+	// Hash the JSON data using SHA-256
+	hasher := sha256.New()
+	hasher.Write(jsonData)
+	hash := hasher.Sum(nil)
+
+	return hash, nil
 }

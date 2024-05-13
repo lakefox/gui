@@ -308,7 +308,7 @@ func (c *CSS) ComputeNodeStyle(node *element.Node, state *map[string]element.Sta
 			if self.Style["display"] == "inline" {
 				n.InnerText = words[0]
 				n.Style["inlineText"] = "true"
-				el := n.CreateElement("notaspan")
+				el := *n
 				el.InnerText = strings.Join(words[1:], " ")
 				n.Parent.InsertAfter(el, *n)
 			} else {
@@ -380,16 +380,16 @@ func (c *CSS) ComputeNodeStyle(node *element.Node, state *map[string]element.Sta
 	// !IMPORTAINT: Tomorrow the way textt should work is all free standing text should be in text elements, then the words should be notaspan
 	// + so in theory the inner/outerhtml methods can clean those and after the notspans are rendered (I don't know if removing them will do the same)
 	// + (thing as below) but the text should be a text element so it shows childNodes bc just children is repetitive
-	n.InnerHTML = utils.InnerHTML(*n)
-	tag, closing := utils.NodeToHTML(*n)
-	n.OuterHTML = tag + n.InnerHTML + closing
+	// n.InnerHTML = utils.InnerHTML(*n)
+	// tag, closing := utils.NodeToHTML(*n)
+	// n.OuterHTML = tag + n.InnerHTML + closing
 
 	// !NOTE: I think that .Children can just act like .childNodes but the text needs to be joined into one "text" node for each line
 	// + So it is ok to modifey the DOM but only to make text nodes and do the innerHTML
 	// + also I think innerHTML should be the main source of truth, but if innerHTML == "" then generate the html and if it changes update the node
 	// + but if the DOM under it changes then you would need to update it aswell
 
-	// CheckNode(n, state)
+	CheckNode(n, state)
 	// toRemove := make([]int, 0)
 	// for i := len(n.Children) - 1; i >= 1; i-- {
 	// 	v := n.Children[i]

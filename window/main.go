@@ -87,6 +87,7 @@ func (wm *WindowManager) LoadTextures(nodes []element.State) {
 // Draw draws all nodes on the window
 func (wm *WindowManager) Draw(nodes []element.State) {
 	indexes := []float32{0}
+	// !TODO: Only Draw whats in fov
 	for a := 0; a < len(indexes); a++ {
 		for i, node := range nodes {
 

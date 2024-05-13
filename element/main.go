@@ -16,7 +16,7 @@ type Node struct {
 	InnerText string
 	InnerHTML string
 	OuterHTML string
-	Parent    *Node
+	Parent    *Node `json:"-"`
 	Children  []Node
 	Style     map[string]string
 	Id        string
@@ -28,15 +28,15 @@ type Node struct {
 
 	ScrollY       float32
 	Value         string
-	OnClick       func(Event)
-	OnContextMenu func(Event)
-	OnMouseDown   func(Event)
-	OnMouseUp     func(Event)
-	OnMouseEnter  func(Event)
-	OnMouseLeave  func(Event)
-	OnMouseOver   func(Event)
-	OnMouseMove   func(Event)
-	OnScroll      func(Event)
+	OnClick       func(Event) `json:"-"`
+	OnContextMenu func(Event) `json:"-"`
+	OnMouseDown   func(Event) `json:"-"`
+	OnMouseUp     func(Event) `json:"-"`
+	OnMouseEnter  func(Event) `json:"-"`
+	OnMouseLeave  func(Event) `json:"-"`
+	OnMouseOver   func(Event) `json:"-"`
+	OnMouseMove   func(Event) `json:"-"`
+	OnScroll      func(Event) `json:"-"`
 	Properties    Properties
 }
 
@@ -63,7 +63,7 @@ type State struct {
 
 type Properties struct {
 	Id             string
-	EventListeners map[string][]func(Event)
+	EventListeners map[string][]func(Event) `json:"-"`
 	Focusable      bool
 	Focused        bool
 	Editable       bool
