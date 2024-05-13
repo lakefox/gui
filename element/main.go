@@ -56,7 +56,6 @@ type State struct {
 	Margin     MarginPadding
 	Padding    MarginPadding
 	Style      map[string]string
-	Swap       Node
 }
 
 // !FLAG: Plan to get rid of this

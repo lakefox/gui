@@ -7,7 +7,11 @@ import (
 	"gui/utils"
 )
 
+// go tool pprof --pdf ./main.go /var/folders/7b/c07zbwkj03nf7cs4vm_0yw1w0000gn/T/profile1893611654/cpu.pprof > file.pdf
+
 func main() {
+	// defer profile.Start().Stop() // CPU
+	// defer profile.Start(profile.MemProfile).Stop() // Memory
 	// defaults read ~/Library/Preferences/.GlobalPreferences.plist
 
 	window := gui.Open("./src/index.html")
@@ -17,7 +21,7 @@ func main() {
 	document.QuerySelector("body").AddEventListener("click", func(e element.Event) {
 		fmt.Println("click")
 		// fmt.Println(document.QuerySelector("body").Style)
-		fmt.Println(utils.NodeToHTML(*document.QuerySelector("h1")))
+		fmt.Println(utils.InnerHTML(*document.QuerySelector("body")))
 		// fmt.Println(document.QuerySelector("body").OuterHTML)
 		// c := document.QuerySelector("h1").Children
 		// for _, v := range c {

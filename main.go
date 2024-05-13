@@ -83,15 +83,11 @@ func New() Window {
 	}
 }
 
-func (w *Window) Render(state map[string]element.State) []element.State {
-	flatDoc := flatten(w.Document)
+func (w *Window) Render(doc element.Node, state map[string]element.State) []element.State {
+	flatDoc := flatten(doc)
 	store := []element.State{}
 
 	for _, v := range flatDoc {
-		// wont work unless state is a pointer to the og
-		// s := state[v.Properties.Id]
-		// s.RenderCount++
-		// state[v.Properties.Id] = s
 		store = append(store, state[v.Properties.Id])
 	}
 	return store
@@ -140,6 +136,7 @@ func View(data *Window, width, height int32) {
 	shouldStop := false
 
 	var hash []byte
+	var rd []element.State
 
 	// Main game loop
 	for !wm.WindowShouldClose() && !shouldStop {
@@ -172,11 +169,10 @@ func View(data *Window, width, height int32) {
 			hash = newHash
 			newDoc := CopyNode(data.Document.Children[0], &data.Document)
 			data.CSS.ComputeNodeStyle(&newDoc, &state)
+			rd = data.Render(newDoc, state)
+			wm.LoadTextures(rd)
 			// !NOTE: Add inner and outerhtml here
 		}
-
-		rd := data.Render(state)
-		wm.LoadTextures(rd)
 		wm.Draw(rd)
 
 		events.RunEvents(eventStore)

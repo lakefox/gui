@@ -139,11 +139,11 @@ func CheckNode(n *element.Node, state *map[string]element.State) {
 	fmt.Printf("Border: %v\n\n\n", self.Border)
 }
 
-func (c *CSS) ComputeNodeStyle(node *element.Node, state *map[string]element.State) *element.Node {
+func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State) *element.Node {
 
 	// Head is not renderable
-	if utils.IsParent(*node, "head") {
-		return node
+	if utils.IsParent(*n, "head") {
+		return n
 	}
 
 	// !TODO: Make a plugin type system that can rewrite nodes and matches by more than just tagname
@@ -151,24 +151,9 @@ func (c *CSS) ComputeNodeStyle(node *element.Node, state *map[string]element.Sta
 	plugins := c.Plugins
 
 	s := *state
-	self := s[node.Properties.Id]
-	parent := s[node.Parent.Properties.Id]
-
-	var n *element.Node
-
-	// !ISSUE: For some reason node is still being tainted
-	// + if the user changes the innerText of the swap parent then how does the swap get updated????
-	// + in theory it should be invalided when the main invalidator runs
-	if self.Swap.Properties.Id != "" {
-		n = &self.Swap
-		// fmt.Println("Swapped: ", n.Properties.Id, n.InnerText)
-		// CheckNode(node, state)
-		// CheckNode(&self.Swap, state)
-	} else {
-		n = node
-		// fmt.Println("Back: ", n.Properties.Id, n.InnerText)
-		self.Style = c.GetStyles(*n)
-	}
+	self := s[n.Properties.Id]
+	parent := s[n.Parent.Properties.Id]
+	self.Style = c.GetStyles(*n)
 
 	self.Background = color.Parse(self.Style, "background")
 	self.Border, _ = CompleteBorder(self.Style, self, parent)
@@ -299,12 +284,6 @@ func (c *CSS) ComputeNodeStyle(node *element.Node, state *map[string]element.Sta
 		// Confirm text exists
 		words := strings.Split(strings.TrimSpace(n.InnerText), " ")
 		if len(words) != 1 {
-			// !ISSUE: Still doesn't work great
-			if self.Swap.Properties.Id == "" {
-				self.Swap = *n
-				n = &self.Swap
-				n.Style["inlineText"] = "true"
-			}
 			if self.Style["display"] == "inline" {
 				n.InnerText = words[0]
 				n.Style["inlineText"] = "true"
@@ -377,46 +356,9 @@ func (c *CSS) ComputeNodeStyle(node *element.Node, state *map[string]element.Sta
 		}
 	}
 
-	// !IMPORTAINT: Tomorrow the way textt should work is all free standing text should be in text elements, then the words should be notaspan
-	// + so in theory the inner/outerhtml methods can clean those and after the notspans are rendered (I don't know if removing them will do the same)
-	// + (thing as below) but the text should be a text element so it shows childNodes bc just children is repetitive
 	// n.InnerHTML = utils.InnerHTML(*n)
 	// tag, closing := utils.NodeToHTML(*n)
 	// n.OuterHTML = tag + n.InnerHTML + closing
-
-	// !NOTE: I think that .Children can just act like .childNodes but the text needs to be joined into one "text" node for each line
-	// + So it is ok to modifey the DOM but only to make text nodes and do the innerHTML
-	// + also I think innerHTML should be the main source of truth, but if innerHTML == "" then generate the html and if it changes update the node
-	// + but if the DOM under it changes then you would need to update it aswell
-
-	CheckNode(n, state)
-	// toRemove := make([]int, 0)
-	// for i := len(n.Children) - 1; i >= 1; i-- {
-	// 	v := n.Children[i]
-	// 	next := n.Children[i-1]
-	// 	if v.TagName == next.TagName {
-	// 		matches := true
-	// 		for k, t := range v.Style {
-	// 			if next.Style[k] != t {
-	// 				matches = false
-	// 			}
-	// 		}
-	// 		if matches {
-	// 			// fmt.Println(n.Properties.Id)
-	// 			n.Children[i-1].InnerText = n.Children[i-1].InnerText + " " + v.InnerText
-
-	// 			toRemove = append(toRemove, i)
-	// 		}
-	// 	}
-	// }
-	// for _, index := range toRemove {
-	// 	n.Children = append(n.Children[:index], n.Children[index+1:]...)
-	// }
-	// if len(toRemove) > 0 {
-	// 	for _, v := range n.Children {
-	// 		fmt.Println(v.InnerText)
-	// 	}
-	// }
 
 	return n
 }
