@@ -10,7 +10,6 @@ import (
 	"gui/cstyle"
 	"gui/cstyle/plugins/flex"
 	"gui/cstyle/plugins/inline"
-	"gui/cstyle/plugins/inlineText"
 	"gui/cstyle/plugins/textAlign"
 	"gui/window"
 
@@ -69,7 +68,7 @@ func New() Window {
 	css.AddPlugin(inline.Init())
 	// css.AddPlugin(block.Init())
 	css.AddPlugin(textAlign.Init())
-	css.AddPlugin(inlineText.Init())
+	// css.AddPlugin(inlineText.Init())
 	css.AddPlugin(flex.Init())
 
 	el := element.Node{}
@@ -85,6 +84,7 @@ func New() Window {
 
 func (w *Window) Render(doc element.Node, state map[string]element.State) []element.State {
 	flatDoc := flatten(doc)
+	fmt.Println(len(flatDoc))
 	store := []element.State{}
 
 	for _, v := range flatDoc {
@@ -165,12 +165,17 @@ func View(data *Window, width, height int32) {
 		newHash, _ := hashStruct(&data.Document.Children[0])
 		eventStore = events.GetEvents(&data.Document.Children[0], &state, eventStore)
 		if !bytes.Equal(hash, newHash) {
-			fmt.Println("rteload")
+			fmt.Println("##############################################")
 			hash = newHash
 			newDoc := CopyNode(data.Document.Children[0], &data.Document)
 			data.CSS.ComputeNodeStyle(&newDoc, &state)
+			fmt.Println(utils.InnerHTML(*newDoc.QuerySelector("body")))
 			rd = data.Render(newDoc, state)
 			wm.LoadTextures(rd)
+			fmt.Println(len(state))
+			// for v := range state {
+			// 	fmt.Println(v)
+			// }
 			// !NOTE: Add inner and outerhtml here
 		}
 		wm.Draw(rd)

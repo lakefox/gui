@@ -286,10 +286,16 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 		if len(words) != 1 {
 			if self.Style["display"] == "inline" {
 				n.InnerText = words[0]
-				n.Style["inlineText"] = "true"
-				el := *n
-				el.InnerText = strings.Join(words[1:], " ")
-				n.Parent.InsertAfter(el, *n)
+				// !ISSUE: this part (not commentted out) is looping forever on a random element in the #paragraph element
+				// + it adds infinte amounts of elements
+				for i := 1; i < len(words); i++ {
+					el := n.CreateElement(n.TagName)
+					el.Style = n.Style
+					el.InnerText = words[i]
+					n.Parent.InsertAfter(el, *n)
+					fmt.Println("injetc", el.InnerText)
+				}
+
 			} else {
 				el := n.CreateElement("notaspan")
 				el.InnerText = n.InnerText

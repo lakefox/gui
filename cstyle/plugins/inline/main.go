@@ -48,7 +48,6 @@ func Init() cstyle.Plugin {
 				}
 			}
 			propagateOffsets(n, copyOfX, copyOfY, self, state)
-			self.Style["inlineText"] = "true"
 			(*state)[n.Properties.Id] = self
 		},
 	}
