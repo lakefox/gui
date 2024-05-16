@@ -21,12 +21,30 @@ type Plugin struct {
 	Handler func(*element.Node, *map[string]element.State)
 }
 
+type Transformer struct {
+	Selector func(*element.Node) bool
+	Handler  func(element.Node) element.Node
+}
+
 type CSS struct {
-	Width       float32
-	Height      float32
-	StyleSheets []map[string]map[string]string
-	Plugins     []Plugin
-	Document    *element.Node
+	Width        float32
+	Height       float32
+	StyleSheets  []map[string]map[string]string
+	Plugins      []Plugin
+	Transformers []Transformer
+	Document     *element.Node
+}
+
+func (c *CSS) Transform(n element.Node) element.Node {
+	for _, v := range c.Transformers {
+		if v.Selector(&n) {
+			n = v.Handler(n)
+		}
+	}
+	for i, v := range n.Children {
+		n.Children[i] = c.Transform(v)
+	}
+	return n
 }
 
 func (c *CSS) StyleSheet(path string) {
@@ -120,6 +138,10 @@ func (c *CSS) GetStyles(n element.Node) map[string]string {
 
 func (c *CSS) AddPlugin(plugin Plugin) {
 	c.Plugins = append(c.Plugins, plugin)
+}
+
+func (c *CSS) AddTransformer(transformer Transformer) {
+	c.Transformers = append(c.Transformers, transformer)
 }
 
 func CheckNode(n *element.Node, state *map[string]element.State) {
@@ -282,30 +304,29 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 
 	if !utils.ChildrenHaveText(n) && len(n.InnerText) > 0 {
 		// Confirm text exists
-		words := strings.Split(strings.TrimSpace(n.InnerText), " ")
-		if len(words) != 1 {
-			if self.Style["display"] == "inline" {
-				n.InnerText = words[0]
-				// !ISSUE: this part (not commentted out) is looping forever on a random element in the #paragraph element
-				// + it adds infinte amounts of elements
-				for i := 1; i < len(words); i++ {
-					el := n.CreateElement(n.TagName)
-					el.Style = n.Style
-					el.InnerText = words[i]
-					n.Parent.InsertAfter(el, *n)
-					fmt.Println("injetc", el.InnerText)
-				}
+		// words := strings.Split(strings.TrimSpace(n.InnerText), " ")
+		// if len(words) != 1 {
+		// 	if self.Style["display"] == "inline" {
+		// 		n.InnerText = words[0]
+		// 		// !ISSUE: issue is here don't know why
+		// 		// for i := 1; i < len(words); i++ {
+		// 		// el := *n
+		// 		// el.InnerText = strings.Join(words[1:], " ")
+		// 		// n.Parent.InsertAfter(el, *n)
+		// 		// fmt.Println("injetc", el.Properties.Id)
+		// 		// }
 
-			} else {
-				el := n.CreateElement("notaspan")
-				el.InnerText = n.InnerText
-				n.AppendChild(el)
-				self.Style["font-size"] = parent.Style["font-size"]
-				self.EM = parent.EM
-				n.InnerText = ""
-			}
-			(*state)[n.Properties.Id] = self
-		}
+		// 	} else {
+		// 		// !ISSUE: State egets filled up bc of this
+		// 		// el := n.CreateElement("notaspan")
+		// 		// el.InnerText = n.InnerText
+		// 		// n.AppendChild(el)
+		// 		// self.Style["font-size"] = parent.Style["font-size"]
+		// 		// self.EM = parent.EM
+		// 		// n.InnerText = ""
+		// 	}
+		// 	(*state)[n.Properties.Id] = self
+		// }
 		if len(strings.TrimSpace(n.InnerText)) > 0 {
 			n.InnerText = strings.TrimSpace(n.InnerText)
 			self = genTextNode(n, state)

@@ -11,6 +11,7 @@ import (
 	"gui/cstyle/plugins/flex"
 	"gui/cstyle/plugins/inline"
 	"gui/cstyle/plugins/textAlign"
+	"gui/cstyle/transformers/text"
 	"gui/window"
 
 	"gui/element"
@@ -71,6 +72,8 @@ func New() Window {
 	// css.AddPlugin(inlineText.Init())
 	css.AddPlugin(flex.Init())
 
+	css.AddTransformer(text.Init())
+
 	el := element.Node{}
 	document := el.CreateElement("ROOT")
 	document.Style["width"] = "800px"
@@ -84,7 +87,7 @@ func New() Window {
 
 func (w *Window) Render(doc element.Node, state map[string]element.State) []element.State {
 	flatDoc := flatten(doc)
-	fmt.Println(len(flatDoc))
+	// fmt.Println(len(flatDoc))
 	store := []element.State{}
 
 	for _, v := range flatDoc {
@@ -165,11 +168,15 @@ func View(data *Window, width, height int32) {
 		newHash, _ := hashStruct(&data.Document.Children[0])
 		eventStore = events.GetEvents(&data.Document.Children[0], &state, eventStore)
 		if !bytes.Equal(hash, newHash) {
-			fmt.Println("##############################################")
+			// fmt.Println("##############################################")
 			hash = newHash
 			newDoc := CopyNode(data.Document.Children[0], &data.Document)
+
+			newDoc = data.CSS.Transform(newDoc)
+
+			fmt.Println(utils.InnerHTML(newDoc))
+			// fmt.Println(newDoc.QuerySelector("h1").InnerText, "hima")
 			data.CSS.ComputeNodeStyle(&newDoc, &state)
-			fmt.Println(utils.InnerHTML(*newDoc.QuerySelector("body")))
 			rd = data.Render(newDoc, state)
 			wm.LoadTextures(rd)
 			fmt.Println(len(state))
