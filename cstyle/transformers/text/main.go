@@ -24,15 +24,20 @@ func Init() cstyle.Transformer {
 				return n
 			}
 			words := strings.Split(strings.TrimSpace(n.InnerText), " ")
-			n.InnerText = words[0]
+			n.InnerText = ""
 			// fmt.Println("##########")
 			// fmt.Println(n.TagName)
 			// !ISSUE: issue is here don't know why
-			for i := 1; i < len(words); i++ {
-				el := n
-				el.InnerText = words[i]
-				n.Parent.InsertAfter(el, n)
-				// fmt.Println("inject", el.Properties.Id)
+			for i := 0; i < len(words); i++ {
+				if len(strings.TrimSpace(words[i])) > 0 {
+					el := n.CreateElement("notaspan")
+					el.InnerText = words[i]
+					n.AppendChild(el)
+					// el.Style["font-size"] = n.Style["font-size"]
+					// n.Parent.InsertAfter(el, n)
+					// fmt.Println("inject", el.Properties.Id)
+				}
+
 			}
 			return n
 		},

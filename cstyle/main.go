@@ -15,6 +15,7 @@ import (
 )
 
 // !TODO: Make a fine selector to target tags and if it has children or not etc
+// + could copy the transformers but idk
 type Plugin struct {
 	Styles  map[string]string
 	Level   int
@@ -36,14 +37,23 @@ type CSS struct {
 }
 
 func (c *CSS) Transform(n element.Node) element.Node {
+	fmt.Println("########")
+	fmt.Println(n.TagName)
+	// for i := 0; i < len(n.Children); i++ {
+	// 	v := n.Children[i]
+	// 	fmt.Println(v.TagName)
+	// }
+	for i := 0; i < len(n.Children); i++ {
+		v := n.Children[i]
+		fmt.Println(v.TagName)
+		n.Children[i] = c.Transform(v)
+	}
 	for _, v := range c.Transformers {
 		if v.Selector(&n) {
 			n = v.Handler(n)
 		}
 	}
-	for i, v := range n.Children {
-		n.Children[i] = c.Transform(v)
-	}
+
 	return n
 }
 
@@ -168,8 +178,6 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 		return n
 	}
 
-	// !TODO: Make a plugin type system that can rewrite nodes and matches by more than just tagname
-	// + should be ran here once a node is loaded
 	plugins := c.Plugins
 
 	s := *state
@@ -308,7 +316,6 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 		// if len(words) != 1 {
 		// 	if self.Style["display"] == "inline" {
 		// 		n.InnerText = words[0]
-		// 		// !ISSUE: issue is here don't know why
 		// 		// for i := 1; i < len(words); i++ {
 		// 		// el := *n
 		// 		// el.InnerText = strings.Join(words[1:], " ")
@@ -317,7 +324,6 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 		// 		// }
 
 		// 	} else {
-		// 		// !ISSUE: State egets filled up bc of this
 		// 		// el := n.CreateElement("notaspan")
 		// 		// el.InnerText = n.InnerText
 		// 		// n.AppendChild(el)
@@ -378,7 +384,6 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 			}
 		}
 		if matches {
-			// !NOTE: Might save memory by making a state map tree and passing that instead of the node it's self
 			v.Handler(n, state)
 		}
 	}
@@ -386,6 +391,8 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 	// n.InnerHTML = utils.InnerHTML(*n)
 	// tag, closing := utils.NodeToHTML(*n)
 	// n.OuterHTML = tag + n.InnerHTML + closing
+
+	// CheckNode(n, state)
 
 	return n
 }

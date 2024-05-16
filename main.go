@@ -152,7 +152,10 @@ func View(data *Window, width, height int32) {
 		newWidth := int32(rl.GetScreenWidth())
 		newHeight := int32(rl.GetScreenHeight())
 
+		resize := false
+
 		if newWidth != width || newHeight != height {
+			resize = true
 			rl.ClearBackground(rl.RayWhite)
 			// Window has been resized, handle the event
 			width = newWidth
@@ -167,7 +170,7 @@ func View(data *Window, width, height int32) {
 
 		newHash, _ := hashStruct(&data.Document.Children[0])
 		eventStore = events.GetEvents(&data.Document.Children[0], &state, eventStore)
-		if !bytes.Equal(hash, newHash) {
+		if !bytes.Equal(hash, newHash) || resize {
 			// fmt.Println("##############################################")
 			hash = newHash
 			newDoc := CopyNode(data.Document.Children[0], &data.Document)
@@ -179,6 +182,10 @@ func View(data *Window, width, height int32) {
 			data.CSS.ComputeNodeStyle(&newDoc, &state)
 			rd = data.Render(newDoc, state)
 			wm.LoadTextures(rd)
+			// !TODO: Clear out state
+			// + fix transforms to allow all element methods
+			// + run get styles before transforms are ran? this breaks the flow of the self.Styles... unless styles is made when CopyNode is ran
+			// + clean up could be put there
 			fmt.Println(len(state))
 			// for v := range state {
 			// 	fmt.Println(v)

@@ -525,6 +525,21 @@ func NodeToHTML(node element.Node) (string, string) {
 		buffer.WriteString(" id=\"" + node.Id + "\"")
 	}
 
+	// Add ID if present
+	if node.Title != "" {
+		buffer.WriteString(" title=\"" + node.Title + "\"")
+	}
+
+	// Add ID if present
+	if node.Src != "" {
+		buffer.WriteString(" src=\"" + node.Src + "\"")
+	}
+
+	// Add ID if present
+	if node.Href != "" {
+		buffer.WriteString(" href=\"" + node.Href + "\"")
+	}
+
 	// Add class list if present
 	if len(node.ClassList.Classes) > 0 || node.ClassList.Value != "" {
 		classes := ""
