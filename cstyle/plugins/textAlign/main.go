@@ -21,7 +21,7 @@ func Init() cstyle.Plugin {
 			// fmt.Println(n.Properties.Id)
 
 			// fmt.Println(n.Properties.Id, len(n.Children))
-			if self.Style["text-align"] == "center" {
+			if n.Style["text-align"] == "center" {
 				if len(n.Children) > 0 {
 					minX = s[n.Children[0].Properties.Id].X
 					baseY := s[n.Children[0].Properties.Id].Y + s[n.Children[0].Properties.Id].Height
@@ -59,7 +59,7 @@ func Init() cstyle.Plugin {
 						(*state)[n.Children[a].Properties.Id] = cState
 					}
 				}
-			} else if self.Style["text-align"] == "right" {
+			} else if n.Style["text-align"] == "right" {
 				if len(n.Children) > 0 {
 					minX = s[n.Children[0].Properties.Id].X
 					baseY := s[n.Children[0].Properties.Id].Y + s[n.Children[0].Properties.Id].Height

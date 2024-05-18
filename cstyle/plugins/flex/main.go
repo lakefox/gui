@@ -26,16 +26,16 @@ func Init() cstyle.Plugin {
 			self := s[n.Properties.Id]
 			// Brief: justify does not align the bottom row correctly
 			//        y axis also needs to be done
-			verbs := strings.Split(self.Style["flex-direction"], "-")
+			verbs := strings.Split(n.Style["flex-direction"], "-")
 
-			orderedNode := order(*n, state, n.Children, verbs[0], len(verbs) > 1, self.Style["flex-wrap"] == "wrap")
+			orderedNode := order(*n, state, n.Children, verbs[0], len(verbs) > 1, n.Style["flex-wrap"] == "wrap")
 
 			// var i int
 
 			colWidth := self.Width / float32(len(orderedNode))
 
 			var xOffset, yOffset float32
-			// if self.Style["justify-content"] == "space-evenly" {
+			// if n.Style["justify-content"] == "space-evenly" {
 			// 	b, _ := utils.ConvertToPixels(n.Children[i].Properties.Border.Width, n.Children[i].Properties.EM, n.Properties.Computed["width"])
 			// 	cwV := utils.Max((colWidth-(n.Children[i].Properties.Computed["width"]+(b*2)))/2, 0)
 			// 	xOffset = cwV
@@ -64,7 +64,7 @@ func Init() cstyle.Plugin {
 					itemState := s[item.Properties.Id]
 					cState := s[n.Children[i].Properties.Id]
 					// n.Children[i] = item
-					if self.Style["justify-content"] == "space-between" {
+					if n.Style["justify-content"] == "space-between" {
 						cwV := utils.Max((colWidth - (itemState.Width)), 0)
 						fmt.Println(colWidth, (itemState.Width), cwV, xOffset)
 						if a == 0 {
@@ -74,18 +74,18 @@ func Init() cstyle.Plugin {
 						} else {
 							cState.X += cwV / 2
 						}
-					} else if self.Style["justify-content"] == "flex-end" || self.Style["justify-content"] == "center" {
+					} else if n.Style["justify-content"] == "flex-end" || n.Style["justify-content"] == "center" {
 						dif := self.Width - (xOffset)
-						if self.Style["justify-content"] == "center" {
+						if n.Style["justify-content"] == "center" {
 							dif = dif / 2
 						}
 						cState.X += dif
-					} else if self.Style["justify-content"] == "flex-start" || self.Style["justify-content"] == "" {
+					} else if n.Style["justify-content"] == "flex-start" || n.Style["justify-content"] == "" {
 						cState.X += xOffset
 					} else {
 						cwV := utils.Max((colWidth-(itemState.Width))/2, 0)
 						var offset float32
-						if self.Style["justify-content"] == "space-evenly" {
+						if n.Style["justify-content"] == "space-evenly" {
 							offset = ((cwV * 2) / float32(len(orderedNode))) * float32(a)
 						}
 						cState.X += xOffset + (cwV - offset)
@@ -98,10 +98,10 @@ func Init() cstyle.Plugin {
 				xOffset += colWidth
 			}
 
-			content := self.Style["align-content"]
+			content := n.Style["align-content"]
 
-			if self.Style["flex-direction"] == "column" {
-				content = self.Style["justify-content"]
+			if n.Style["flex-direction"] == "column" {
+				content = n.Style["justify-content"]
 			}
 
 			if content != "" && content != "flex-start" {

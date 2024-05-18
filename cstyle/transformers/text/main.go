@@ -17,28 +17,39 @@ func Init() cstyle.Transformer {
 			} else {
 				return false
 			}
-			// return true
 		},
-		Handler: func(n element.Node) element.Node {
+		Handler: func(n element.Node, c *cstyle.CSS) element.Node {
 			if utils.IsParent(n, "head") {
 				return n
 			}
 			words := strings.Split(strings.TrimSpace(n.InnerText), " ")
 			n.InnerText = ""
-			// fmt.Println("##########")
-			// fmt.Println(n.TagName)
-			// !ISSUE: issue is here don't know why
-			for i := 0; i < len(words); i++ {
-				if len(strings.TrimSpace(words[i])) > 0 {
-					el := n.CreateElement("notaspan")
-					el.InnerText = words[i]
-					n.AppendChild(el)
-					// el.Style["font-size"] = n.Style["font-size"]
-					// n.Parent.InsertAfter(el, n)
-					// fmt.Println("inject", el.Properties.Id)
+			if n.Style["display"] == "inline" {
+				n.InnerText = words[0]
+				for i := 0; i < len(words)-1; i++ {
+					a := (len(words) - 1) - i
+					if len(strings.TrimSpace(words[a])) > 0 {
+						el := n.CreateElement("notaspan")
+						el.InnerText = words[a]
+						el.Parent = &n
+						el.Style = c.GetStyles(el)
+						n.Parent.InsertAfter(el, n)
+					}
 				}
 
+			} else {
+				for i := 0; i < len(words); i++ {
+					if len(strings.TrimSpace(words[i])) > 0 {
+						el := n.CreateElement("notaspan")
+						el.InnerText = words[i]
+						el.Parent = &n
+						el.Style = c.GetStyles(el)
+						el.Style["font-size"] = "1em"
+						n.AppendChild(el)
+					}
+				}
 			}
+
 			return n
 		},
 	}

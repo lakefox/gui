@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	_ "embed"
 	"encoding/json"
-	"fmt"
 	"gui/cstyle"
 	"gui/cstyle/plugins/flex"
 	"gui/cstyle/plugins/inline"
@@ -85,14 +84,33 @@ func New() Window {
 	}
 }
 
-func (w *Window) Render(doc element.Node, state map[string]element.State) []element.State {
+func (w *Window) Render(doc element.Node, state *map[string]element.State) []element.State {
+	s := *state
+
 	flatDoc := flatten(doc)
-	// fmt.Println(len(flatDoc))
+
 	store := []element.State{}
 
+	keys := []string{}
+
 	for _, v := range flatDoc {
-		store = append(store, state[v.Properties.Id])
+		store = append(store, s[v.Properties.Id])
+		keys = append(keys, v.Properties.Id)
 	}
+
+	// Create a set of keys to keep
+	keysSet := make(map[string]struct{}, len(keys))
+	for _, key := range keys {
+		keysSet[key] = struct{}{}
+	}
+
+	// Iterate over the map and delete keys not in the set
+	for k := range s {
+		if _, found := keysSet[k]; !found {
+			delete(s, k)
+		}
+	}
+
 	return store
 }
 
@@ -129,13 +147,6 @@ func View(data *Window, width, height int32) {
 
 	state := map[string]element.State{}
 
-	state["ROOT"] = element.State{
-		Style: map[string]string{
-			"width":  strconv.Itoa(int(width)) + "px",
-			"height": strconv.Itoa(int(height)) + "px",
-		},
-	}
-
 	shouldStop := false
 
 	var hash []byte
@@ -164,33 +175,24 @@ func View(data *Window, width, height int32) {
 			data.CSS.Width = float32(width)
 			data.CSS.Height = float32(height)
 
-			state["ROOT"].Style["width"] = strconv.Itoa(int(width)) + "px"
-			state["ROOT"].Style["height"] = strconv.Itoa(int(height)) + "px"
+			data.Document.Style["width"] = strconv.Itoa(int(width)) + "px"
+			data.Document.Style["height"] = strconv.Itoa(int(height)) + "px"
 		}
 
 		newHash, _ := hashStruct(&data.Document.Children[0])
 		eventStore = events.GetEvents(&data.Document.Children[0], &state, eventStore)
 		if !bytes.Equal(hash, newHash) || resize {
-			// fmt.Println("##############################################")
 			hash = newHash
-			newDoc := CopyNode(data.Document.Children[0], &data.Document)
+			newDoc := CopyNode(data.CSS, data.Document.Children[0], &data.Document)
 
 			newDoc = data.CSS.Transform(newDoc)
 
-			fmt.Println(utils.InnerHTML(newDoc))
-			// fmt.Println(newDoc.QuerySelector("h1").InnerText, "hima")
 			data.CSS.ComputeNodeStyle(&newDoc, &state)
-			rd = data.Render(newDoc, state)
+			rd = data.Render(newDoc, &state)
 			wm.LoadTextures(rd)
 			// !TODO: Clear out state
-			// + fix transforms to allow all element methods
-			// + run get styles before transforms are ran? this breaks the flow of the self.Styles... unless styles is made when CopyNode is ran
-			// + clean up could be put there
-			fmt.Println(len(state))
-			// for v := range state {
-			// 	fmt.Println(v)
-			// }
 			// !NOTE: Add inner and outerhtml here
+			AddHTML(&data.Document)
 		}
 		wm.Draw(rd)
 
@@ -200,7 +202,7 @@ func View(data *Window, width, height int32) {
 	}
 }
 
-func CopyNode(node element.Node, parent *element.Node) element.Node {
+func CopyNode(c cstyle.CSS, node element.Node, parent *element.Node) element.Node {
 	n := element.Node{}
 	n.TagName = node.TagName
 	n.InnerText = node.InnerText
@@ -224,8 +226,10 @@ func CopyNode(node element.Node, parent *element.Node) element.Node {
 
 	n.Parent = parent
 
+	n.Style = c.GetStyles(n)
+
 	for _, v := range node.Children {
-		n.Children = append(n.Children, CopyNode(v, &n))
+		n.Children = append(n.Children, CopyNode(c, v, &n))
 	}
 	return n
 }
@@ -269,7 +273,15 @@ func CreateNode(node *html.Node, parent *element.Node) {
 			}
 		}
 	}
+}
 
+func AddHTML(n *element.Node) {
+	n.InnerHTML = utils.InnerHTML(*n)
+	tag, closing := utils.NodeToHTML(*n)
+	n.OuterHTML = tag + n.InnerHTML + closing
+	for i := range n.Children {
+		AddHTML(&n.Children[i])
+	}
 }
 
 func parseHTMLFromFile(path string) ([]string, []string, *html.Node) {

@@ -20,8 +20,8 @@ func Init() cstyle.Plugin {
 			xCollect := float32(0)
 			for i, v := range n.Parent.Children {
 				vState := s[v.Properties.Id]
-				if vState.Style["position"] != "absolute" {
-					if vState.Style["display"] != "inline" {
+				if v.Style["position"] != "absolute" {
+					if v.Style["display"] != "inline" {
 						xCollect = 0
 					} else {
 						if v.Properties.Id == n.Properties.Id {
@@ -36,7 +36,7 @@ func Init() cstyle.Plugin {
 							}
 							break
 						} else {
-							if vState.Style["display"] == "inline" {
+							if v.Style["display"] == "inline" {
 								if colliderDetection(vState, self) {
 									xCollect += vState.Width
 								} else {

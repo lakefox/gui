@@ -52,11 +52,8 @@ type State struct {
 	EM         float32
 	Background ic.RGBA
 	Color      ic.RGBA
-	Hash       string
 	Margin     MarginPadding
 	Padding    MarginPadding
-	Style      map[string]string
-	Swap       Node
 }
 
 // !FLAG: Plan to get rid of this

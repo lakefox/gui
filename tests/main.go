@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"gui"
 	"gui/element"
-	"gui/utils"
 )
 
 // go tool pprof --pdf ./main.go /var/folders/7b/c07zbwkj03nf7cs4vm_0yw1w0000gn/T/profile1893611654/cpu.pprof > file.pdf
@@ -20,14 +19,7 @@ func main() {
 
 	document.QuerySelector("body").AddEventListener("click", func(e element.Event) {
 		fmt.Println("click")
-		// fmt.Println(document.QuerySelector("body").Style)
-		fmt.Println(utils.InnerHTML(*document.QuerySelector("body")))
-		// fmt.Println(document.QuerySelector("body").OuterHTML)
-		// c := document.QuerySelector("h1").Children
-		// for _, v := range c {
-		// 	fmt.Println(v.TagName, v.InnerText)
-		// }
-		// fmt.Println(document.QuerySelector("body").Style)
+		fmt.Println(document.QuerySelector("body").InnerHTML)
 	})
 
 	// btns := document.QuerySelectorAll(".button")
