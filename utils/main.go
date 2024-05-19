@@ -448,10 +448,17 @@ func GetInnerText(n *html.Node) string {
 
 	var getText func(*html.Node)
 	getText = func(n *html.Node) {
+		// Skip processing if the node is a head tag
+		if n.Type == html.ElementNode && n.Data == "head" {
+			return
+		}
+
+		// If it's a text node, append its content
 		if n.Type == html.TextNode {
 			result.WriteString(n.Data)
 		}
 
+		// Traverse child nodes recursively
 		for c := n.FirstChild; c != nil; c = c.NextSibling {
 			getText(c)
 		}

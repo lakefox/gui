@@ -128,15 +128,13 @@ func flatten(n element.Node) []element.Node {
 	return nodes
 }
 
-// !ISSUE: Need to make it skip over non modified elements
-
 func View(data *Window, width, height int32) {
 	debug := false
 	data.Document.Style["width"] = strconv.Itoa(int(width)) + "px"
 	data.Document.Style["height"] = strconv.Itoa(int(height)) + "px"
 
 	wm := window.NewWindowManager()
-	wm.FPS = true
+	// wm.FPS = true
 
 	wm.OpenWindow(width, height)
 	defer wm.CloseWindow()
@@ -190,8 +188,6 @@ func View(data *Window, width, height int32) {
 			data.CSS.ComputeNodeStyle(&newDoc, &state)
 			rd = data.Render(newDoc, &state)
 			wm.LoadTextures(rd)
-			// !TODO: Clear out state
-			// !NOTE: Add inner and outerhtml here
 			AddHTML(&data.Document)
 		}
 		wm.Draw(rd)
@@ -276,6 +272,7 @@ func CreateNode(node *html.Node, parent *element.Node) {
 }
 
 func AddHTML(n *element.Node) {
+	// Head is not renderable
 	n.InnerHTML = utils.InnerHTML(*n)
 	tag, closing := utils.NodeToHTML(*n)
 	n.OuterHTML = tag + n.InnerHTML + closing

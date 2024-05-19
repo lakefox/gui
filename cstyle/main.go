@@ -158,12 +158,12 @@ func CheckNode(n *element.Node, state *map[string]element.State) {
 	fmt.Printf("EM: %v\n", self.EM)
 	fmt.Printf("Parent: %v\n", n.Parent.TagName)
 	fmt.Printf("Classes: %v\n", n.ClassList.Classes)
-	fmt.Printf("Text: %v\n", n.InnerText)
+	// fmt.Printf("Text: %v\n", n.InnerText)
 	fmt.Printf("X: %v, Y: %v, Z: %v\n", self.X, self.Y, self.Z)
 	fmt.Printf("Width: %v, Height: %v\n", self.Width, self.Height)
 	fmt.Printf("Styles: %v\n", n.Style)
-	fmt.Printf("Background: %v\n", self.Background)
-	fmt.Printf("Border: %v\n\n\n", self.Border)
+	// fmt.Printf("Background: %v\n", self.Background)
+	// fmt.Printf("Border: %v\n\n\n", self.Border)
 }
 
 func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State) *element.Node {
@@ -360,7 +360,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 		}
 	}
 
-	// CheckNode(n, state)
+	CheckNode(n, state)
 
 	return n
 }

@@ -1,7 +1,6 @@
 package flex
 
 import (
-	"fmt"
 	"gui/cstyle"
 	"gui/element"
 	"gui/utils"
@@ -66,7 +65,7 @@ func Init() cstyle.Plugin {
 					// n.Children[i] = item
 					if n.Style["justify-content"] == "space-between" {
 						cwV := utils.Max((colWidth - (itemState.Width)), 0)
-						fmt.Println(colWidth, (itemState.Width), cwV, xOffset)
+						// fmt.Println(colWidth, (itemState.Width), cwV, xOffset)
 						if a == 0 {
 							cState.X += 0
 						} else if a == len(orderedNode)-1 {
