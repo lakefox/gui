@@ -32,19 +32,21 @@ func GetEvents(el *element.Node, state *map[string]element.State, prevEvents *ma
 	return prevEvents
 }
 
-func RunEvents(events *map[string]element.EventList) {
+func RunEvents(events *map[string]element.EventList) bool {
+	eventRan := false
 	for _, evt := range *events {
 		if len(evt.List) > 0 {
 			for _, v := range evt.List {
 				if len(evt.Event.Target.Properties.EventListeners[v]) > 0 {
 					for _, handler := range evt.Event.Target.Properties.EventListeners[v] {
 						handler(evt.Event)
+						eventRan = true
 					}
 				}
 			}
 		}
 	}
-
+	return eventRan
 }
 
 func loop(el *element.Node, state *map[string]element.State, data RLData, eventTracker *map[string]element.EventList) *element.Node {

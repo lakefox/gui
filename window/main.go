@@ -28,10 +28,11 @@ type Text struct {
 
 // WindowManager manages the window and rectangles
 type WindowManager struct {
-	Fonts      map[string]rl.Font
-	FPS        bool
-	FPSCounter fps.FPSCounter
-	Textures   map[int]Texture
+	Fonts        map[string]rl.Font
+	FPSCounterOn bool
+	FPS          int32
+	FPSCounter   fps.FPSCounter
+	Textures     map[int]Texture
 }
 
 type Texture struct {
@@ -55,6 +56,11 @@ func (wm *WindowManager) OpenWindow(width, height int32) {
 	rl.SetTargetFPS(30)
 	// Enable window resizing
 	rl.SetWindowState(rl.FlagWindowResizable)
+}
+
+func (wm *WindowManager) SetFSP(fps int32) {
+	wm.FPS = fps
+	rl.SetTargetFPS(fps)
 }
 
 // CloseWindow closes the window
@@ -102,10 +108,10 @@ func (wm *WindowManager) Draw(nodes []element.State) {
 					(node.Height),
 				)
 
-				node.Background.A = 100
-				node.Background.R = uint8((255 / len(nodes)) * i)
-				node.Background.G = uint8((255 / len(nodes)) * i)
-				node.Background.B = uint8((255 / len(nodes)) * i)
+				// node.Background.A = 100
+				// node.Background.R = uint8((255 / len(nodes)) * i)
+				// node.Background.G = uint8((255 / len(nodes)) * i)
+				// node.Background.B = uint8((255 / len(nodes)) * i)
 
 				rl.DrawRectangleRoundedLines(rect, rad/200, 1000, node.Border.Width, node.Border.Color)
 				rl.DrawRectangleRounded(rect, rad/200, 1000, node.Background)
@@ -128,7 +134,7 @@ func (wm *WindowManager) Draw(nodes []element.State) {
 		}
 	}
 
-	if wm.FPS {
+	if wm.FPSCounterOn {
 		wm.FPSCounter.Update()
 		wm.FPSCounter.Draw(10, 10, 10, rl.DarkGray)
 	}

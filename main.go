@@ -134,7 +134,7 @@ func View(data *Window, width, height int32) {
 	data.Document.Style["height"] = strconv.Itoa(int(height)) + "px"
 
 	wm := window.NewWindowManager()
-	// wm.FPS = true
+	wm.FPSCounterOn = true
 
 	wm.OpenWindow(width, height)
 	defer wm.CloseWindow()
@@ -185,9 +185,6 @@ func View(data *Window, width, height int32) {
 
 			newDoc = data.CSS.Transform(newDoc)
 
-			// !ISSUE: keeping state is causing weird second render mess ups on one page other break when not commented out
-			// state = map[string]element.State{}
-
 			data.CSS.ComputeNodeStyle(&newDoc, &state)
 			rd = data.Render(newDoc, &state)
 			wm.LoadTextures(rd)
@@ -195,7 +192,20 @@ func View(data *Window, width, height int32) {
 		}
 		wm.Draw(rd)
 
+		// could use a return value that indicates whether or not a event has ran to ramp/deramp fps based on activity
+
 		events.RunEvents(eventStore)
+		// ran := events.RunEvents(eventStore)
+
+		// if !ran {
+		// 	if wm.FPS < 60 {
+		// 		wm.SetFSP(wm.FPS + 1)
+		// 	}
+		// } else {
+		// 	if wm.FPS > 10 {
+		// 		wm.SetFSP(wm.FPS - 1)
+		// 	}
+		// }
 
 		rl.EndDrawing()
 	}
