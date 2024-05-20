@@ -19,6 +19,15 @@ func ParseRGBA(color string) (ic.RGBA, error) {
 	// Hex color format: #RRGGBB or #RRGGBBAA
 	if strings.HasPrefix(color, "#") {
 		hexValue := strings.TrimPrefix(color, "#")
+
+		// Check if it's a three-letter hex code and expand it to six-letter hex code
+		if len(hexValue) == 3 {
+			hexValue = fmt.Sprintf("%c%c%c%c%c%c",
+				hexValue[0], hexValue[0],
+				hexValue[1], hexValue[1],
+				hexValue[2], hexValue[2])
+		}
+
 		rgb, err := strconv.ParseUint(hexValue, 16, 32)
 		if err != nil {
 			return ic.RGBA{}, fmt.Errorf("error parsing hex color: %s", color)

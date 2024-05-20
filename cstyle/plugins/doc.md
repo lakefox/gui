@@ -2,9 +2,11 @@
 
 Plugins add the ability to choose what parts of the HTML/CSS spec you add to your application. If you are trying to keep compile sizes small you can remove as many as you need to reach your target size. Here we will go over the basics of how they work and how to use them.
 
+The difference between plugins and transformers is, plugins have a order when they need to be executed and run after the state has been initialised. Transformers on the other hand require nothing but the DOM and the init style definitions. Transformers are used to transform things like an ul tag into a simpler div structure and plugins are used mainly to compute styles outside of the main function (see flex, inline, etc...).
+
 ```go
 type Plugin struct {
-	Styles  map[string]string
+	Selector func(*element.Node) bool
 	Level   int
 	Handler func(*element.Node, *map[string]element.State)
 }
@@ -12,8 +14,8 @@ type Plugin struct {
 
 A plugin is a struct defined in CStyle, in contains three properties:
 
--   Styles
-    -   A map with CSS properties and values that the plugin should match on. There is also support for wildcard properties by setting the value to "\*"
+-   Selector
+    -   A function that determines if the plugin should run.
 -   Level
     -   Level of priority in which to execute
     -   All library level should be between 0 and 2

@@ -62,6 +62,7 @@ type WidthHeight struct {
 func GetWH(n element.Node, state *map[string]element.State) WidthHeight {
 	s := *state
 	self := s[n.Properties.Id]
+	parent := element.State{}
 
 	if n.Style == nil {
 		n.Style = map[string]string{}
@@ -71,6 +72,7 @@ func GetWH(n element.Node, state *map[string]element.State) WidthHeight {
 
 	var pwh WidthHeight
 	if n.Parent != nil {
+		parent = s[n.Parent.Properties.Id]
 		pwh = GetWH(*n.Parent, state)
 	} else {
 		pwh = WidthHeight{}
@@ -123,11 +125,11 @@ func GetWH(n element.Node, state *map[string]element.State) WidthHeight {
 	}
 
 	if n.Style["width"] == "100%" {
-		wh.Width -= (self.Margin.Right + self.Margin.Left + (self.Border.Width * 2))
+		wh.Width = wh.Width - ((self.Margin.Right + self.Margin.Left + (self.Border.Width * 2)) + (parent.Padding.Left + parent.Padding.Right) + (self.Padding.Left + self.Padding.Right))
 	}
 
 	if n.Style["height"] == "100%" {
-		wh.Height -= (self.Margin.Top + self.Margin.Bottom)
+		wh.Height -= (self.Margin.Top + self.Margin.Bottom) + (parent.Padding.Top + parent.Padding.Bottom)
 	}
 
 	return wh

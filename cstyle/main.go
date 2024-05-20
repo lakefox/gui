@@ -17,9 +17,9 @@ import (
 // !TODO: Make a fine selector to target tags and if it has children or not etc
 // + could copy the transformers but idk
 type Plugin struct {
-	Styles  map[string]string
-	Level   int
-	Handler func(*element.Node, *map[string]element.State)
+	Selector func(*element.Node) bool
+	Level    int
+	Handler  func(*element.Node, *map[string]element.State)
 }
 
 type Transformer struct {
@@ -158,7 +158,7 @@ func CheckNode(n *element.Node, state *map[string]element.State) {
 	fmt.Printf("EM: %v\n", self.EM)
 	fmt.Printf("Parent: %v\n", n.Parent.TagName)
 	fmt.Printf("Classes: %v\n", n.ClassList.Classes)
-	// fmt.Printf("Text: %v\n", n.InnerText)
+	fmt.Printf("Text: %v\n", n.InnerText)
 	fmt.Printf("X: %v, Y: %v, Z: %v\n", self.X, self.Y, self.Z)
 	fmt.Printf("Width: %v, Height: %v\n", self.Width, self.Height)
 	fmt.Printf("Styles: %v\n", n.Style)
@@ -193,7 +193,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 		return n
 	}
 
-	if n.Style["width"] == "" && n.Style["display"] == "block" {
+	if n.Style["width"] == "" && n.Style["display"] != "inline" {
 		n.Style["width"] = "100%"
 	}
 
@@ -349,13 +349,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 	})
 
 	for _, v := range plugins {
-		matches := true
-		for name, value := range v.Styles {
-			if n.Style[name] != value && !(value == "*") && n.Style[name] != "" {
-				matches = false
-			}
-		}
-		if matches {
+		if v.Selector(n) {
 			v.Handler(n, state)
 		}
 	}

@@ -7,8 +7,17 @@ import (
 
 func Init() cstyle.Plugin {
 	return cstyle.Plugin{
-		Styles: map[string]string{
-			"display": "inline",
+		Selector: func(n *element.Node) bool {
+			styles := map[string]string{
+				"display": "inline",
+			}
+			matches := true
+			for name, value := range styles {
+				if n.Style[name] != value && !(value == "*") && n.Style[name] != "" {
+					matches = false
+				}
+			}
+			return matches
 		},
 		Level: 1,
 		Handler: func(n *element.Node, state *map[string]element.State) {

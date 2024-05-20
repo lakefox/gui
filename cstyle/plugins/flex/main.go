@@ -10,13 +10,22 @@ import (
 
 func Init() cstyle.Plugin {
 	return cstyle.Plugin{
-		Styles: map[string]string{
-			"display":         "flex",
-			"justify-content": "*",
-			"align-content":   "*",
-			"align-items":     "*",
-			"flex-wrap":       "*",
-			"flex-direction":  "*",
+		Selector: func(n *element.Node) bool {
+			styles := map[string]string{
+				"display":         "flex",
+				"justify-content": "*",
+				"align-content":   "*",
+				"align-items":     "*",
+				"flex-wrap":       "*",
+				"flex-direction":  "*",
+			}
+			matches := true
+			for name, value := range styles {
+				if n.Style[name] != value && !(value == "*") && n.Style[name] != "" {
+					matches = false
+				}
+			}
+			return matches
 		},
 		Level: 2,
 		Handler: func(n *element.Node, state *map[string]element.State) {

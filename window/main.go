@@ -102,10 +102,10 @@ func (wm *WindowManager) Draw(nodes []element.State) {
 					(node.Height),
 				)
 
-				// node.Background.A = 100
-				// node.Background.R = uint8((255 / len(nodes)) * i)
-				// node.Background.G = uint8((255 / len(nodes)) * i)
-				// node.Background.B = uint8((255 / len(nodes)) * i)
+				node.Background.A = 100
+				node.Background.R = uint8((255 / len(nodes)) * i)
+				node.Background.G = uint8((255 / len(nodes)) * i)
+				node.Background.B = uint8((255 / len(nodes)) * i)
 
 				rl.DrawRectangleRoundedLines(rect, rad/200, 1000, node.Border.Width, node.Border.Color)
 				rl.DrawRectangleRounded(rect, rad/200, 1000, node.Background)

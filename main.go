@@ -185,6 +185,9 @@ func View(data *Window, width, height int32) {
 
 			newDoc = data.CSS.Transform(newDoc)
 
+			// !ISSUE: keeping state is causing weird second render mess ups on one page other break when not commented out
+			// state = map[string]element.State{}
+
 			data.CSS.ComputeNodeStyle(&newDoc, &state)
 			rd = data.Render(newDoc, &state)
 			wm.LoadTextures(rd)
