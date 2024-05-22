@@ -12,6 +12,7 @@ import (
 	"gui/cstyle/plugins/textAlign"
 	"gui/cstyle/transformers/text"
 	"gui/window"
+	"time"
 
 	"gui/element"
 	"gui/events"
@@ -150,6 +151,8 @@ func View(data *Window, width, height int32) {
 	var hash []byte
 	var rd []element.State
 
+	lastChange := time.Now()
+
 	// Main game loop
 	for !wm.WindowShouldClose() && !shouldStop {
 		// fmt.Println("######################")
@@ -180,6 +183,10 @@ func View(data *Window, width, height int32) {
 		newHash, _ := hashStruct(&data.Document.Children[0])
 		eventStore = events.GetEvents(&data.Document.Children[0], &state, eventStore)
 		if !bytes.Equal(hash, newHash) || resize {
+			if wm.FPS != 30 {
+				wm.SetFPS(30)
+			}
+			lastChange = time.Now()
 			hash = newHash
 			newDoc := CopyNode(data.CSS, data.Document.Children[0], &data.Document)
 
@@ -206,6 +213,12 @@ func View(data *Window, width, height int32) {
 		// 		wm.SetFSP(wm.FPS - 1)
 		// 	}
 		// }
+
+		if time.Since(lastChange) > 5*time.Second {
+			if wm.FPS != 1 {
+				wm.SetFPS(1)
+			}
+		}
 
 		rl.EndDrawing()
 	}

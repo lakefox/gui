@@ -21,7 +21,6 @@ let css = style(/*css*/ `
 (async () => {
     if (window.location.pathname == "/") {
         let docs = await getAll();
-        console.log(docs);
 
         let anchors = document.querySelectorAll("li a");
         for (let i = 0; i < anchors.length; i++) {

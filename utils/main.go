@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"gui/element"
-	"math"
 	"reflect"
 	"regexp"
 	"strconv"
@@ -12,30 +11,6 @@ import (
 
 	"golang.org/x/net/html"
 )
-
-// MapToInlineCSS converts a map[string]string to a string formatted like inline CSS style
-func MapToInline(m map[string]string) string {
-	var cssStrings []string
-	for key, value := range m {
-		cssStrings = append(cssStrings, fmt.Sprintf("%s: %s;", key, value))
-	}
-	return strings.Join(cssStrings, " ")
-}
-
-// InlineCSSToMap converts a string formatted like inline CSS style to a map[string]string
-func InlineToMap(cssString string) map[string]string {
-	cssMap := make(map[string]string)
-	declarations := strings.Split(cssString, ";")
-	for _, declaration := range declarations {
-		parts := strings.Split(strings.TrimSpace(declaration), ":")
-		if len(parts) == 2 {
-			key := strings.TrimSpace(parts[0])
-			value := strings.TrimSpace(parts[1])
-			cssMap[key] = value
-		}
-	}
-	return cssMap
-}
 
 func GetXY(n *element.Node, state *map[string]element.State) (float32, float32) {
 	s := *state
@@ -91,7 +66,13 @@ func GetWH(n element.Node, state *map[string]element.State) WidthHeight {
 		}
 	}
 
-	width, _ := ConvertToPixels(n.Style["width"], fs, pwh.Width)
+	wStyle := n.Style["width"]
+
+	if wStyle == "" && n.Style["display"] != "inline" {
+		wStyle = "100%"
+	}
+
+	width, _ := ConvertToPixels(wStyle, fs, pwh.Width)
 	height, _ := ConvertToPixels(n.Style["height"], fs, pwh.Height)
 
 	if n.Style["min-width"] != "" {
@@ -124,7 +105,7 @@ func GetWH(n element.Node, state *map[string]element.State) WidthHeight {
 		// fmt.Println(n.Properties.Id, wh, p)
 	}
 
-	if n.Style["width"] == "100%" {
+	if wStyle == "100%" {
 		wh.Width = wh.Width - ((self.Margin.Right + self.Margin.Left + (self.Border.Width * 2)) + (parent.Padding.Left + parent.Padding.Right) + (self.Padding.Left + self.Padding.Right))
 	}
 
@@ -302,20 +283,6 @@ func evaluateCalcExpression(expression string, em, max float32) (float32, error)
 	return result, nil
 }
 
-func GetTextBounds(text string, fontSize, width, height float32) (float32, float32) {
-	w := float32(len(text) * int(fontSize))
-	h := fontSize
-	if width > 0 && height > 0 {
-		if w > width {
-			height = Max(height, float32(math.Ceil(float64(w/width)))*h)
-		}
-		return width, height
-	} else {
-		return w, h
-	}
-
-}
-
 func Merge(m1, m2 map[string]string) map[string]string {
 	// Create a new map and copy m1 into it
 	result := make(map[string]string)
@@ -326,23 +293,6 @@ func Merge(m1, m2 map[string]string) map[string]string {
 	// Merge m2 into the new map
 	for k, v := range m2 {
 		result[k] = v
-	}
-
-	return result
-}
-
-func ExMerge(m1, m2 map[string]string) map[string]string {
-	// Create a new map and copy m1 into it
-	result := make(map[string]string)
-	for k, v := range m1 {
-		result[k] = v
-	}
-
-	// Merge m2 into the new map only if the key is not already present
-	for k, v := range m2 {
-		if result[k] == "" {
-			result[k] = v
-		}
 	}
 
 	return result
@@ -362,34 +312,6 @@ func Min(a, b float32) float32 {
 	} else {
 		return b
 	}
-}
-
-func FindRelative(n *element.Node, styleMap map[string]map[string]string) (float32, float32) {
-	pos := styleMap[n.Properties.Id]["position"]
-
-	if pos == "relative" {
-		x, _ := strconv.ParseFloat(styleMap[n.Properties.Id]["x"], 32)
-		y, _ := strconv.ParseFloat(styleMap[n.Properties.Id]["y"], 32)
-		return float32(x), float32(y)
-	} else {
-		if n.Parent != nil {
-			x, y := FindRelative(n.Parent, styleMap)
-			return x, y
-		} else {
-			return 0, 0
-		}
-	}
-}
-
-func ParseFloat(str string, def float32) float32 {
-	var a float32
-	if str == "" {
-		a = 0
-	} else {
-		v, _ := strconv.ParseFloat(str, 32)
-		a = float32(v)
-	}
-	return a
 }
 
 // getStructField uses reflection to get the value of a struct field by name
@@ -439,11 +361,11 @@ func SetStructFieldValue(data interface{}, fieldName string, newValue interface{
 	return nil
 }
 
-func Check(e error) {
-	if e != nil {
-		panic(e)
-	}
-}
+// func Check(e error) {
+// 	if e != nil {
+// 		panic(e)
+// 	}
+// }
 
 func GetInnerText(n *html.Node) string {
 	var result strings.Builder

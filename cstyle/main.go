@@ -54,8 +54,7 @@ func (c *CSS) Transform(n element.Node) element.Node {
 
 func (c *CSS) StyleSheet(path string) {
 	// Parse the CSS file
-	dat, err := os.ReadFile(path)
-	utils.Check(err)
+	dat, _ := os.ReadFile(path)
 	styles := parser.ParseCSS(string(dat))
 
 	c.StyleSheets = append(c.StyleSheets, styles)
@@ -193,10 +192,6 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 		return n
 	}
 
-	if n.Style["width"] == "" && n.Style["display"] != "inline" {
-		n.Style["width"] = "100%"
-	}
-
 	// Set Z index value to be sorted in window
 	if n.Style["z-index"] != "" {
 		z, _ := strconv.Atoi(n.Style["z-index"])
@@ -316,6 +311,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 
 	// Call children here
 	// !TODO: Make something that stops rendering things out of fov
+	fmt.Println("!HER", n.Properties.Id, self.Width, self.Height)
 
 	if self.Y < c.Height {
 		var childYOffset float32
@@ -359,7 +355,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 		}
 	}
 
-	// CheckNode(n, state)
+	CheckNode(n, state)
 
 	return n
 }

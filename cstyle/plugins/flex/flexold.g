@@ -1,7 +1,6 @@
-package flex
+package flexold
 
 import (
-	"fmt"
 	"gui/cstyle"
 	"gui/element"
 	"gui/utils"
@@ -31,7 +30,6 @@ func Init() cstyle.Plugin {
 		Level: 2,
 		Handler: func(n *element.Node, state *map[string]element.State) {
 			// !ISSUE: align-items is not impleamented
-			// + issues with the width when notaspans are included
 			s := *state
 			self := s[n.Properties.Id]
 			// Brief: justify does not align the bottom row correctly
@@ -39,36 +37,136 @@ func Init() cstyle.Plugin {
 			verbs := strings.Split(n.Style["flex-direction"], "-")
 
 			orderedNode := order(*n, state, n.Children, verbs[0], len(verbs) > 1, n.Style["flex-wrap"] == "wrap")
-			// fmt.Println(orderedNode)
-			fmt.Println("######")
-			for y := range orderedNode[0] {
-				fmt.Print(y, " ")
-			}
-			fmt.Print("\n")
 
-			for x, row := range orderedNode {
-				fmt.Print(x, " ")
-				for _, col := range row {
-					fmt.Print(col.Properties.Id, " ")
+			// var i int
+
+			colWidth := self.Width / float32(len(orderedNode))
+
+			var xOffset, yOffset float32
+			// if n.Style["justify-content"] == "space-evenly" {
+			// 	b, _ := utils.ConvertToPixels(n.Children[i].Properties.Border.Width, n.Children[i].Properties.EM, n.Properties.Computed["width"])
+			// 	cwV := utils.Max((colWidth-(n.Children[i].Properties.Computed["width"]+(b*2)))/2, 0)
+			// 	xOffset = cwV
+			// }
+
+			posTrack := map[int]int{}
+			p := 0
+
+			for a, column := range orderedNode {
+				var maxColumnHeight float32
+				for _, item := range column {
+					itemState := s[item.Properties.Id]
+					maxColumnHeight = utils.Max(itemState.Height, maxColumnHeight)
 				}
-				fmt.Print("\n")
+
+				yOffset = s[n.Children[0].Properties.Id].Y
+				for _, item := range column {
+					var i int
+					for c, v := range n.Children {
+						if v.Properties.Id == item.Properties.Id {
+							i = c
+						}
+					}
+					posTrack[p] = i
+					p++
+					itemState := s[item.Properties.Id]
+					cState := s[n.Children[i].Properties.Id]
+					// n.Children[i] = item
+					if n.Style["justify-content"] == "space-between" {
+						cwV := utils.Max((colWidth - (itemState.Width)), 0)
+						// fmt.Println(colWidth, (itemState.Width), cwV, xOffset)
+						if a == 0 {
+							cState.X += 0
+						} else if a == len(orderedNode)-1 {
+							cState.X += cwV
+						} else {
+							cState.X += cwV / 2
+						}
+					} else if n.Style["justify-content"] == "flex-end" || n.Style["justify-content"] == "center" {
+						dif := self.Width - (xOffset)
+						if n.Style["justify-content"] == "center" {
+							dif = dif / 2
+						}
+						cState.X += dif
+					} else if n.Style["justify-content"] == "flex-start" || n.Style["justify-content"] == "" {
+						cState.X += xOffset
+					} else {
+						cwV := utils.Max((colWidth-(itemState.Width))/2, 0)
+						var offset float32
+						if n.Style["justify-content"] == "space-evenly" {
+							offset = ((cwV * 2) / float32(len(orderedNode))) * float32(a)
+						}
+						cState.X += xOffset + (cwV - offset)
+					}
+					cState.Y = yOffset
+					yOffset += maxColumnHeight
+					(*state)[n.Children[i].Properties.Id] = cState
+					i++
+				}
+				xOffset += colWidth
 			}
 
-			// c := s[n.Children[0].Properties.Id]
-			// c.Width = 100
-			// (*state)[n.Children[0].Properties.Id] = c
+			content := n.Style["align-content"]
 
+			if n.Style["flex-direction"] == "column" {
+				content = n.Style["justify-content"]
+			}
+
+			if content != "" && content != "flex-start" {
+				var min, max, rows, col, currY float32
+				min = 1000000000000
+				for _, v := range n.Children {
+					vState := s[v.Properties.Id]
+					min = utils.Min(min, vState.Y)
+					max = utils.Max(max, vState.Height+vState.Y)
+					if vState.Y > currY {
+						rows++
+						currY = vState.Y
+					}
+				}
+
+				height := max - min
+				rowHeight := ((self.Height - height) / rows)
+				for e := range n.Children {
+					i := posTrack[e]
+					cState := s[n.Children[i].Properties.Id]
+					row := float32(int(e % int(rows)))
+					if row == 0 {
+						col++
+					}
+					if len(orderedNode[int(col)-1]) <= int(row) {
+						row = 0
+					}
+
+					if content == "center" {
+						cState.Y += (self.Height - height) / 2
+					} else if content == "flex-end" {
+						cState.Y += (self.Height - height)
+					} else if content == "space-around" {
+						cState.Y += (rowHeight * row) + (rowHeight / 2)
+					} else if content == "space-evenly" {
+						cState.Y += (rowHeight * row) + (rowHeight / 2)
+					} else if content == "space-between" {
+						cState.Y += (((self.Height - height) / (rows - 1)) * row)
+					} else if content == "stretch" {
+						cState.Y += (rowHeight * row)
+						if n.Children[i].Style["height"] == "" {
+							cState.Height = self.Height / rows
+						}
+					}
+					(*state)[n.Children[i].Properties.Id] = cState
+
+				}
+
+			}
 			(*state)[n.Properties.Id] = self
 		},
 	}
 }
 
 func order(p element.Node, state *map[string]element.State, elements []element.Node, direction string, reversed, wrap bool) [][]element.Node {
-	// Get the state of the parent node
 	s := *state
 	self := s[p.Properties.Id]
-
-	// Variables for handling direction and margins
 	var dir, marginStart, marginEnd string
 	if direction == "column" {
 		dir = "Height"
@@ -79,18 +177,13 @@ func order(p element.Node, state *map[string]element.State, elements []element.N
 		marginStart = "Left"
 		marginEnd = "Right"
 	}
-
-	// Get the maximum size in the specified direction
 	max, _ := utils.GetStructField(&self, dir)
 
-	// Container for the ordered nodes
 	nodes := [][]element.Node{}
 
 	if wrap {
-		// If wrapping is enabled
 		counter := 0
 		if direction == "column" {
-			// Collect nodes for column direction
 			collector := []element.Node{}
 			for _, v := range elements {
 				vState := s[v.Properties.Id]
@@ -98,8 +191,6 @@ func order(p element.Node, state *map[string]element.State, elements []element.N
 				elMS, _ := utils.GetStructField(&vState.Margin, marginStart)
 				elME, _ := utils.GetStructField(&vState.Margin, marginEnd)
 				tMax := elMax + elMS.(float32) + elME.(float32)
-
-				// Check if the current element can fit in the current row/column
 				if counter+int(tMax) < int(max.(float32)) {
 					collector = append(collector, v)
 				} else {
@@ -117,7 +208,6 @@ func order(p element.Node, state *map[string]element.State, elements []element.N
 				nodes = append(nodes, collector)
 			}
 		} else {
-			// Collect nodes for row direction
 			var mod int
 			for _, v := range elements {
 				vState := s[v.Properties.Id]
@@ -125,8 +215,6 @@ func order(p element.Node, state *map[string]element.State, elements []element.N
 				elMS, _ := utils.GetStructField(&vState.Margin, marginStart)
 				elME, _ := utils.GetStructField(&vState.Margin, marginEnd)
 				tMax := elMax + elMS.(float32) + elME.(float32)
-
-				// Check if the current element can fit in the current row/column
 				if counter+int(tMax) < int(max.(float32)) {
 					if len(nodes)-1 < mod {
 						nodes = append(nodes, []element.Node{v})
@@ -150,7 +238,6 @@ func order(p element.Node, state *map[string]element.State, elements []element.N
 			}
 		}
 	} else {
-		// If wrapping is not enabled
 		var tMax float32
 		for _, v := range elements {
 			vState := s[v.Properties.Id]
@@ -162,7 +249,7 @@ func order(p element.Node, state *map[string]element.State, elements []element.N
 
 		pMax, _ := utils.GetStructField(&self, dir)
 
-		// Resize nodes to fit
+		// Resize node to fit
 		var newSize float32
 		if tMax > pMax.(float32) {
 			newSize = pMax.(float32) / float32(len(elements))
@@ -191,9 +278,8 @@ func order(p element.Node, state *map[string]element.State, elements []element.N
 				slices.Reverse(nodes[0])
 			}
 		}
-	}
 
-	// Update the state of the parent node
+	}
 	(*state)[p.Properties.Id] = self
 
 	return nodes

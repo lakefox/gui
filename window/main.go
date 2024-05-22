@@ -58,7 +58,7 @@ func (wm *WindowManager) OpenWindow(width, height int32) {
 	rl.SetWindowState(rl.FlagWindowResizable)
 }
 
-func (wm *WindowManager) SetFSP(fps int32) {
+func (wm *WindowManager) SetFPS(fps int32) {
 	wm.FPS = fps
 	rl.SetTargetFPS(fps)
 }
