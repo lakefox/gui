@@ -19,7 +19,7 @@ func Init() cstyle.Plugin {
 			}
 			return matches
 		},
-		Level: 1,
+		Level: 2,
 		Handler: func(n *element.Node, state *map[string]element.State) {
 			s := *state
 			self := s[n.Properties.Id]

@@ -5,7 +5,6 @@ import (
 	"gui/cstyle"
 	"gui/element"
 	"gui/utils"
-	"slices"
 	"strings"
 )
 
@@ -14,11 +13,6 @@ func Init() cstyle.Plugin {
 		Selector: func(n *element.Node) bool {
 			styles := map[string]string{
 				"display": "flex",
-				// "justify-content": "*",
-				// "align-content":   "*",
-				// "align-items":     "*",
-				// "flex-wrap":       "*",
-				// "flex-direction":  "*",
 			}
 			matches := true
 			for name, value := range styles {
@@ -28,173 +22,83 @@ func Init() cstyle.Plugin {
 			}
 			return matches
 		},
-		Level: 2,
+		Level: 1,
 		Handler: func(n *element.Node, state *map[string]element.State) {
-			// !ISSUE: align-items is not impleamented
-			// + issues with the width when notaspans are included
 			s := *state
 			self := s[n.Properties.Id]
-			// Brief: justify does not align the bottom row correctly
-			//        y axis also needs to be done
+
 			verbs := strings.Split(n.Style["flex-direction"], "-")
-
-			orderedNode := order(*n, state, n.Children, verbs[0], len(verbs) > 1, n.Style["flex-wrap"] == "wrap")
-			// fmt.Println(orderedNode)
-			fmt.Println("######")
-			for y := range orderedNode[0] {
-				fmt.Print(y, " ")
+			flexDirection := verbs[0]
+			flexReversed := false
+			if len(verbs) > 1 {
+				flexReversed = true
 			}
-			fmt.Print("\n")
 
-			for x, row := range orderedNode {
-				fmt.Print(x, " ")
-				for _, col := range row {
-					fmt.Print(col.Properties.Id, " ")
+			flexWrapped := !(n.Style["flex-wrap"] != "nowrap")
+
+			hAlign := n.Style["align-content"]
+			if hAlign == "" {
+				hAlign = "normal"
+			}
+			vAlign := n.Style["align-items"]
+			if vAlign == "" {
+				vAlign = "normal"
+			}
+			justify := n.Style["justify-items"]
+			if justify == "" {
+				justify = "normal"
+			}
+
+			fmt.Println(flexDirection, flexReversed, flexWrapped, hAlign, vAlign, justify)
+
+			if flexDirection == "row" && !flexReversed && !flexWrapped {
+				for _, v := range n.Children {
+					vState := s[v.Properties.Id]
+
+					fmt.Println(getMinSize(&v, vState))
+					fmt.Println(getInnerSize(&v, s))
+					pw, ph := getMinSize(&v, vState)
+					w, h := getInnerSize(&v, s)
+					w += pw
+					h += ph
+					// !INSIGHT: if you change the width of the element then you need to re line the text...
+					vState.Width = 100
+					// vState.Width = w
+					vState.Height = h
+					(*state)[v.Properties.Id] = vState
 				}
-				fmt.Print("\n")
-			}
 
-			// c := s[n.Children[0].Properties.Id]
-			// c.Width = 100
-			// (*state)[n.Children[0].Properties.Id] = c
+			}
 
 			(*state)[n.Properties.Id] = self
 		},
 	}
 }
 
-func order(p element.Node, state *map[string]element.State, elements []element.Node, direction string, reversed, wrap bool) [][]element.Node {
-	// Get the state of the parent node
-	s := *state
-	self := s[p.Properties.Id]
-
-	// Variables for handling direction and margins
-	var dir, marginStart, marginEnd string
-	if direction == "column" {
-		dir = "Height"
-		marginStart = "Top"
-		marginEnd = "Bottom"
-	} else {
-		dir = "Width"
-		marginStart = "Left"
-		marginEnd = "Right"
+func getMinSize(n *element.Node, s element.State) (float32, float32) {
+	minW := s.Padding.Left + s.Padding.Right
+	minH := s.Padding.Top + s.Padding.Bottom
+	if n.Style["width"] != "" {
+		minW = s.Width
 	}
-
-	// Get the maximum size in the specified direction
-	max, _ := utils.GetStructField(&self, dir)
-
-	// Container for the ordered nodes
-	nodes := [][]element.Node{}
-
-	if wrap {
-		// If wrapping is enabled
-		counter := 0
-		if direction == "column" {
-			// Collect nodes for column direction
-			collector := []element.Node{}
-			for _, v := range elements {
-				vState := s[v.Properties.Id]
-				elMax := vState.Height
-				elMS, _ := utils.GetStructField(&vState.Margin, marginStart)
-				elME, _ := utils.GetStructField(&vState.Margin, marginEnd)
-				tMax := elMax + elMS.(float32) + elME.(float32)
-
-				// Check if the current element can fit in the current row/column
-				if counter+int(tMax) < int(max.(float32)) {
-					collector = append(collector, v)
-				} else {
-					if reversed {
-						slices.Reverse(collector)
-					}
-					nodes = append(nodes, collector)
-					collector = []element.Node{}
-					collector = append(collector, v)
-					counter = 0
-				}
-				counter += int(tMax)
-			}
-			if len(collector) > 0 {
-				nodes = append(nodes, collector)
-			}
-		} else {
-			// Collect nodes for row direction
-			var mod int
-			for _, v := range elements {
-				vState := s[v.Properties.Id]
-				elMax := vState.Width
-				elMS, _ := utils.GetStructField(&vState.Margin, marginStart)
-				elME, _ := utils.GetStructField(&vState.Margin, marginEnd)
-				tMax := elMax + elMS.(float32) + elME.(float32)
-
-				// Check if the current element can fit in the current row/column
-				if counter+int(tMax) < int(max.(float32)) {
-					if len(nodes)-1 < mod {
-						nodes = append(nodes, []element.Node{v})
-					} else {
-						nodes[mod] = append(nodes[mod], v)
-					}
-				} else {
-					mod = 0
-					counter = 0
-					if len(nodes)-1 < mod {
-						nodes = append(nodes, []element.Node{v})
-					} else {
-						nodes[mod] = append(nodes[mod], v)
-					}
-				}
-				counter += int(tMax)
-				mod++
-			}
-			if reversed {
-				slices.Reverse(nodes)
-			}
-		}
-	} else {
-		// If wrapping is not enabled
-		var tMax float32
-		for _, v := range elements {
-			vState := s[v.Properties.Id]
-			elMax, _ := utils.GetStructField(&vState, dir)
-			elMS, _ := utils.GetStructField(&vState.Margin, marginStart)
-			elME, _ := utils.GetStructField(&vState.Margin, marginEnd)
-			tMax += elMax.(float32) + elMS.(float32) + elME.(float32)
-		}
-
-		pMax, _ := utils.GetStructField(&self, dir)
-
-		// Resize nodes to fit
-		var newSize float32
-		if tMax > pMax.(float32) {
-			newSize = pMax.(float32) / float32(len(elements))
-		}
-		if dir == "Width" {
-			for _, v := range elements {
-				vState := s[v.Properties.Id]
-				if newSize != 0 {
-					vState.Width = newSize
-				}
-				nodes = append(nodes, []element.Node{v})
-			}
-			if reversed {
-				slices.Reverse(nodes)
-			}
-		} else {
-			nodes = append(nodes, []element.Node{})
-			for _, v := range elements {
-				vState := s[v.Properties.Id]
-				if newSize != 0 {
-					vState.Height = newSize
-				}
-				nodes[0] = append(nodes[0], v)
-			}
-			if reversed {
-				slices.Reverse(nodes[0])
-			}
-		}
+	if n.Style["height"] != "" {
+		minH = s.Height
 	}
+	return minW, minH
+}
 
-	// Update the state of the parent node
-	(*state)[p.Properties.Id] = self
+func getInnerSize(n *element.Node, s map[string]element.State) (float32, float32) {
+	minx := float32(10e10)
+	maxw := float32(0)
+	miny := float32(10e10)
+	maxh := float32(0)
+	for _, v := range n.Children {
+		vState := s[v.Properties.Id]
+		minx = utils.Min(vState.X, minx)
+		miny = utils.Min(vState.Y, miny)
 
-	return nodes
+		maxw = utils.Max(vState.X+vState.Width, maxw)
+		maxh = utils.Max(vState.Y+vState.Height, maxh)
+	}
+	return maxw - minx, maxh - miny
 }

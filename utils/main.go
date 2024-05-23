@@ -150,6 +150,38 @@ func GetMP(n element.Node, wh WidthHeight, state *map[string]element.State, t st
 		m.Bottom = b
 	}
 	if t == "margin" {
+		siblingMargin := float32(0)
+
+		// Margin Collapse (stupid fucking thing)
+		// - also not complete, see https://www.joshwcomeau.com/css/rules-of-margin-collapse/ for more details on implementation
+		// - this is a rough draft
+
+		if n.Parent != nil {
+			sibIndex := -1
+			for i, v := range n.Parent.Children {
+				if v.Properties.Id == n.Properties.Id {
+					sibIndex = i - 1
+					break
+				}
+			}
+			if sibIndex > -1 {
+				sib := s[n.Parent.Children[sibIndex].Properties.Id]
+				siblingMargin = sib.Margin.Bottom
+			}
+		}
+
+		if m.Top != 0 {
+			if m.Top < 0 {
+				m.Top = siblingMargin + m.Top
+			} else {
+				if m.Top > siblingMargin {
+					m.Top = m.Top - siblingMargin
+				} else {
+					m.Top = 0
+				}
+			}
+		}
+
 		if n.Style["margin"] == "auto" && n.Style["margin-left"] == "" && n.Style["margin-right"] == "" {
 			pwh := GetWH(*n.Parent, state)
 			m.Left = Max((pwh.Width-wh.Width)/2, 0)
@@ -472,8 +504,10 @@ func NodeToHTML(node element.Node) (string, string) {
 	if len(node.ClassList.Classes) > 0 || node.ClassList.Value != "" {
 		classes := ""
 		for _, v := range node.ClassList.Classes {
-			if string(v[0]) != ":" {
-				classes += v + " "
+			if len(v) > 0 {
+				if string(v[0]) != ":" {
+					classes += v + " "
+				}
 			}
 		}
 		classes = strings.TrimSpace(classes)

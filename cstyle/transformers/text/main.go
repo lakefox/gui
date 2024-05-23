@@ -10,10 +10,8 @@ import (
 func Init() cstyle.Transformer {
 	return cstyle.Transformer{
 		Selector: func(n *element.Node) bool {
-			if !utils.ChildrenHaveText(n) && len(n.InnerText) > 0 {
-				// Confirm text exists
-				words := strings.Split(strings.TrimSpace(n.InnerText), " ")
-				return len(words) != 1
+			if !utils.ChildrenHaveText(n) && len(strings.TrimSpace(n.InnerText)) > 0 {
+				return true
 			} else {
 				return false
 			}

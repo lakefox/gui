@@ -161,6 +161,8 @@ func CheckNode(n *element.Node, state *map[string]element.State) {
 	fmt.Printf("X: %v, Y: %v, Z: %v\n", self.X, self.Y, self.Z)
 	fmt.Printf("Width: %v, Height: %v\n", self.Width, self.Height)
 	fmt.Printf("Styles: %v\n", n.Style)
+	fmt.Printf("Margin: %v\n", self.Margin)
+	fmt.Printf("Padding: %v\n", self.Padding)
 	// fmt.Printf("Background: %v\n", self.Background)
 	// fmt.Printf("Border: %v\n\n\n", self.Border)
 }
@@ -250,7 +252,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 		for i, v := range n.Parent.Children {
 			if v.Style["position"] != "absolute" {
 				if v.Properties.Id == n.Properties.Id {
-					if i-1 > 0 {
+					if i-1 > -1 {
 						sib := n.Parent.Children[i-1]
 						sibling := s[sib.Properties.Id]
 						if sib.Style["position"] != "absolute" {
@@ -310,9 +312,8 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 	(*state)[n.Parent.Properties.Id] = parent
 
 	// Call children here
-	// !TODO: Make something that stops rendering things out of fov
-	fmt.Println("!HER", n.Properties.Id, self.Width, self.Height)
 
+	// Check to see if node is in fov
 	if self.Y < c.Height {
 		var childYOffset float32
 		for i := 0; i < len(n.Children); i++ {
@@ -355,7 +356,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 		}
 	}
 
-	CheckNode(n, state)
+	// CheckNode(n, state)
 
 	return n
 }
