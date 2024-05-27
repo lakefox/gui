@@ -125,14 +125,19 @@ func Init() cstyle.Plugin {
 					applyBlock(&v, state)
 				}
 				// Set the heights based on the tallest one
-				innerSizes = [][]float32{}
-				for _, v := range n.Children {
-					w, h := getInnerSize(&v, state)
-					innerSizes = append(innerSizes, []float32{w, h})
+				if n.Style["height"] == "" {
+
+					innerSizes = [][]float32{}
+					for _, v := range n.Children {
+						w, h := getInnerSize(&v, state)
+						innerSizes = append(innerSizes, []float32{w, h})
+					}
+					sort.Slice(innerSizes, func(i, j int) bool {
+						return innerSizes[i][1] > innerSizes[j][1]
+					})
+				} else {
+					innerSizes[0][1] = self.Height
 				}
-				sort.Slice(innerSizes, func(i, j int) bool {
-					return innerSizes[i][1] > innerSizes[j][1]
-				})
 				for _, v := range n.Children {
 					vState := s[v.Properties.Id]
 					vState.Height = innerSizes[0][1]
@@ -140,8 +145,10 @@ func Init() cstyle.Plugin {
 				}
 
 			}
-			_, h := getInnerSize(n, state)
-			self.Height = h
+			if n.Style["height"] == "" {
+				_, h := getInnerSize(n, state)
+				self.Height = h
+			}
 			(*state)[n.Properties.Id] = self
 		},
 	}
@@ -151,19 +158,19 @@ func applyBlock(n *element.Node, state *map[string]element.State) {
 	accum := float32(0)
 	inlineOffset := float32(0)
 	s := *state
+	lastHeight := float32(0)
 	baseY := s[n.Children[0].Properties.Id].Y
 	for i := 0; i < len(n.Children); i++ {
 		v := &n.Children[i]
 		vState := s[v.Properties.Id]
 
 		if v.Style["display"] != "block" {
-			accum = (vState.Y - baseY)
 			vState.Y += inlineOffset
+			accum = (vState.Y - baseY)
+			lastHeight = vState.Height
 		} else if v.Style["position"] != "absolute" {
 			vState.Y += accum
-			// !ISSUE: need to account fo rmultiple block elements and margin padding border and non asbsoulute
-			inlineOffset = ((vState.Y - baseY) + (vState.Height + (vState.Border.Width * 2) + vState.Margin.Top + vState.Margin.Bottom + vState.Padding.Top + vState.Padding.Bottom)) - accum
-			accum = 0
+			inlineOffset += (vState.Height + (vState.Border.Width * 2) + vState.Margin.Top + vState.Margin.Bottom + vState.Padding.Top + vState.Padding.Bottom) + lastHeight
 		}
 		(*state)[v.Properties.Id] = vState
 	}

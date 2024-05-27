@@ -314,32 +314,32 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 	// Call children here
 
 	// Check to see if node is in fov
-	if self.Y < c.Height {
-		var childYOffset float32
-		for i := 0; i < len(n.Children); i++ {
-			v := n.Children[i]
-			v.Parent = n
-			// This is were the tainting comes from
-			n.Children[i] = *c.ComputeNodeStyle(&v, state)
+	// if self.Y < c.Height {
+	var childYOffset float32
+	for i := 0; i < len(n.Children); i++ {
+		v := n.Children[i]
+		v.Parent = n
+		// This is were the tainting comes from
+		n.Children[i] = *c.ComputeNodeStyle(&v, state)
 
-			cState := (*state)[n.Children[i].Properties.Id]
-			if n.Style["height"] == "" {
-				if v.Style["position"] != "absolute" && cState.Y+cState.Height > childYOffset {
-					childYOffset = cState.Y + cState.Height
-					self.Height = (cState.Y - self.Border.Width) - (self.Y) + cState.Height
-					self.Height += cState.Margin.Top
-					self.Height += cState.Margin.Bottom
-					self.Height += cState.Padding.Top
-					self.Height += cState.Padding.Bottom
-				}
-			}
-			if cState.Width > self.Width {
-				self.Width = cState.Width
+		cState := (*state)[n.Children[i].Properties.Id]
+		if n.Style["height"] == "" {
+			if v.Style["position"] != "absolute" && cState.Y+cState.Height > childYOffset {
+				childYOffset = cState.Y + cState.Height
+				self.Height = (cState.Y - self.Border.Width) - (self.Y) + cState.Height
+				self.Height += cState.Margin.Top
+				self.Height += cState.Margin.Bottom
+				self.Height += cState.Padding.Top
+				self.Height += cState.Padding.Bottom
 			}
 		}
-	} else {
-		return n
+		if cState.Width > self.Width {
+			self.Width = cState.Width
+		}
 	}
+	// } else {
+	// return n
+	// }
 
 	self.Height += self.Padding.Bottom
 
