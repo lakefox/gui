@@ -116,8 +116,7 @@ func (wm *WindowManager) Draw(nodes []element.State) {
 				rl.DrawRectangleRoundedLines(rect, rad/200, 1000, node.Border.Width, node.Border.Color)
 				rl.DrawRectangleRounded(rect, rad/200, 1000, node.Background)
 
-				// fmt.Println(node.Text.Image == nil, node.Text.Text)
-				// fmt.Printf("%v\n", node.Text)
+				// Adding a mask to the state that tell here how to cut off text and other elements could be used for scroll and overflow
 
 				if node.Texture != nil {
 					r, g, b, a := node.Color.RGBA()

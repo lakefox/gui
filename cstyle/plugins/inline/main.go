@@ -19,13 +19,14 @@ func Init() cstyle.Plugin {
 			}
 			return matches
 		},
-		Level: 2,
+		Level: 1,
 		Handler: func(n *element.Node, state *map[string]element.State) {
 			s := *state
 			self := s[n.Properties.Id]
 			parent := s[n.Parent.Properties.Id]
 			copyOfX := self.X
 			copyOfY := self.Y
+
 			xCollect := float32(0)
 			for i, v := range n.Parent.Children {
 				vState := s[v.Properties.Id]
@@ -45,12 +46,11 @@ func Init() cstyle.Plugin {
 							}
 							break
 						} else {
-							if v.Style["display"] == "inline" {
-								if colliderDetection(vState, self) {
-									xCollect += vState.Width
-								} else {
-									xCollect = 0
-								}
+							if colliderDetection(vState, self) {
+								xCollect += vState.Width
+							} else {
+								xCollect = vState.Width
+								self.Y = vState.Y
 							}
 						}
 					}
