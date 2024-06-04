@@ -183,7 +183,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 	self.Background = color.Parse(n.Style, "background")
 	self.Border, _ = CompleteBorder(n.Style, self, parent)
 
-	fs, _ := utils.ConvertToPixels(n.Style["font-size"], parent.EM, parent.Width)
+	fs := utils.ConvertToPixels(n.Style["font-size"], parent.EM, parent.Width)
 	self.EM = fs
 
 	if n.Style["display"] == "none" {
@@ -228,22 +228,22 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 		bas := utils.GetPositionOffsetNode(n)
 		base := s[bas.Properties.Id]
 		if n.Style["top"] != "" {
-			v, _ := utils.ConvertToPixels(n.Style["top"], self.EM, parent.Width)
+			v := utils.ConvertToPixels(n.Style["top"], self.EM, parent.Width)
 			y = v + base.Y
 			top = true
 		}
 		if n.Style["left"] != "" {
-			v, _ := utils.ConvertToPixels(n.Style["left"], self.EM, parent.Width)
+			v := utils.ConvertToPixels(n.Style["left"], self.EM, parent.Width)
 			x = v + base.X
 			left = true
 		}
 		if n.Style["right"] != "" {
-			v, _ := utils.ConvertToPixels(n.Style["right"], self.EM, parent.Width)
+			v := utils.ConvertToPixels(n.Style["right"], self.EM, parent.Width)
 			x = (base.Width - width) - v
 			right = true
 		}
 		if n.Style["bottom"] != "" {
-			v, _ := utils.ConvertToPixels(n.Style["bottom"], self.EM, parent.Width)
+			v := utils.ConvertToPixels(n.Style["bottom"], self.EM, parent.Width)
 			y = (base.Height - height) - v
 			bottom = true
 		}
@@ -302,10 +302,8 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 
 	if !utils.ChildrenHaveText(n) && len(n.InnerText) > 0 {
 		// Confirm text exists
-		if len(strings.TrimSpace(n.InnerText)) > 0 {
-			n.InnerText = strings.TrimSpace(n.InnerText)
-			self = genTextNode(n, state)
-		}
+		n.InnerText = strings.TrimSpace(n.InnerText)
+		self = genTextNode(n, state)
 	}
 
 	(*state)[n.Properties.Id] = self
@@ -386,7 +384,7 @@ func CompleteBorder(cssProperties map[string]string, self, parent element.State)
 
 		parsedColor, _ := color.Color(borderColor)
 
-		w, _ := utils.ConvertToPixels(width, self.EM, parent.Width)
+		w := utils.ConvertToPixels(width, self.EM, parent.Width)
 
 		return element.Border{
 			Width:  w,
@@ -421,9 +419,9 @@ func genTextNode(n *element.Node, state *map[string]element.State) element.State
 		text.Font = f
 	}
 
-	letterSpacing, _ := utils.ConvertToPixels(n.Style["letter-spacing"], self.EM, parent.Width)
-	wordSpacing, _ := utils.ConvertToPixels(n.Style["word-spacing"], self.EM, parent.Width)
-	lineHeight, _ := utils.ConvertToPixels(n.Style["line-height"], self.EM, parent.Width)
+	letterSpacing := utils.ConvertToPixels(n.Style["letter-spacing"], self.EM, parent.Width)
+	wordSpacing := utils.ConvertToPixels(n.Style["word-spacing"], self.EM, parent.Width)
+	lineHeight := utils.ConvertToPixels(n.Style["line-height"], self.EM, parent.Width)
 	if lineHeight == 0 {
 		lineHeight = self.EM + 3
 	}
@@ -446,7 +444,7 @@ func genTextNode(n *element.Node, state *map[string]element.State) element.State
 	if n.Style["text-decoration-thickness"] == "auto" || n.Style["text-decoration-thickness"] == "" {
 		dt = self.EM / 7
 	} else {
-		dt, _ = utils.ConvertToPixels(n.Style["text-decoration-thickness"], self.EM, parent.Width)
+		dt = utils.ConvertToPixels(n.Style["text-decoration-thickness"], self.EM, parent.Width)
 	}
 
 	col := color.Parse(n.Style, "font")

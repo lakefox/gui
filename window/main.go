@@ -98,7 +98,7 @@ func (wm *WindowManager) Draw(nodes []element.State) {
 		for i, node := range nodes {
 
 			if node.Z == indexes[a] {
-				rad, _ := utils.ConvertToPixels(node.Border.Radius, node.EM, node.Width)
+				rad := utils.ConvertToPixels(node.Border.Radius, node.EM, node.Width)
 				rad = rad * 3
 				p := node.Padding
 

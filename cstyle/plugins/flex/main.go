@@ -1,7 +1,6 @@
 package flex
 
 import (
-	"fmt"
 	"gui/cstyle"
 	"gui/cstyle/plugins/inline"
 	"gui/element"
@@ -9,6 +8,10 @@ import (
 	"sort"
 	"strings"
 )
+
+// !ISSUES: Text disapearing (i think its the inline plugin)
+// + height adjust on wrap
+// + full screen positioning issues
 
 func Init() cstyle.Plugin {
 	return cstyle.Plugin{
@@ -31,12 +34,20 @@ func Init() cstyle.Plugin {
 
 			verbs := strings.Split(n.Style["flex-direction"], "-")
 			flexDirection := verbs[0]
+			if flexDirection == "" {
+				flexDirection = "row"
+			}
 			flexReversed := false
 			if len(verbs) > 1 {
 				flexReversed = true
 			}
 
-			flexWrapped := !(n.Style["flex-wrap"] != "nowrap")
+			var flexWrapped bool
+			if n.Style["flex-wrap"] == "wrap" {
+				flexWrapped = true
+			} else {
+				flexWrapped = false
+			}
 
 			hAlign := n.Style["align-content"]
 			if hAlign == "" {
@@ -50,17 +61,22 @@ func Init() cstyle.Plugin {
 			if justify == "" {
 				justify = "normal"
 			}
+			// fmt.Println(flexDirection, flexReversed, flexWrapped, hAlign, vAlign, justify)
 
-			fmt.Println(flexDirection, flexReversed, flexWrapped, hAlign, vAlign, justify)
+			if flexDirection == "row" {
 
-			if flexDirection == "row" && !flexReversed && !flexWrapped {
+				// Reverse elements
+				if flexReversed {
+					flexReverse(n, state)
+				}
+				// Get inital sizing
 				textTotal := 0
 				textCounts := []int{}
 				widths := []float32{}
 				innerSizes := [][]float32{}
 				minWidths := []float32{}
+				maxWidths := []float32{}
 				for _, v := range n.Children {
-					// vState := s[v.Properties.Id]
 					count := countText(v)
 					textTotal += count
 					textCounts = append(textCounts, count)
@@ -68,82 +84,200 @@ func Init() cstyle.Plugin {
 					minw := getMinWidth(&v, state)
 					minWidths = append(minWidths, minw)
 
+					maxw := getMaxWidth(&v, state)
+					maxWidths = append(maxWidths, maxw)
+
 					w, h := getInnerSize(&v, state)
 					innerSizes = append(innerSizes, []float32{w, h})
 				}
 				selfWidth := (self.Width - self.Padding.Left) - self.Padding.Right
-				// If the elements are under the size of the container to need to resize
-				if add2d(innerSizes, 0) < selfWidth {
-					for _, v := range innerSizes {
-						widths = append(widths, v[0])
+				// if the elements are less than the size of the parent, don't change widths. Just set mins
+				if !flexWrapped {
+					if add2d(innerSizes, 0) < selfWidth {
+						for i, v := range n.Children {
+							vState := s[v.Properties.Id]
+
+							w := innerSizes[i][0]
+							w -= vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2)
+							widths = append(widths, w)
+						}
+					} else {
+						// Modifiy the widths so they aren't under the mins
+						for i, v := range n.Children {
+							vState := s[v.Properties.Id]
+
+							w := ((selfWidth / float32(textTotal)) * float32(textCounts[i]))
+							w -= vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2)
+
+							if w < minWidths[i] {
+								selfWidth -= minWidths[i] + vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2)
+								textTotal -= textCounts[i]
+								textCounts[i] = 0
+							}
+
+						}
+						for i, v := range n.Children {
+							vState := s[v.Properties.Id]
+
+							w := ((selfWidth / float32(textTotal)) * float32(textCounts[i]))
+							w -= vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2)
+							// (w!=w) is of NaN
+							if w < minWidths[i] || (w != w) {
+								w = minWidths[i]
+							}
+							widths = append(widths, w)
+						}
 					}
-				} else {
-					// Modifiy the widths so they aren't under the mins
+					// Apply the new widths
+					fState := s[n.Children[0].Properties.Id]
 					for i, v := range n.Children {
 						vState := s[v.Properties.Id]
 
-						w := ((selfWidth / float32(textTotal)) * float32(textCounts[i]))
-						w -= vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2)
-
-						if w < minWidths[i] {
-							selfWidth -= minWidths[i] + vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2)
-							textTotal -= textCounts[i]
-							textCounts[i] = 0
+						vState.Width = widths[i]
+						xStore := vState.X
+						if i > 0 {
+							sState := s[n.Children[i-1].Properties.Id]
+							vState.X = sState.X + sState.Width + sState.Margin.Right + vState.Margin.Left + sState.Border.Width + vState.Border.Width
+							propagateOffsets(&v, xStore, vState.Y, vState.X, fState.Y, state)
 						}
 
+						vState.Y = fState.Y
+
+						(*state)[v.Properties.Id] = vState
+						deInline(&v, state)
+						applyInline(&v, state)
+						applyBlock(&v, state)
 					}
-					for i, v := range n.Children {
+
+					// Set the heights based on the tallest one
+					if n.Style["height"] == "" {
+
+						innerSizes = [][]float32{}
+						for _, v := range n.Children {
+							w, h := getInnerSize(&v, state)
+							innerSizes = append(innerSizes, []float32{w, h})
+						}
+						sort.Slice(innerSizes, func(i, j int) bool {
+							return innerSizes[i][1] > innerSizes[j][1]
+						})
+					} else {
+						innerSizes[0][1] = self.Height
+					}
+					for _, v := range n.Children {
+						vState := s[v.Properties.Id]
+						vState.Height = innerSizes[0][1]
+						(*state)[v.Properties.Id] = vState
+					}
+				} else {
+					// Flex Wrapped
+					sum := innerSizes[0][0]
+					shifted := false
+					for i := 0; i < len(n.Children); i++ {
+						v := n.Children[i]
 						vState := s[v.Properties.Id]
 
-						w := ((selfWidth / float32(textTotal)) * float32(textCounts[i]))
-						w -= vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2)
-						if w < minWidths[i] {
-							w = minWidths[i]
+						// if the next plus current will break then
+						w := innerSizes[i][0]
+						if i > 0 {
+							sib := s[n.Children[i-1].Properties.Id]
+							if w+sum > selfWidth {
+								if maxWidths[i] > selfWidth {
+									w = selfWidth - vState.Margin.Left - vState.Margin.Right - (vState.Border.Width * 2)
+								}
+								sum = 0
+								shifted = true
+							} else {
+								if !shifted {
+									propagateOffsets(&v, vState.X, vState.Y, vState.X, sib.Y, state)
+
+									vState.Y = sib.Y
+									(*state)[v.Properties.Id] = vState
+								} else {
+									shifted = false
+								}
+								sum += w
+							}
 						}
 
 						widths = append(widths, w)
 					}
-				}
-				// Apply the new widths
-				fState := s[n.Children[0].Properties.Id]
-				for i, v := range n.Children {
-					vState := s[v.Properties.Id]
 
-					vState.Width = widths[i]
-					xStore := vState.X
-					if i > 0 {
-						sState := s[n.Children[i-1].Properties.Id]
-						vState.X = sState.X + sState.Width + sState.Margin.Right + vState.Margin.Left + sState.Border.Width + vState.Border.Width
-						propagateOffsets(&v, xStore, vState.Y, vState.X, fState.Y, state)
+					// Move the elements into the correct position
+					rows := [][]int{}
+					start := 0
+					maxH := float32(0)
+					var prevOffset float32
+					for i := 0; i < len(n.Children); i++ {
+						v := n.Children[i]
+						vState := s[v.Properties.Id]
+
+						vState.Width = widths[i]
+						xStore := vState.X
+						yStore := vState.Y
+
+						if i > 0 {
+							sib := s[n.Children[i-1].Properties.Id]
+							if vState.Y+prevOffset == sib.Y {
+								vState.Y += prevOffset
+
+								if vState.Height < sib.Height {
+									vState.Height = sib.Height
+								}
+								// Shift right if on a row with sibling
+								xStore = sib.X + sib.Width + sib.Margin.Right + sib.Border.Width + vState.Margin.Left + vState.Border.Width
+							} else {
+								// Shift under sibling
+								yStore = sib.Y + sib.Height + sib.Margin.Top + sib.Margin.Bottom + sib.Border.Width*2
+								prevOffset = yStore - vState.Y
+								rows = append(rows, []int{start, i, int(maxH)})
+								start = i
+								maxH = 0
+							}
+							propagateOffsets(&v, vState.X, vState.Y, xStore, yStore, state)
+						}
+						vState.X = xStore
+						vState.Y = yStore
+
+						(*state)[v.Properties.Id] = vState
+						deInline(&v, state)
+						applyInline(&v, state)
+						applyBlock(&v, state)
+						_, h := getInnerSize(&v, state)
+						h = utils.Max(h, vState.Height)
+						maxH = utils.Max(maxH, h)
+						vState.Height = h
+						(*state)[v.Properties.Id] = vState
 					}
-
-					vState.Y = fState.Y
-
-					(*state)[v.Properties.Id] = vState
-					deInline(&v, state)
-					applyInline(&v, state)
-					applyBlock(&v, state)
-				}
-				// Set the heights based on the tallest one
-				if n.Style["height"] == "" {
-
-					innerSizes = [][]float32{}
-					for _, v := range n.Children {
-						w, h := getInnerSize(&v, state)
-						innerSizes = append(innerSizes, []float32{w, h})
+					if start < len(n.Children)-1 {
+						rows = append(rows, []int{start, len(n.Children) - 1, int(maxH)})
 					}
-					sort.Slice(innerSizes, func(i, j int) bool {
-						return innerSizes[i][1] > innerSizes[j][1]
-					})
-				} else {
-					innerSizes[0][1] = self.Height
-				}
-				for _, v := range n.Children {
-					vState := s[v.Properties.Id]
-					vState.Height = innerSizes[0][1]
-					(*state)[v.Properties.Id] = vState
+					for _, v := range rows {
+						for i := v[0]; i < v[1]; i++ {
+							vState := s[n.Children[i].Properties.Id]
+							vState.Height = float32(v[2])
+							(*state)[n.Children[i].Properties.Id] = vState
+						}
+					}
 				}
 
+				// Shift to the right if reversed
+				if flexReversed {
+					last := s[n.Children[len(n.Children)-1].Properties.Id]
+					offset := (self.X + self.Width - self.Padding.Right) - (last.X + last.Width + last.Margin.Right + last.Border.Width)
+					for i, v := range n.Children {
+						vState := s[v.Properties.Id]
+						propagateOffsets(&n.Children[i], vState.X, vState.Y, vState.X+offset, vState.Y, state)
+						vState.X += offset
+
+						(*state)[v.Properties.Id] = vState
+					}
+				}
+
+			}
+
+			// Column doesn't really need a lot done bc it is basically block styling rn
+			if flexDirection == "column" && flexReversed {
+				flexReverse(n, state)
 			}
 			if n.Style["height"] == "" {
 				_, h := getInnerSize(n, state)
@@ -277,6 +411,22 @@ func getMinWidth(n *element.Node, state *map[string]element.State) float32 {
 	selfWidth += self.Padding.Left + self.Padding.Right
 	return selfWidth
 }
+func getMaxWidth(n *element.Node, state *map[string]element.State) float32 {
+	s := *state
+	self := s[n.Properties.Id]
+	selfWidth := float32(0)
+
+	if len(n.Children) > 0 {
+		for _, v := range n.Children {
+			selfWidth += getNodeWidth(&v, state)
+		}
+	} else {
+		selfWidth = self.Width
+	}
+
+	selfWidth += self.Padding.Left + self.Padding.Right
+	return selfWidth
+}
 
 func getNodeWidth(n *element.Node, state *map[string]element.State) float32 {
 	s := *state
@@ -319,7 +469,8 @@ func getInnerSize(n *element.Node, state *map[string]element.State) (float32, fl
 	w := maxw - minx
 	h := maxh - miny
 
-	w += self.Padding.Left + self.Padding.Right
+	// !ISSUE: this is a hack to get things moving adding 13 is random
+	w += self.Padding.Left + self.Padding.Right + 13
 	h += self.Padding.Top + self.Padding.Bottom
 	return w, h
 }
@@ -340,6 +491,21 @@ func add2d(arr [][]float32, index int) float32 {
 	return sum
 }
 
-// getMinHeight(n,state)
-// calcHeight(n,width,state)
-// calcWidth(n,height,state)
+func flexReverse(n *element.Node, state *map[string]element.State) {
+	s := *state
+	tempNodes := []element.Node{}
+	tempStates := []element.State{}
+	for i := len(n.Children) - 1; i >= 0; i-- {
+		tempNodes = append(tempNodes, n.Children[i])
+		tempStates = append(tempStates, s[n.Children[i].Properties.Id])
+	}
+
+	for i := 0; i < len(tempStates); i++ {
+		vState := s[n.Children[i].Properties.Id]
+		propagateOffsets(&n.Children[i], vState.X, vState.Y, vState.X, tempStates[i].Y, state)
+		vState.Y = tempStates[i].Y
+		(*state)[n.Children[i].Properties.Id] = vState
+	}
+
+	n.Children = tempNodes
+}

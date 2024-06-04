@@ -1,7 +1,6 @@
 package font
 
 import (
-	"fmt"
 	"gui/element"
 	"image"
 	"image/color"
@@ -40,7 +39,7 @@ func GetFontPath(fontName string, bold, italic bool) string {
 	return tryLoadSystemFont(fontName, bold, italic)
 }
 
-var allFonts, _ = getSystemFonts()
+var allFonts = getSystemFonts()
 
 func tryLoadSystemFont(fontName string, bold, italic bool) string {
 	font := fontName
@@ -136,7 +135,7 @@ func MeasureSpace(t *element.Text) int {
 	return adv.Round()
 }
 
-func getSystemFonts() ([]string, error) {
+func getSystemFonts() []string {
 	var fontPaths []string
 
 	switch runtime.GOOS {
@@ -147,12 +146,12 @@ func getSystemFonts() ([]string, error) {
 	case "linux":
 		fontPaths = append(fontPaths, getLinuxFontPaths()...)
 	default:
-		return nil, fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
+		return nil
 	}
 
 	sortByLength(fontPaths)
 
-	return fontPaths, nil
+	return fontPaths
 }
 
 func getWindowsFontPaths() []string {
@@ -204,7 +203,6 @@ func getLinuxFontPaths() []string {
 func getFontsRecursively(dir string, fontPaths *[]string) {
 	files, err := ioutil.ReadDir(dir)
 	if err != nil {
-		fmt.Println("Error reading directory:", err)
 		return
 	}
 

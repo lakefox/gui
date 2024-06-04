@@ -2,7 +2,6 @@ package utils
 
 import (
 	"bytes"
-	"fmt"
 	"gui/element"
 	"reflect"
 	"regexp"
@@ -72,25 +71,25 @@ func GetWH(n element.Node, state *map[string]element.State) WidthHeight {
 		wStyle = "100%"
 	}
 
-	width, _ := ConvertToPixels(wStyle, fs, pwh.Width)
-	height, _ := ConvertToPixels(n.Style["height"], fs, pwh.Height)
+	width := ConvertToPixels(wStyle, fs, pwh.Width)
+	height := ConvertToPixels(n.Style["height"], fs, pwh.Height)
 
 	if n.Style["min-width"] != "" {
-		minWidth, _ := ConvertToPixels(n.Style["min-width"], fs, pwh.Width)
+		minWidth := ConvertToPixels(n.Style["min-width"], fs, pwh.Width)
 		width = Max(width, minWidth)
 	}
 
 	if n.Style["max-width"] != "" {
-		maxWidth, _ := ConvertToPixels(n.Style["max-width"], fs, pwh.Width)
+		maxWidth := ConvertToPixels(n.Style["max-width"], fs, pwh.Width)
 		width = Min(width, maxWidth)
 	}
 	if n.Style["min-height"] != "" {
-		minHeight, _ := ConvertToPixels(n.Style["min-height"], fs, pwh.Height)
+		minHeight := ConvertToPixels(n.Style["min-height"], fs, pwh.Height)
 		height = Max(height, minHeight)
 	}
 
 	if n.Style["max-height"] != "" {
-		maxHeight, _ := ConvertToPixels(n.Style["max-height"], fs, pwh.Height)
+		maxHeight := ConvertToPixels(n.Style["max-height"], fs, pwh.Height)
 		height = Min(height, maxHeight)
 	}
 
@@ -138,14 +137,14 @@ func GetMP(n element.Node, wh WidthHeight, state *map[string]element.State, t st
 		}
 	}
 	if n.Style[t+"-left"] != "" || n.Style[t+"-right"] != "" {
-		l, _ := ConvertToPixels(n.Style[t+"-left"], fs, wh.Width)
-		r, _ := ConvertToPixels(n.Style[t+"-right"], fs, wh.Width)
+		l := ConvertToPixels(n.Style[t+"-left"], fs, wh.Width)
+		r := ConvertToPixels(n.Style[t+"-right"], fs, wh.Width)
 		m.Left = l
 		m.Right = r
 	}
 	if n.Style[t+"-top"] != "" || n.Style[t+"-bottom"] != "" {
-		top, _ := ConvertToPixels(n.Style[t+"-top"], fs, wh.Height)
-		b, _ := ConvertToPixels(n.Style[t+"-bottom"], fs, wh.Height)
+		top := ConvertToPixels(n.Style[t+"-top"], fs, wh.Height)
+		b := ConvertToPixels(n.Style[t+"-bottom"], fs, wh.Height)
 		m.Top = top
 		m.Bottom = b
 	}
@@ -157,17 +156,22 @@ func GetMP(n element.Node, wh WidthHeight, state *map[string]element.State, t st
 		// - this is a rough draft
 
 		if n.Parent != nil {
-			sibIndex := -1
-			for i, v := range n.Parent.Children {
-				if v.Properties.Id == n.Properties.Id {
-					sibIndex = i - 1
-					break
+			if ParentStyleProp(n.Parent, "display", func(prop string) bool {
+				return prop == "flex"
+			}) {
+				sibIndex := -1
+				for i, v := range n.Parent.Children {
+					if v.Properties.Id == n.Properties.Id {
+						sibIndex = i - 1
+						break
+					}
+				}
+				if sibIndex > -1 {
+					sib := s[n.Parent.Children[sibIndex].Properties.Id]
+					siblingMargin = sib.Margin.Bottom
 				}
 			}
-			if sibIndex > -1 {
-				sib := s[n.Parent.Children[sibIndex].Properties.Id]
-				siblingMargin = sib.Margin.Bottom
-			}
+
 		}
 
 		if m.Top != 0 {
@@ -240,7 +244,7 @@ func convertMarginToIndividualProperties(margin string) (string, string, string,
 }
 
 // ConvertToPixels converts a CSS measurement to pixels.
-func ConvertToPixels(value string, em, max float32) (float32, error) {
+func ConvertToPixels(value string, em, max float32) float32 {
 	unitFactors := map[string]float32{
 		"px": 1,
 		"em": em,
@@ -255,27 +259,24 @@ func ConvertToPixels(value string, em, max float32) (float32, error) {
 
 	if strings.HasPrefix(value, "calc(") {
 		// Handle calculation expression
-		calcResult, err := evaluateCalcExpression(value[5:len(value)-1], em, max)
-		if err != nil {
-			return 0, err
-		}
-		return calcResult, nil
+		calcResult := evaluateCalcExpression(value[5:len(value)-1], em, max)
+		return calcResult
 	} else {
 		// Extract numeric value and unit
 		for k, v := range unitFactors {
 			if strings.HasSuffix(value, k) {
 				cutStr, _ := strings.CutSuffix(value, k)
 				numericValue, _ := strconv.ParseFloat(cutStr, 64)
-				return float32(numericValue) * v, nil
+				return float32(numericValue) * v
 			}
 		}
-		return 0, fmt.Errorf("unable to parse value")
+		return 0
 	}
 
 }
 
 // evaluateCalcExpression recursively evaluates 'calc()' expressions
-func evaluateCalcExpression(expression string, em, max float32) (float32, error) {
+func evaluateCalcExpression(expression string, em, max float32) float32 {
 	terms := strings.FieldsFunc(expression, func(c rune) bool {
 		return c == '+' || c == '-' || c == '*' || c == '/'
 	})
@@ -287,10 +288,7 @@ func evaluateCalcExpression(expression string, em, max float32) (float32, error)
 	var result float32
 
 	for i, term := range terms {
-		value, err := ConvertToPixels(strings.TrimSpace(term), em, max)
-		if err != nil {
-			return 0, err
-		}
+		value := ConvertToPixels(strings.TrimSpace(term), em, max)
 
 		if i > 0 {
 			switch operators[i-1] {
@@ -304,7 +302,7 @@ func evaluateCalcExpression(expression string, em, max float32) (float32, error)
 				if value != 0 {
 					result /= value
 				} else {
-					return 0, fmt.Errorf("division by zero in 'calc()' expression")
+					return 0
 				}
 			}
 		} else {
@@ -312,7 +310,7 @@ func evaluateCalcExpression(expression string, em, max float32) (float32, error)
 		}
 	}
 
-	return result, nil
+	return result
 }
 
 func Merge(m1, m2 map[string]string) map[string]string {
@@ -347,12 +345,12 @@ func Min(a, b float32) float32 {
 }
 
 // getStructField uses reflection to get the value of a struct field by name
-func GetStructField(data interface{}, fieldName string) (interface{}, error) {
+func GetStructField(data interface{}, fieldName string) interface{} {
 	val := reflect.ValueOf(data)
 
 	// Make sure we have a pointer to a struct
 	if val.Kind() != reflect.Ptr || val.Elem().Kind() != reflect.Struct {
-		return nil, fmt.Errorf("expected a pointer to a struct")
+		return nil
 	}
 
 	// Get the struct field by name
@@ -360,18 +358,18 @@ func GetStructField(data interface{}, fieldName string) (interface{}, error) {
 
 	// Check if the field exists
 	if !field.IsValid() {
-		return nil, fmt.Errorf("field not found: %s", fieldName)
+		return nil
 	}
 
-	return field.Interface(), nil
+	return field.Interface()
 }
 
-func SetStructFieldValue(data interface{}, fieldName string, newValue interface{}) error {
+func SetStructFieldValue(data interface{}, fieldName string, newValue interface{}) {
 	val := reflect.ValueOf(data)
 
 	// Make sure we have a pointer to a struct
 	if val.Kind() != reflect.Ptr || val.Elem().Kind() != reflect.Struct {
-		return fmt.Errorf("expected a pointer to a struct")
+		return
 	}
 
 	// Get the struct field by name
@@ -379,18 +377,17 @@ func SetStructFieldValue(data interface{}, fieldName string, newValue interface{
 
 	// Check if the field exists
 	if !field.IsValid() {
-		return fmt.Errorf("field not found: %s", fieldName)
+		return
 	}
 
 	// Check if the new value type is assignable to the field type
 	if !reflect.ValueOf(newValue).Type().AssignableTo(field.Type()) {
-		return fmt.Errorf("incompatible types for field %s", fieldName)
+		return
 	}
 
 	// Set the new value
 	field.Set(reflect.ValueOf(newValue))
 
-	return nil
 }
 
 // func Check(e error) {
@@ -572,4 +569,21 @@ func InnerHTML(node element.Node) string {
 		buffer.WriteString(OuterHTML(child))
 	}
 	return buffer.String()
+}
+
+func ReverseSlice[T any](s []T) {
+	for i, j := 0, len(s)-1; i < j; i, j = i+1, j-1 {
+		s[i], s[j] = s[j], s[i]
+	}
+}
+
+func ParentStyleProp(n *element.Node, prop string, selector func(string) bool) bool {
+	if n.Parent != nil {
+		if selector(n.Parent.Style[prop]) {
+			return true
+		} else {
+			return ParentStyleProp(n.Parent, prop, selector)
+		}
+	}
+	return false
 }
