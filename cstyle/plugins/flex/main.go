@@ -168,10 +168,21 @@ func Init() cstyle.Plugin {
 						vState.Height = innerSizes[0][1]
 						(*state)[v.Properties.Id] = vState
 					}
+					// Shift to the right if reversed
+					if flexReversed {
+						last := s[n.Children[len(n.Children)-1].Properties.Id]
+						offset := (self.X + self.Width - self.Padding.Right) - (last.X + last.Width + last.Margin.Right + last.Border.Width)
+						for i, v := range n.Children {
+							vState := s[v.Properties.Id]
+							propagateOffsets(&n.Children[i], vState.X, vState.Y, vState.X+offset, vState.Y, state)
+							vState.X += offset
+
+							(*state)[v.Properties.Id] = vState
+						}
+					}
 				} else {
 					// Flex Wrapped
 					sum := innerSizes[0][0]
-					shifted := false
 					for i := 0; i < len(n.Children); i++ {
 						v := n.Children[i]
 						vState := s[v.Properties.Id]
@@ -180,21 +191,15 @@ func Init() cstyle.Plugin {
 						w := innerSizes[i][0]
 						if i > 0 {
 							sib := s[n.Children[i-1].Properties.Id]
+							if maxWidths[i] > selfWidth {
+								w = selfWidth - vState.Margin.Left - vState.Margin.Right - (vState.Border.Width * 2)
+							}
 							if w+sum > selfWidth {
-								if maxWidths[i] > selfWidth {
-									w = selfWidth - vState.Margin.Left - vState.Margin.Right - (vState.Border.Width * 2)
-								}
-								sum = 0
-								shifted = true
+								sum = w
 							} else {
-								if !shifted {
-									propagateOffsets(&v, vState.X, vState.Y, vState.X, sib.Y, state)
-
-									vState.Y = sib.Y
-									(*state)[v.Properties.Id] = vState
-								} else {
-									shifted = false
-								}
+								propagateOffsets(&v, vState.X, vState.Y, vState.X, sib.Y, state)
+								vState.Y = sib.Y
+								(*state)[v.Properties.Id] = vState
 								sum += w
 							}
 						}
@@ -218,7 +223,7 @@ func Init() cstyle.Plugin {
 						if i > 0 {
 							sib := s[n.Children[i-1].Properties.Id]
 							if vState.Y+prevOffset == sib.Y {
-								vState.Y += prevOffset
+								yStore += prevOffset
 
 								if vState.Height < sib.Height {
 									vState.Height = sib.Height
