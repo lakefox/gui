@@ -10,8 +10,8 @@ import (
 )
 
 // !ISSUES: Text disapearing (i think its the inline plugin)
-// + height adjust on wrap
-// + full screen positioning issues
+// + flex wrap reverse needs to split the elements by Y and reverse the row not the entire thing
+// + widths
 
 func Init() cstyle.Plugin {
 	return cstyle.Plugin{
@@ -57,18 +57,22 @@ func Init() cstyle.Plugin {
 			if vAlign == "" {
 				vAlign = "normal"
 			}
-			justify := n.Style["justify-items"]
-			if justify == "" {
-				justify = "normal"
+			justifyItems := n.Style["justify-items"]
+			if justifyItems == "" {
+				justifyItems = "normal"
+			}
+
+			justifyContent := n.Style["justify-content"]
+			if justifyContent == "" {
+				justifyContent = "normal"
 			}
 			// fmt.Println(flexDirection, flexReversed, flexWrapped, hAlign, vAlign, justify)
 
 			if flexDirection == "row" {
 
-				// Reverse elements
-				if flexReversed {
-					flexReverse(n, state)
-				}
+				rows := [][]int{}
+				maxH := float32(0)
+
 				// Get inital sizing
 				textTotal := 0
 				textCounts := []int{}
@@ -147,39 +151,12 @@ func Init() cstyle.Plugin {
 						deInline(&v, state)
 						applyInline(&v, state)
 						applyBlock(&v, state)
+						_, h := getInnerSize(&v, state)
+						h = utils.Max(h, vState.Height)
+						maxH = utils.Max(maxH, h)
 					}
-
-					// Set the heights based on the tallest one
-					if n.Style["height"] == "" {
-
-						innerSizes = [][]float32{}
-						for _, v := range n.Children {
-							w, h := getInnerSize(&v, state)
-							innerSizes = append(innerSizes, []float32{w, h})
-						}
-						sort.Slice(innerSizes, func(i, j int) bool {
-							return innerSizes[i][1] > innerSizes[j][1]
-						})
-					} else {
-						innerSizes[0][1] = self.Height
-					}
-					for _, v := range n.Children {
-						vState := s[v.Properties.Id]
-						vState.Height = innerSizes[0][1]
-						(*state)[v.Properties.Id] = vState
-					}
-					// Shift to the right if reversed
-					if flexReversed {
-						last := s[n.Children[len(n.Children)-1].Properties.Id]
-						offset := (self.X + self.Width - self.Padding.Right) - (last.X + last.Width + last.Margin.Right + last.Border.Width)
-						for i, v := range n.Children {
-							vState := s[v.Properties.Id]
-							propagateOffsets(&n.Children[i], vState.X, vState.Y, vState.X+offset, vState.Y, state)
-							vState.X += offset
-
-							(*state)[v.Properties.Id] = vState
-						}
-					}
+					// When not wrapping everything will be on the same row
+					rows = append(rows, []int{0, len(n.Children) - 1, int(maxH)})
 				} else {
 					// Flex Wrapped
 					sum := innerSizes[0][0]
@@ -195,12 +172,12 @@ func Init() cstyle.Plugin {
 								w = selfWidth - vState.Margin.Left - vState.Margin.Right - (vState.Border.Width * 2)
 							}
 							if w+sum > selfWidth {
-								sum = w
+								sum = w + vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2)
 							} else {
 								propagateOffsets(&v, vState.X, vState.Y, vState.X, sib.Y, state)
 								vState.Y = sib.Y
 								(*state)[v.Properties.Id] = vState
-								sum += w
+								sum += w + vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2)
 							}
 						}
 
@@ -208,9 +185,7 @@ func Init() cstyle.Plugin {
 					}
 
 					// Move the elements into the correct position
-					rows := [][]int{}
 					start := 0
-					maxH := float32(0)
 					var prevOffset float32
 					for i := 0; i < len(n.Children); i++ {
 						v := n.Children[i]
@@ -254,35 +229,26 @@ func Init() cstyle.Plugin {
 						(*state)[v.Properties.Id] = vState
 					}
 					if start < len(n.Children)-1 {
-						rows = append(rows, []int{start, len(n.Children) - 1, int(maxH)})
-					}
-					for _, v := range rows {
-						for i := v[0]; i < v[1]; i++ {
-							vState := s[n.Children[i].Properties.Id]
-							vState.Height = float32(v[2])
-							(*state)[n.Children[i].Properties.Id] = vState
-						}
+						rows = append(rows, []int{start, len(n.Children), int(maxH)})
 					}
 				}
 
-				// Shift to the right if reversed
+				for _, v := range rows {
+					for i := v[0]; i < v[1]; i++ {
+						vState := s[n.Children[i].Properties.Id]
+						vState.Height = float32(v[2])
+						(*state)[n.Children[i].Properties.Id] = vState
+					}
+				}
+				// Reverse elements
 				if flexReversed {
-					last := s[n.Children[len(n.Children)-1].Properties.Id]
-					offset := (self.X + self.Width - self.Padding.Right) - (last.X + last.Width + last.Margin.Right + last.Border.Width)
-					for i, v := range n.Children {
-						vState := s[v.Properties.Id]
-						propagateOffsets(&n.Children[i], vState.X, vState.Y, vState.X+offset, vState.Y, state)
-						vState.X += offset
-
-						(*state)[v.Properties.Id] = vState
-					}
+					rowReverse(rows, n, state)
 				}
-
 			}
 
 			// Column doesn't really need a lot done bc it is basically block styling rn
 			if flexDirection == "column" && flexReversed {
-				flexReverse(n, state)
+				colReverse(n, state)
 			}
 			if n.Style["height"] == "" {
 				_, h := getInnerSize(n, state)
@@ -496,7 +462,7 @@ func add2d(arr [][]float32, index int) float32 {
 	return sum
 }
 
-func flexReverse(n *element.Node, state *map[string]element.State) {
+func colReverse(n *element.Node, state *map[string]element.State) {
 	s := *state
 	tempNodes := []element.Node{}
 	tempStates := []element.State{}
@@ -513,4 +479,45 @@ func flexReverse(n *element.Node, state *map[string]element.State) {
 	}
 
 	n.Children = tempNodes
+}
+
+func rowReverse(rows [][]int, n *element.Node, state *map[string]element.State) {
+	s := *state
+	for _, row := range rows {
+		tempNodes := []element.Node{}
+		tempStates := []element.State{}
+
+		for i := row[1] - 1; i >= row[0]; i-- {
+			tempNodes = append(tempNodes, n.Children[i])
+			tempStates = append(tempStates, s[n.Children[i].Properties.Id])
+		}
+
+		for i := 0; i < len(tempStates); i++ {
+			e := row[0] + i
+			vState := s[n.Children[e].Properties.Id]
+			propagateOffsets(&n.Children[e], vState.X, vState.Y, tempStates[i].X, tempStates[i].Y, state)
+			vState.X = tempStates[i].X
+			(*state)[n.Children[e].Properties.Id] = vState
+		}
+		for i := 0; i < len(tempStates); i++ {
+			e := row[0] + i
+			n.Children[e] = tempNodes[i]
+		}
+
+		for i := row[1]; i >= row[0]; i-- {
+			vState := s[n.Children[i].Properties.Id]
+			var xChng float32
+			if i < row[1]-1 {
+				sib := s[n.Children[i+1].Properties.Id]
+				xChng = sib.X - (sib.Border.Width + sib.Margin.Left + vState.Margin.Right + vState.Border.Width + vState.Width)
+			} else {
+				parent := s[n.Properties.Id]
+				xChng = ((((parent.X + parent.Width) - parent.Padding.Right) - vState.Width) - vState.Margin.Right) - (vState.Border.Width)
+
+			}
+			propagateOffsets(&n.Children[i], vState.X, vState.Y, xChng, vState.Y, state)
+			vState.X = xChng
+			(*state)[n.Children[i].Properties.Id] = vState
+		}
+	}
 }
