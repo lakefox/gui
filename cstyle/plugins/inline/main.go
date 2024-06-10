@@ -13,7 +13,7 @@ func Init() cstyle.Plugin {
 			}
 			matches := true
 			for name, value := range styles {
-				if n.Style[name] != value && !(value == "*") && n.Style[name] != "" {
+				if (n.Style[name] != value || n.Style[name] == "") && !(value == "*") {
 					matches = false
 				}
 			}

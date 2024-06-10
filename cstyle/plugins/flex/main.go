@@ -21,7 +21,7 @@ func Init() cstyle.Plugin {
 			}
 			matches := true
 			for name, value := range styles {
-				if n.Style[name] != value && !(value == "*") && n.Style[name] != "" {
+				if (n.Style[name] != value || n.Style[name] == "") && !(value == "*") {
 					matches = false
 				}
 			}
@@ -717,6 +717,7 @@ func justifyRow(rows [][]int, n *element.Node, state *map[string]element.State, 
 
 	}
 }
-func alignItemsRow(rows [][]int, n *element.Node, state *map[string]element.State, justify string, reversed bool) {
 
-}
+// func alignItemsRow(rows [][]int, n *element.Node, state *map[string]element.State, justify string, reversed bool) {
+
+// }
