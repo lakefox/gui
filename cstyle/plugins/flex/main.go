@@ -10,8 +10,8 @@ import (
 )
 
 // !ISSUES: Text disapearing (i think its the inline plugin)
-// + flex wrap reverse needs to split the elements by Y and reverse the row not the entire thing
 // + widths
+// + wrpa wraps too soon
 
 func Init() cstyle.Plugin {
 	return cstyle.Plugin{
@@ -66,7 +66,7 @@ func Init() cstyle.Plugin {
 			if justifyContent == "" {
 				justifyContent = "normal"
 			}
-			// fmt.Println(flexDirection, flexReversed, flexWrapped, hAlign, vAlign, justify)
+			// fmt.Println(flexDirection, flexReversed, flexWrapped, hAlign, vAlign, justifyItems, justifyContent)
 
 			if flexDirection == "row" {
 
@@ -156,7 +156,7 @@ func Init() cstyle.Plugin {
 						maxH = utils.Max(maxH, h)
 					}
 					// When not wrapping everything will be on the same row
-					rows = append(rows, []int{0, len(n.Children) - 1, int(maxH)})
+					rows = append(rows, []int{0, len(n.Children), int(maxH)})
 				} else {
 					// Flex Wrapped
 					sum := innerSizes[0][0]
@@ -228,7 +228,7 @@ func Init() cstyle.Plugin {
 						vState.Height = h
 						(*state)[v.Properties.Id] = vState
 					}
-					if start < len(n.Children)-1 {
+					if start < len(n.Children) {
 						rows = append(rows, []int{start, len(n.Children), int(maxH)})
 					}
 				}
@@ -243,6 +243,10 @@ func Init() cstyle.Plugin {
 				// Reverse elements
 				if flexReversed {
 					rowReverse(rows, n, state)
+				}
+
+				if justifyContent != "" && justifyContent != "normal" {
+					justifyRow(rows, n, state, justifyContent, flexReversed)
 				}
 			}
 
@@ -443,6 +447,12 @@ func getInnerSize(n *element.Node, state *map[string]element.State) (float32, fl
 	// !ISSUE: this is a hack to get things moving adding 13 is random
 	w += self.Padding.Left + self.Padding.Right + 13
 	h += self.Padding.Top + self.Padding.Bottom
+	if n.Style["width"] != "" {
+		w = self.Width
+	}
+	if n.Style["height"] != "" {
+		h = self.Height
+	}
 	return w, h
 }
 
@@ -504,7 +514,7 @@ func rowReverse(rows [][]int, n *element.Node, state *map[string]element.State) 
 			n.Children[e] = tempNodes[i]
 		}
 
-		for i := row[1]; i >= row[0]; i-- {
+		for i := row[1] - 1; i >= row[0]; i-- {
 			vState := s[n.Children[i].Properties.Id]
 			var xChng float32
 			if i < row[1]-1 {
@@ -520,4 +530,193 @@ func rowReverse(rows [][]int, n *element.Node, state *map[string]element.State) 
 			(*state)[n.Children[i].Properties.Id] = vState
 		}
 	}
+}
+
+func justifyRow(rows [][]int, n *element.Node, state *map[string]element.State, justify string, reversed bool) {
+	s := *state
+	for _, row := range rows {
+
+		if (justify == "flex-end" || justify == "end" || justify == "right") && !reversed {
+			for i := row[1] - 1; i >= row[0]; i-- {
+				vState := s[n.Children[i].Properties.Id]
+				var xChng float32
+				if i < row[1]-1 {
+					sib := s[n.Children[i+1].Properties.Id]
+					xChng = sib.X - (sib.Border.Width + sib.Margin.Left + vState.Margin.Right + vState.Border.Width + vState.Width)
+				} else {
+					parent := s[n.Properties.Id]
+					xChng = ((((parent.X + parent.Width) - parent.Padding.Right) - vState.Width) - vState.Margin.Right) - (vState.Border.Width)
+
+				}
+				propagateOffsets(&n.Children[i], vState.X, vState.Y, xChng, vState.Y, state)
+				vState.X = xChng
+				(*state)[n.Children[i].Properties.Id] = vState
+			}
+		} else if (justify == "flex-end" || justify == "start" || justify == "left" || justify == "normal") && reversed {
+			for i := row[0]; i < row[1]; i++ {
+				vState := s[n.Children[i].Properties.Id]
+				var xChng float32
+				if i > row[0] {
+					sib := s[n.Children[i-1].Properties.Id]
+					xChng = sib.X + sib.Width + (sib.Border.Width * 2) + sib.Margin.Right + vState.Margin.Left + vState.Border.Width
+				} else {
+					parent := s[n.Properties.Id]
+					xChng = parent.X + parent.Padding.Right + vState.Margin.Left + vState.Border.Width + parent.Border.Width
+
+				}
+				propagateOffsets(&n.Children[i], vState.X, vState.Y, xChng, vState.Y, state)
+				vState.X = xChng
+				(*state)[n.Children[i].Properties.Id] = vState
+			}
+		} else if justify == "center" {
+			// get width of row then center (by getting last x + w + mr + b)
+			f := s[n.Children[row[0]].Properties.Id]
+			l := s[n.Children[row[1]-1].Properties.Id]
+			parent := s[n.Properties.Id]
+			po := parent.X + parent.Border.Width
+			offset := (parent.Width - ((f.X - po) + (l.X - po) + l.Width + f.Border.Width + l.Border.Width)) / 2
+
+			for i := row[0]; i < row[1]; i++ {
+				vState := s[n.Children[i].Properties.Id]
+
+				if !reversed {
+					propagateOffsets(&n.Children[i], vState.X, vState.Y, vState.X+offset, vState.Y, state)
+					vState.X += offset
+				} else {
+					propagateOffsets(&n.Children[i], vState.X, vState.Y, vState.X-offset, vState.Y, state)
+					vState.X -= offset
+				}
+				(*state)[n.Children[i].Properties.Id] = vState
+			}
+
+		} else if justify == "space-between" {
+			// get width of row then center (by getting last x + w + mr + b)
+			f := s[n.Children[row[0]].Properties.Id]
+			l := s[n.Children[row[1]-1].Properties.Id]
+			parent := s[n.Properties.Id]
+			po := parent.Border.Width + parent.Width
+			po -= parent.Padding.Left + parent.Padding.Right
+
+			// make po repersent the total space between elements
+			for i := row[0]; i < row[1]; i++ {
+				vState := s[n.Children[i].Properties.Id]
+				po -= vState.Width + vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2)
+			}
+
+			po /= float32(((row[1]) - row[0]) - 1)
+
+			if (row[1]-1)-row[0] > 0 {
+				for i := row[0]; i < row[1]; i++ {
+					vState := s[n.Children[i].Properties.Id]
+					var offset float32
+					if i == row[0] {
+						offset = parent.X + parent.Padding.Left + f.Margin.Left + f.Border.Width
+					} else if i == row[1]-1 {
+						offset = (parent.X + parent.Width) - (l.Margin.Right + l.Border.Width + l.Width + parent.Padding.Right)
+					} else {
+						if !reversed {
+							offset = vState.X + (po * float32(i-row[0]))
+						} else {
+							offset = vState.X - (po * float32(((row[1]-1)-row[0])-(i-row[0])))
+						}
+
+					}
+
+					propagateOffsets(&n.Children[i], vState.X, vState.Y, offset, vState.Y, state)
+					vState.X = offset
+					(*state)[n.Children[i].Properties.Id] = vState
+				}
+			} else {
+				// if there is one element move left
+				vState := s[n.Children[(row[1]-1)-row[0]].Properties.Id]
+				var offset float32
+
+				if !reversed {
+					offset = parent.X + parent.Padding.Left + f.Margin.Left + f.Border.Width
+					propagateOffsets(&n.Children[(row[1]-1)-row[0]], vState.X, vState.Y, offset, vState.Y, state)
+					vState.X = offset
+
+					(*state)[n.Children[(row[1]-1)-row[0]].Properties.Id] = vState
+				}
+
+			}
+
+		} else if justify == "space-evenly" {
+			// get width of row then center (by getting last x + w + mr + b)
+			parent := s[n.Properties.Id]
+			po := parent.Border.Width + parent.Width
+			po -= parent.Padding.Left + parent.Padding.Right
+
+			// make po repersent the total space between elements
+			for i := row[0]; i < row[1]; i++ {
+				vState := s[n.Children[i].Properties.Id]
+				po -= vState.Width + vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2)
+			}
+
+			po /= float32(((row[1]) - row[0]) + 1)
+
+			// get width of row then center (by getting last x + w + mr + b)
+
+			for i := row[0]; i < row[1]; i++ {
+				vState := s[n.Children[i].Properties.Id]
+
+				if !reversed {
+					offset := po * (float32(i-row[0]) + 1)
+					propagateOffsets(&n.Children[i], vState.X, vState.Y, vState.X+offset, vState.Y, state)
+					vState.X += offset
+				} else {
+					offset := po * float32(((row[1]-1)-row[0])-((i-row[0])-1))
+
+					propagateOffsets(&n.Children[i], vState.X, vState.Y, vState.X-offset, vState.Y, state)
+					vState.X -= offset
+				}
+				(*state)[n.Children[i].Properties.Id] = vState
+			}
+
+		} else if justify == "space-around" {
+			// get width of row then center (by getting last x + w + mr + b)
+			parent := s[n.Properties.Id]
+			po := parent.Border.Width + parent.Width
+			po -= parent.Padding.Left + parent.Padding.Right
+
+			// make po repersent the total space between elements
+			for i := row[0]; i < row[1]; i++ {
+				vState := s[n.Children[i].Properties.Id]
+				po -= vState.Width + vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2)
+			}
+
+			po /= float32(((row[1]) - row[0]))
+
+			// get width of row then center (by getting last x + w + mr + b)
+
+			for i := row[0]; i < row[1]; i++ {
+				vState := s[n.Children[i].Properties.Id]
+
+				if !reversed {
+					m := (float32(i-row[0]) + 1)
+					if i-row[0] == 0 {
+						m = 0.5
+					} else {
+						m -= 0.5
+					}
+					offset := po * m
+					propagateOffsets(&n.Children[i], vState.X, vState.Y, vState.X+offset, vState.Y, state)
+					vState.X += offset
+				} else {
+					m := float32(((row[1] - 1) - row[0]) - ((i - row[0]) - 1))
+					m -= 0.5
+					offset := po * m
+
+					propagateOffsets(&n.Children[i], vState.X, vState.Y, vState.X-offset, vState.Y, state)
+					vState.X -= offset
+				}
+				(*state)[n.Children[i].Properties.Id] = vState
+			}
+
+		}
+
+	}
+}
+func alignItemsRow(rows [][]int, n *element.Node, state *map[string]element.State, justify string, reversed bool) {
+
 }

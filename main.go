@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	_ "embed"
 	"encoding/json"
+	"fmt"
 	"gui/cstyle"
 	"gui/cstyle/plugins/flex"
 	"gui/cstyle/plugins/inline"
@@ -200,6 +201,7 @@ func View(data *Window, width, height int32) {
 			// fmt.Println(newDoc.QuerySelector("body").InnerHTML)
 
 			AddHTML(&data.Document)
+			fmt.Println(time.Since(lastChange))
 		}
 		wm.Draw(rd)
 
