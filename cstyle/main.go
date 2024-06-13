@@ -321,7 +321,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 		n.Children[i] = *c.ComputeNodeStyle(&v, state)
 
 		cState := (*state)[n.Children[i].Properties.Id]
-		if n.Style["height"] == "" {
+		if n.Style["height"] == "" && n.Style["min-height"] == "" {
 			if v.Style["position"] != "absolute" && cState.Y+cState.Height > childYOffset {
 				childYOffset = cState.Y + cState.Height
 				self.Height = (cState.Y - self.Border.Width) - (self.Y) + cState.Height
@@ -329,12 +329,14 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 				self.Height += cState.Margin.Bottom
 				self.Height += cState.Padding.Top
 				self.Height += cState.Padding.Bottom
+				self.Height += cState.Border.Width * 2
 			}
 		}
 		if cState.Width > self.Width {
 			self.Width = cState.Width
 		}
 	}
+
 	// } else {
 	// return n
 	// }
@@ -473,11 +475,11 @@ func genTextNode(n *element.Node, state *map[string]element.State) element.State
 	img, width := font.Render(&text)
 	self.Texture = img
 
-	if n.Style["height"] == "" {
+	if n.Style["height"] == "" && n.Style["min-height"] == "" {
 		self.Height = float32(text.LineHeight)
 	}
 
-	if n.Style["width"] == "" {
+	if n.Style["width"] == "" && n.Style["min-width"] == "" {
 		self.Width = float32(width)
 	}
 

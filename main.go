@@ -183,38 +183,6 @@ func View(data *Window, width, height int32) {
 
 		newHash, _ := hashStruct(&data.Document.Children[0])
 		eventStore = events.GetEvents(&data.Document.Children[0], &state, eventStore)
-		for _, v := range *eventStore {
-			if v.Event.MouseOver {
-
-				if v.Event.Target.TagName == "body" || v.Event.Target.TagName == "html" {
-					continue
-				} else {
-					w := state[v.Event.Target.Properties.Id].Width
-					h := state[v.Event.Target.Properties.Id].Height
-					x := state[v.Event.Target.Properties.Id].X
-					y := state[v.Event.Target.Properties.Id].Y
-
-					el := getElementByPropId(&data.Document.Children[0], v.Event.Target.Properties.Id)
-
-					if el != nil {
-						data.CSS.ComputeNodeStyle(el, &state)
-
-						if w != state[v.Event.Target.Properties.Id].Width &&
-							h != state[v.Event.Target.Properties.Id].Height &&
-							x != state[v.Event.Target.Properties.Id].X &&
-							y != state[v.Event.Target.Properties.Id].Y {
-							fmt.Println("RELOAD")
-						} else {
-							fmt.Println("SWAP")
-						}
-
-					}
-
-				}
-
-			}
-
-		}
 		if !bytes.Equal(hash, newHash) || resize {
 			if wm.FPS != 30 {
 				wm.SetFPS(30)
@@ -500,19 +468,4 @@ func hashStruct(s interface{}) ([]byte, error) {
 	hash := hasher.Sum(nil)
 
 	return hash, nil
-}
-
-func getElementByPropId(n *element.Node, id string) *element.Node {
-	if n.Properties.Id == id {
-		return n
-	} else if len(n.Children) > 0 {
-		for i := 0; i < len(n.Children); i++ {
-			n.Children[i].Parent = n
-			item := getElementByPropId(&n.Children[i], id)
-			if item != nil {
-				return item
-			}
-		}
-	}
-	return nil
 }
