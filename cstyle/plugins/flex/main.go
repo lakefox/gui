@@ -257,8 +257,9 @@ func Init() cstyle.Plugin {
 			if flexDirection == "column" && flexReversed {
 				colReverse(n, state)
 			}
-			if n.Style["height"] == "" {
+			if n.Style["height"] == "" || n.Style["min-height"] == "" {
 				_, h := getInnerSize(n, state)
+				// fmt.Println(h)
 				self.Height = h
 			}
 			(*state)[n.Properties.Id] = self
@@ -456,9 +457,10 @@ func getInnerSize(n *element.Node, state *map[string]element.State) (float32, fl
 	for _, v := range n.Children {
 		vState := s[v.Properties.Id]
 		minx = utils.Min(vState.X, minx)
-		miny = utils.Min(vState.Y, miny)
-		hOffset := (vState.Border.Width * 2) + vState.Margin.Top + vState.Margin.Bottom
-		wOffset := (vState.Border.Width * 2) + vState.Margin.Left + vState.Margin.Right
+		miny = utils.Min(vState.Y-vState.Margin.Top, miny)
+		// Don't add the top or left because the x&y values already take that into account
+		hOffset := (vState.Border.Width * 2) + vState.Margin.Bottom
+		wOffset := (vState.Border.Width * 2) + vState.Margin.Right
 		maxw = utils.Max(vState.X+vState.Width+wOffset, maxw)
 		maxh = utils.Max(vState.Y+vState.Height+hOffset, maxh)
 	}
@@ -741,16 +743,7 @@ func justifyRow(rows [][]int, n *element.Node, state *map[string]element.State, 
 
 func alignItemsRow(rows [][]int, n *element.Node, state *map[string]element.State, align string) {
 	// needs
-	// baseline		- top
-	// flex-start
-	// self-start
-	// start
-
-	// center		- middle
-
-	// end			- end
-	// flex-end
-	// self-end
+	// strech
 
 	props := []string{
 		"baseline",
@@ -790,23 +783,30 @@ func alignItemsRow(rows [][]int, n *element.Node, state *map[string]element.Stat
 			vState.Height = h
 			h += vState.Margin.Top + vState.Margin.Bottom + (vState.Border.Width * 2)
 			maxH = utils.Max(maxH, h)
-			// this doesn't work, don't try again
-			// maxH -= vState.Border.Width
-
 			(*state)[n.Children[i].Properties.Id] = vState
 		}
 		maxes = append(maxes, maxH)
 		maxesTotal += maxH
 	}
 
-	os := ((self.Height - (self.Margin.Top + self.Margin.Bottom + (self.Border.Width * 2))) - maxesTotal) / float32(len(rows)+1)
+	os := ((self.Height) - maxesTotal) / float32(len(rows)+1)
 
 	for c, row := range rows {
 		maxH := maxes[c]
+		var sum float32
+		for i := 0; i < c; i++ {
+			sum += maxes[i]
+		}
 		if align == "start" || align == "flex-start" || align == "self-start" {
 			for i := row[0]; i < row[1]; i++ {
 				vState := s[n.Children[i].Properties.Id]
-				offset := (vState.Y + (os * float32(c)) + vState.Margin.Top + vState.Border.Width)
+
+				offset := sum + self.Y + self.Padding.Top + vState.Margin.Top + vState.Border.Width
+
+				if n.Style["height"] != "" || n.Style["min-height"] != "" {
+					offset += os * float32(c+1)
+				}
+
 				propagateOffsets(&n.Children[i], vState.X, vState.Y, vState.X, offset, state)
 				vState.Y = offset
 				(*state)[n.Children[i].Properties.Id] = vState
@@ -815,11 +815,14 @@ func alignItemsRow(rows [][]int, n *element.Node, state *map[string]element.Stat
 			for i := row[0]; i < row[1]; i++ {
 				vState := s[n.Children[i].Properties.Id]
 
-				offset := (vState.Y + (os*float32(c))/2)
+				offset := sum + self.Y + self.Padding.Top + vState.Margin.Top + vState.Border.Width
+
+				if n.Style["height"] != "" || n.Style["min-height"] != "" {
+					offset += os * float32(c+1)
+				}
+
 				if vState.Height+vState.Margin.Top+vState.Margin.Bottom+(vState.Border.Width*2) < maxH {
-					offset += (maxH - (vState.Height + vState.Margin.Top + vState.Border.Width)) / 2
-				} else {
-					offset += vState.Margin.Top + vState.Border.Width
+					offset += (maxH - (vState.Height + vState.Margin.Top + vState.Margin.Bottom + (vState.Border.Width * 2))) / 2
 				}
 				propagateOffsets(&n.Children[i], vState.X, vState.Y, vState.X, offset, state)
 				vState.Y = offset
@@ -828,10 +831,20 @@ func alignItemsRow(rows [][]int, n *element.Node, state *map[string]element.Stat
 		} else if align == "end" || align == "flex-end" || align == "self-end" {
 			for i := row[0]; i < row[1]; i++ {
 				vState := s[n.Children[i].Properties.Id]
-				offset := ((vState.Y + (os * float32(c+1))) + (maxH - (vState.Height + vState.Margin.Top + vState.Border.Width)))
+
+				offset := sum + self.Y + self.Padding.Top + vState.Margin.Top + vState.Border.Width
+
+				if n.Style["height"] != "" || n.Style["min-height"] != "" {
+					offset += os * float32(c+1)
+				}
+
+				if vState.Height+vState.Margin.Top+vState.Margin.Bottom+(vState.Border.Width*2) < maxH {
+					offset += (maxH - (vState.Height + vState.Margin.Top + vState.Margin.Bottom + (vState.Border.Width * 2)))
+				}
 				propagateOffsets(&n.Children[i], vState.X, vState.Y, vState.X, offset, state)
 				vState.Y = offset
 				(*state)[n.Children[i].Properties.Id] = vState
+
 			}
 		}
 	}
