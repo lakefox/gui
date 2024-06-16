@@ -789,7 +789,7 @@ func alignItemsRow(rows [][]int, n *element.Node, state *map[string]element.Stat
 		maxesTotal += maxH
 	}
 
-	os := ((self.Height) - maxesTotal) / float32(len(rows)+1)
+	os := ((self.Height - (self.Padding.Top + self.Padding.Bottom + (self.Border.Width * 2))) - maxesTotal) / float32(len(rows))
 
 	for c, row := range rows {
 		maxH := maxes[c]
@@ -801,10 +801,10 @@ func alignItemsRow(rows [][]int, n *element.Node, state *map[string]element.Stat
 			for i := row[0]; i < row[1]; i++ {
 				vState := s[n.Children[i].Properties.Id]
 
-				offset := sum + self.Y + self.Padding.Top + vState.Margin.Top + vState.Border.Width
+				offset := sum + self.Y + self.Padding.Top + vState.Margin.Top
 
 				if n.Style["height"] != "" || n.Style["min-height"] != "" {
-					offset += os * float32(c+1)
+					offset += ((os) * float32(c))
 				}
 
 				propagateOffsets(&n.Children[i], vState.X, vState.Y, vState.X, offset, state)
@@ -815,10 +815,10 @@ func alignItemsRow(rows [][]int, n *element.Node, state *map[string]element.Stat
 			for i := row[0]; i < row[1]; i++ {
 				vState := s[n.Children[i].Properties.Id]
 
-				offset := sum + self.Y + self.Padding.Top + vState.Margin.Top + vState.Border.Width
+				offset := sum + self.Y + self.Padding.Top + vState.Margin.Top
 
 				if n.Style["height"] != "" || n.Style["min-height"] != "" {
-					offset += os * float32(c+1)
+					offset += (os * float32(c+1)) - (os / 2)
 				}
 
 				if vState.Height+vState.Margin.Top+vState.Margin.Bottom+(vState.Border.Width*2) < maxH {
@@ -832,7 +832,7 @@ func alignItemsRow(rows [][]int, n *element.Node, state *map[string]element.Stat
 			for i := row[0]; i < row[1]; i++ {
 				vState := s[n.Children[i].Properties.Id]
 
-				offset := sum + self.Y + self.Padding.Top + vState.Margin.Top + vState.Border.Width
+				offset := sum + self.Y + self.Padding.Top + vState.Margin.Top
 
 				if n.Style["height"] != "" || n.Style["min-height"] != "" {
 					offset += os * float32(c+1)
