@@ -467,8 +467,7 @@ func getInnerSize(n *element.Node, state *map[string]element.State) (float32, fl
 	w := maxw - minx
 	h := maxh - miny
 
-	// !ISSUE: this is a hack to get things moving adding 13 is random
-	w += self.Padding.Left + self.Padding.Right + 13
+	w += self.Padding.Left + self.Padding.Right
 	h += self.Padding.Top + self.Padding.Bottom
 	if n.Style["width"] != "" {
 		w = self.Width
@@ -476,6 +475,7 @@ func getInnerSize(n *element.Node, state *map[string]element.State) (float32, fl
 	if n.Style["height"] != "" {
 		h = self.Height
 	}
+
 	return w, h
 }
 
@@ -650,17 +650,20 @@ func justifyRow(rows [][]int, n *element.Node, state *map[string]element.State, 
 					(*state)[n.Children[i].Properties.Id] = vState
 				}
 			} else {
+
+				// this is/was causing issues, removed and it fixed its self
+
 				// if there is one element move left
-				vState := s[n.Children[(row[1]-1)-row[0]].Properties.Id]
-				var offset float32
+				// vState := s[n.Children[(row[1]-1)-row[0]].Properties.Id]
+				// var offset float32
 
-				if !reversed {
-					offset = parent.X + parent.Padding.Left + f.Margin.Left + f.Border.Width
-					propagateOffsets(&n.Children[(row[1]-1)-row[0]], vState.X, vState.Y, offset, vState.Y, state)
-					vState.X = offset
+				// if !reversed {
+				// 	offset = parent.X + parent.Padding.Left + f.Margin.Left + f.Border.Width
+				// 	propagateOffsets(&n.Children[(row[1]-1)-row[0]], vState.X, vState.Y, offset, vState.Y, state)
+				// 	vState.X = offset
 
-					(*state)[n.Children[(row[1]-1)-row[0]].Properties.Id] = vState
-				}
+				// 	(*state)[n.Children[(row[1]-1)-row[0]].Properties.Id] = vState
+				// }
 
 			}
 
@@ -754,6 +757,7 @@ func alignItemsRow(rows [][]int, n *element.Node, state *map[string]element.Stat
 		"end",
 		"flex-end",
 		"self-end",
+		"stretch",
 	}
 
 	matches := false
@@ -843,6 +847,22 @@ func alignItemsRow(rows [][]int, n *element.Node, state *map[string]element.Stat
 				}
 				propagateOffsets(&n.Children[i], vState.X, vState.Y, vState.X, offset, state)
 				vState.Y = offset
+				(*state)[n.Children[i].Properties.Id] = vState
+
+			}
+		} else if align == "stretch" {
+			for i := row[0]; i < row[1]; i++ {
+				vState := s[n.Children[i].Properties.Id]
+
+				offset := sum + self.Y + self.Padding.Top + vState.Margin.Top
+
+				if n.Style["height"] != "" || n.Style["min-height"] != "" {
+					offset += ((os) * float32(c))
+				}
+
+				propagateOffsets(&n.Children[i], vState.X, vState.Y, vState.X, offset, state)
+				vState.Y = offset
+				vState.Height = maxH - (vState.Margin.Top + vState.Margin.Bottom + (vState.Border.Width * 2))
 				(*state)[n.Children[i].Properties.Id] = vState
 
 			}

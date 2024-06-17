@@ -467,6 +467,7 @@ func genTextNode(n *element.Node, state *map[string]element.State) element.State
 	text.EM = int(self.EM)
 	text.Width = int(parent.Width)
 	text.Text = n.InnerText
+	text.Last = n.GetAttribute("last") == "true"
 
 	if n.Style["word-spacing"] == "" {
 		text.WordSpacing = font.MeasureSpace(&text)

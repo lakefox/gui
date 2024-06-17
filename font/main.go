@@ -222,8 +222,12 @@ func Render(t *element.Text) (*image.RGBA, int) {
 	if t.LineHeight == 0 {
 		t.LineHeight = t.EM + 3
 	}
-
-	width := MeasureText(t, t.Text+" ")
+	var width int
+	if t.Last {
+		width = MeasureText(t, t.Text)
+	} else {
+		width = MeasureText(t, t.Text+" ")
+	}
 
 	// Use fully transparent color for the background
 	img := image.NewRGBA(image.Rect(0, 0, width, t.LineHeight))

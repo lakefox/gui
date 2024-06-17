@@ -35,7 +35,7 @@ func Init() cstyle.Plugin {
 						xCollect = 0
 					} else {
 						if v.Properties.Id == n.Properties.Id {
-							if self.X+xCollect+self.Width > ((parent.Width)-parent.Padding.Right)+parent.X && i > 0 {
+							if self.X+xCollect+self.Width > ((parent.Width)-parent.Padding.Right)+parent.X+parent.Border.Width && i > 0 {
 								// Break Node
 								sibling := s[n.Parent.Children[i-1].Properties.Id]
 								self.Y += sibling.Height
