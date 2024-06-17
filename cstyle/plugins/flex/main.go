@@ -1,6 +1,7 @@
 package flex
 
 import (
+	"fmt"
 	"gui/cstyle"
 	"gui/cstyle/plugins/inline"
 	"gui/element"
@@ -29,6 +30,7 @@ func Init() cstyle.Plugin {
 		},
 		Level: 3,
 		Handler: func(n *element.Node, state *map[string]element.State) {
+			fmt.Println("###")
 			s := *state
 			self := s[n.Properties.Id]
 
@@ -168,6 +170,7 @@ func Init() cstyle.Plugin {
 						w := innerSizes[i][0]
 						if i > 0 {
 							sib := s[n.Children[i-1].Properties.Id]
+							fmt.Println(maxWidths[i], selfWidth)
 							if maxWidths[i] > selfWidth {
 								w = selfWidth - vState.Margin.Left - vState.Margin.Right - (vState.Border.Width * 2)
 							}
@@ -414,9 +417,16 @@ func getMaxWidth(n *element.Node, state *map[string]element.State) float32 {
 	selfWidth := float32(0)
 
 	if len(n.Children) > 0 {
+		var maxRowWidth, rowWidth float32
+
 		for _, v := range n.Children {
-			selfWidth += getNodeWidth(&v, state)
+			rowWidth += getNodeWidth(&v, state)
+			if v.Style["display"] != "inline" {
+				maxRowWidth = utils.Max(rowWidth, maxRowWidth)
+				rowWidth = 0
+			}
 		}
+		selfWidth = utils.Max(rowWidth, maxRowWidth)
 	} else {
 		selfWidth = self.Width
 	}
@@ -649,23 +659,24 @@ func justifyRow(rows [][]int, n *element.Node, state *map[string]element.State, 
 					vState.X = offset
 					(*state)[n.Children[i].Properties.Id] = vState
 				}
-			} else {
-
-				// this is/was causing issues, removed and it fixed its self
-
-				// if there is one element move left
-				// vState := s[n.Children[(row[1]-1)-row[0]].Properties.Id]
-				// var offset float32
-
-				// if !reversed {
-				// 	offset = parent.X + parent.Padding.Left + f.Margin.Left + f.Border.Width
-				// 	propagateOffsets(&n.Children[(row[1]-1)-row[0]], vState.X, vState.Y, offset, vState.Y, state)
-				// 	vState.X = offset
-
-				// 	(*state)[n.Children[(row[1]-1)-row[0]].Properties.Id] = vState
-				// }
-
 			}
+			//  else {
+
+			// this is/was causing issues, removed and it fixed its self
+
+			// if there is one element move left
+			// vState := s[n.Children[(row[1]-1)-row[0]].Properties.Id]
+			// var offset float32
+
+			// if !reversed {
+			// 	offset = parent.X + parent.Padding.Left + f.Margin.Left + f.Border.Width
+			// 	propagateOffsets(&n.Children[(row[1]-1)-row[0]], vState.X, vState.Y, offset, vState.Y, state)
+			// 	vState.X = offset
+
+			// 	(*state)[n.Children[(row[1]-1)-row[0]].Properties.Id] = vState
+			// }
+
+			// }
 
 		} else if justify == "space-evenly" {
 			// get width of row then center (by getting last x + w + mr + b)
