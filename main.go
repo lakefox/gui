@@ -194,6 +194,7 @@ func View(data *Window, width, height int32) {
 			newDoc = data.CSS.Transform(newDoc)
 
 			data.CSS.ComputeNodeStyle(&newDoc, &state)
+			fmt.Println(time.Since(lastChange))
 			rd = data.Render(newDoc, &state)
 			wm.LoadTextures(rd)
 
@@ -201,7 +202,6 @@ func View(data *Window, width, height int32) {
 			// fmt.Println(newDoc.QuerySelector("body").InnerHTML)
 
 			AddHTML(&data.Document)
-			fmt.Println(time.Since(lastChange))
 		}
 		wm.Draw(rd)
 
@@ -211,8 +211,8 @@ func View(data *Window, width, height int32) {
 		// ran := events.RunEvents(eventStore)
 
 		if time.Since(lastChange) > 5*time.Second {
-			if wm.FPS != 1 {
-				wm.SetFPS(1)
+			if wm.FPS != 5 {
+				wm.SetFPS(5)
 			}
 		}
 

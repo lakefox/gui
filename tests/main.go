@@ -14,7 +14,7 @@ func main() {
 	// defer profile.Start(profile.MemProfile).Stop() // Memory
 	// defaults read ~/Library/Preferences/.GlobalPreferences.plist
 
-	window := gui.Open("./src/flex.html")
+	window := gui.Open("./src/reddit.html")
 	// window.AddAdapter(raylib)
 	document := window.Document
 

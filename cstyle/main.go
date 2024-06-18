@@ -375,38 +375,50 @@ func CompleteBorder(cssProperties map[string]string, self, parent element.State)
 	// Split the shorthand into components
 	borderComponents := strings.Fields(cssProperties["border"])
 
-	// Ensure there are at least 1 component (width or style or color)
-	if len(borderComponents) >= 1 {
-		width := "0px" // Default width
-		style := "solid"
-		borderColor := "#000000" // Default color
+	// Default values
+	width := "0px" // Default width
+	style := "solid"
+	borderColor := "#000000" // Default color
 
-		// Extract style and color if available
-		if len(borderComponents) >= 1 {
-			width = borderComponents[0]
+	// Suffixes for width properties
+	widthSuffixes := []string{"px", "em", "pt", "pc", "%", "vw", "vh", "cm", "in"}
+
+	// Identify each component regardless of order
+	for _, component := range borderComponents {
+		if isWidthComponent(component, widthSuffixes) {
+			width = component
+		} else {
+			switch component {
+			case "thin", "medium", "thick":
+				width = component
+			case "none", "hidden", "dotted", "dashed", "solid", "double", "groove", "ridge", "inset", "outset":
+				style = component
+			default:
+				// Handle colors
+				borderColor = component
+			}
 		}
-
-		// Extract style and color if available
-		if len(borderComponents) >= 2 {
-			style = borderComponents[1]
-		}
-		if len(borderComponents) >= 3 {
-			borderColor = borderComponents[2]
-		}
-
-		parsedColor, _ := color.Color(borderColor)
-
-		w := utils.ConvertToPixels(width, self.EM, parent.Width)
-
-		return element.Border{
-			Width:  w,
-			Style:  style,
-			Color:  parsedColor,
-			Radius: cssProperties["border-radius"],
-		}, nil
 	}
 
-	return element.Border{}, fmt.Errorf("invalid border shorthand format")
+	parsedColor, _ := color.Color(borderColor)
+	w := utils.ConvertToPixels(width, self.EM, parent.Width)
+
+	return element.Border{
+		Width:  w,
+		Style:  style,
+		Color:  parsedColor,
+		Radius: cssProperties["border-radius"],
+	}, nil
+}
+
+// Helper function to determine if a component is a width value
+func isWidthComponent(component string, suffixes []string) bool {
+	for _, suffix := range suffixes {
+		if strings.HasSuffix(component, suffix) {
+			return true
+		}
+	}
+	return false
 }
 
 func genTextNode(n *element.Node, state *map[string]element.State, css *CSS) element.State {
@@ -417,7 +429,7 @@ func genTextNode(n *element.Node, state *map[string]element.State, css *CSS) ele
 	text := element.Text{}
 
 	bold, italic := false, false
-
+	// !ISSUE: needs bolder and the 100 -> 900
 	if n.Style["font-weight"] == "bold" {
 		bold = true
 	}

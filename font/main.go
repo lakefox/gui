@@ -21,23 +21,37 @@ import (
 
 // LoadSystemFont loads a font from the system fonts directory or loads a specific font by name
 func GetFontPath(fontName string, bold, italic bool) string {
-
 	if len(fontName) == 0 {
 		fontName = "serif"
 	}
 
-	// Check if a special font family is requested
-	switch fontName {
-	case "sans-serif":
-		return tryLoadSystemFont("Helvetica", bold, italic)
-	case "monospace":
-		return tryLoadSystemFont("Andle Mono", bold, italic)
-	case "serif":
-		return tryLoadSystemFont("Georgia", bold, italic)
+	fonts := strings.Split(fontName, ",")
+	for _, font := range fonts {
+		font = strings.TrimSpace(font)
+		fontPath := tryLoadSystemFont(font, bold, italic)
+		if fontPath != "" {
+			return fontPath
+		}
+
+		// Check special font families only if it's the first font in the list
+
+		switch font {
+		case "sans-serif":
+			fontPath = tryLoadSystemFont("Arial", bold, italic)
+		case "monospace":
+			fontPath = tryLoadSystemFont("Andale Mono", bold, italic)
+		case "serif":
+			fontPath = tryLoadSystemFont("Georgia", bold, italic)
+		}
+
+		if fontPath != "" {
+			return fontPath
+		}
+
 	}
 
-	// Use the default font if the specified font is not found
-	return tryLoadSystemFont(fontName, bold, italic)
+	// Default to serif if none of the specified fonts are found
+	return tryLoadSystemFont("Georgia", bold, italic)
 }
 
 var allFonts = getSystemFonts()
@@ -50,6 +64,7 @@ func tryLoadSystemFont(fontName string, bold, italic bool) string {
 	if italic {
 		font += " Italic"
 	}
+
 	for _, v := range allFonts {
 		if strings.Contains(v, "/"+font) {
 			return v
@@ -85,9 +100,9 @@ func GetFontSize(css map[string]string) float32 {
 }
 
 func LoadFont(fontName string, fontSize int, bold, italic bool) (font.Face, error) {
-	fmt.Println(fontName + fmt.Sprint(fontSize, bold, italic))
 	// Use a TrueType font file for the specified font name
 	fontFile := GetFontPath(fontName, bold, italic)
+	fmt.Println("fontFile", fontFile)
 
 	// Read the font file
 	fontData, err := os.ReadFile(fontFile)

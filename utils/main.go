@@ -257,11 +257,22 @@ func ConvertToPixels(value string, em, max float32) float32 {
 		"in": 96,
 	}
 
+	units := map[string]float32{
+		"thick":  5,
+		"medium": 3,
+		"thin":   1,
+	}
+
 	if strings.HasPrefix(value, "calc(") {
 		// Handle calculation expression
 		calcResult := evaluateCalcExpression(value[5:len(value)-1], em, max)
 		return calcResult
 	} else {
+		for k, v := range units {
+			if value == k {
+				return v
+			}
+		}
 		// Extract numeric value and unit
 		for k, v := range unitFactors {
 			if strings.HasSuffix(value, k) {
@@ -270,6 +281,7 @@ func ConvertToPixels(value string, em, max float32) float32 {
 				return float32(numericValue) * v
 			}
 		}
+
 		return 0
 	}
 
