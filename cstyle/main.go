@@ -88,6 +88,27 @@ var inheritedProps = []string{
 	"display",
 }
 
+func (c *CSS) QuickStyles(n *element.Node) map[string]string {
+	styles := make(map[string]string)
+
+	// Inherit styles from parent
+	if n.Parent != nil {
+		ps := n.Parent.Style
+		for _, prop := range inheritedProps {
+			if value, ok := ps[prop]; ok && value != "" {
+				styles[prop] = value
+			}
+		}
+	}
+
+	// Add node's own styles
+	for k, v := range n.Style {
+		styles[k] = v
+	}
+
+	return styles
+}
+
 func (c *CSS) GetStyles(n *element.Node) map[string]string {
 	styles := make(map[string]string)
 
