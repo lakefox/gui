@@ -1,7 +1,6 @@
 package flex
 
 import (
-	"fmt"
 	"gui/cstyle"
 	"gui/cstyle/plugins/inline"
 	"gui/element"
@@ -30,7 +29,6 @@ func Init() cstyle.Plugin {
 		},
 		Level: 3,
 		Handler: func(n *element.Node, state *map[string]element.State) {
-			fmt.Println("###")
 			s := *state
 			self := s[n.Properties.Id]
 
@@ -170,7 +168,6 @@ func Init() cstyle.Plugin {
 						w := innerSizes[i][0]
 						if i > 0 {
 							sib := s[n.Children[i-1].Properties.Id]
-							fmt.Println(maxWidths[i], selfWidth)
 							if maxWidths[i] > selfWidth {
 								w = selfWidth - vState.Margin.Left - vState.Margin.Right - (vState.Border.Width * 2)
 							}

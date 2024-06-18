@@ -1,6 +1,7 @@
 package font
 
 import (
+	"fmt"
 	"gui/element"
 	"image"
 	"image/color"
@@ -84,6 +85,7 @@ func GetFontSize(css map[string]string) float32 {
 }
 
 func LoadFont(fontName string, fontSize int, bold, italic bool) (font.Face, error) {
+	fmt.Println(fontName + fmt.Sprint(fontSize, bold, italic))
 	// Use a TrueType font file for the specified font name
 	fontFile := GetFontPath(fontName, bold, italic)
 
@@ -117,7 +119,8 @@ func MeasureText(t *element.Text, text string) int {
 			// Handle spaces separately, add word spacing
 			width += fixed.I(t.WordSpacing)
 		} else {
-			adv, ok := t.Font.GlyphAdvance(runeValue)
+			fnt := *t.Font
+			adv, ok := fnt.GlyphAdvance(runeValue)
 			if !ok {
 				continue
 			}
@@ -131,7 +134,8 @@ func MeasureText(t *element.Text, text string) int {
 }
 
 func MeasureSpace(t *element.Text) int {
-	adv, _ := t.Font.GlyphAdvance(' ')
+	fnt := *t.Font
+	adv, _ := fnt.GlyphAdvance(' ')
 	return adv.Round()
 }
 
@@ -243,7 +247,7 @@ func Render(t *element.Text) (*image.RGBA, int) {
 	dr := &font.Drawer{
 		Dst:  img,
 		Src:  &image.Uniform{color.RGBA{uint8(r), uint8(g), uint8(b), uint8(a)}},
-		Face: t.Font,
+		Face: *t.Font,
 		Dot:  dot,
 	}
 
@@ -267,18 +271,19 @@ func drawString(t element.Text, dr *font.Drawer, v string, lineWidth int, img *i
 
 		underlinePosition.X = 0
 		baseLineY := underlinePosition.Y
-
+		fnt := *t.Font
+		descent := fnt.Metrics().Descent
 		if t.Underlined {
-			underlinePosition.Y = baseLineY + t.Font.Metrics().Descent
+			underlinePosition.Y = baseLineY + descent
 			underlinePosition.Y = (underlinePosition.Y / 100) * 97
 			drawLine(img, underlinePosition, fixed.Int26_6(lineWidth), t.DecorationThickness, t.DecorationColor)
 		}
 		if t.LineThrough {
-			underlinePosition.Y = baseLineY - (t.Font.Metrics().Descent)
+			underlinePosition.Y = baseLineY - (descent)
 			drawLine(img, underlinePosition, fixed.Int26_6(lineWidth), t.DecorationThickness, t.DecorationColor)
 		}
 		if t.Overlined {
-			underlinePosition.Y = baseLineY - t.Font.Metrics().Descent*3
+			underlinePosition.Y = baseLineY - descent*3
 			drawLine(img, underlinePosition, fixed.Int26_6(lineWidth), t.DecorationThickness, t.DecorationColor)
 		}
 	}

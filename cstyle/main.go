@@ -12,6 +12,8 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+
+	imgFont "golang.org/x/image/font"
 )
 
 // !TODO: Make a fine selector to target tags and if it has children or not etc
@@ -34,6 +36,7 @@ type CSS struct {
 	Plugins      []Plugin
 	Transformers []Transformer
 	Document     *element.Node
+	Fonts        map[string]imgFont.Face
 }
 
 func (c *CSS) Transform(n element.Node) element.Node {
@@ -303,12 +306,11 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 	if !utils.ChildrenHaveText(n) && len(n.InnerText) > 0 {
 		// Confirm text exists
 		n.InnerText = strings.TrimSpace(n.InnerText)
-		self = genTextNode(n, state)
+		self = genTextNode(n, state, c)
 	}
 
 	(*state)[n.Properties.Id] = self
 	(*state)[n.Parent.Properties.Id] = parent
-
 	// Call children here
 
 	// Check to see if node is in fov
@@ -357,7 +359,6 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 	}
 
 	// CheckNode(n, state)
-
 	return n
 }
 
@@ -399,7 +400,7 @@ func CompleteBorder(cssProperties map[string]string, self, parent element.State)
 	return element.Border{}, fmt.Errorf("invalid border shorthand format")
 }
 
-func genTextNode(n *element.Node, state *map[string]element.State) element.State {
+func genTextNode(n *element.Node, state *map[string]element.State, css *CSS) element.State {
 	s := *state
 	self := s[n.Properties.Id]
 	parent := s[n.Parent.Properties.Id]
@@ -417,8 +418,16 @@ func genTextNode(n *element.Node, state *map[string]element.State) element.State
 	}
 
 	if text.Font == nil {
-		f, _ := font.LoadFont(n.Style["font-family"], int(self.EM), bold, italic)
-		text.Font = f
+		if css.Fonts == nil {
+			css.Fonts = map[string]imgFont.Face{}
+		}
+		fid := n.Style["font-family"] + fmt.Sprint(self.EM, bold, italic)
+		if css.Fonts[fid] == nil {
+			f, _ := font.LoadFont(n.Style["font-family"], int(self.EM), bold, italic)
+			css.Fonts[fid] = f
+		}
+		fnt := css.Fonts[fid]
+		text.Font = &fnt
 	}
 
 	letterSpacing := utils.ConvertToPixels(n.Style["letter-spacing"], self.EM, parent.Width)

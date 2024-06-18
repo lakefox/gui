@@ -1,12 +1,13 @@
 package element
 
 import (
-	"fmt"
 	"gui/selector"
 	"image"
 	ic "image/color"
-	"math/rand"
+	"math"
+	"strconv"
 	"strings"
+	"sync"
 
 	"golang.org/x/image/font"
 )
@@ -104,7 +105,7 @@ type Border struct {
 }
 
 type Text struct {
-	Font                font.Face
+	Font                *font.Face
 	Color               ic.RGBA
 	Text                string
 	Underlined          bool
@@ -237,12 +238,27 @@ func TestSelector(selectString string, n *Node) bool {
 	}
 }
 
+var (
+	idCounter int64
+	mu        sync.Mutex
+)
+
+func generateUniqueId(tagName string) string {
+	mu.Lock()
+	defer mu.Unlock()
+	if idCounter == math.MaxInt64 {
+		idCounter = 0
+	}
+	idCounter++
+	return tagName + strconv.FormatInt(idCounter, 10)
+}
+
 func (n *Node) AppendChild(c Node) {
 	c.Parent = n
 	// Set Id
-	randomInt := rand.Intn(10000)
 
-	c.Properties.Id = c.TagName + fmt.Sprint(randomInt+len(c.Parent.Children))
+	c.Properties.Id = generateUniqueId(c.TagName)
+	// fmt.Println(c.Properties.Id)
 
 	n.Children = append(n.Children, c)
 }
@@ -250,9 +266,10 @@ func (n *Node) AppendChild(c Node) {
 func (n *Node) InsertAfter(c, tgt Node) {
 	c.Parent = n
 	// Set Id
-	randomInt := rand.Intn(10000)
+	c.Properties.Id = generateUniqueId(c.TagName)
 
-	c.Properties.Id = c.TagName + fmt.Sprint(randomInt+len(c.Parent.Children))
+	// fmt.Println(c.Properties.Id)
+
 	nodeIndex := -1
 	for i, v := range n.Children {
 
@@ -263,6 +280,9 @@ func (n *Node) InsertAfter(c, tgt Node) {
 	}
 	if nodeIndex > -1 {
 		n.Children = append(n.Children[:nodeIndex+1], append([]Node{c}, n.Children[nodeIndex+1:]...)...)
+		// n.Children = append(n.Children, Node{}) // Add a zero value to expand the slice
+		// copy(n.Children[nodeIndex+2:], n.Children[nodeIndex+1:])
+		// n.Children[nodeIndex+1] = c
 	} else {
 		n.AppendChild(c)
 	}
@@ -271,9 +291,9 @@ func (n *Node) InsertAfter(c, tgt Node) {
 func (n *Node) InsertBefore(c, tgt Node) {
 	c.Parent = n
 	// Set Id
-	randomInt := rand.Intn(10000)
 
-	c.Properties.Id = c.TagName + fmt.Sprint(randomInt+len(c.Parent.Children))
+	c.Properties.Id = generateUniqueId(c.TagName)
+
 	nodeIndex := -1
 	for i, v := range n.Children {
 		if v.Properties.Id == tgt.Properties.Id {
@@ -283,6 +303,9 @@ func (n *Node) InsertBefore(c, tgt Node) {
 	}
 	if nodeIndex > 0 {
 		n.Children = append(n.Children[:nodeIndex], append([]Node{c}, n.Children[nodeIndex:]...)...)
+		// n.Children = append(n.Children, Node{}) // Add a zero value to expand the slice
+		// copy(n.Children[nodeIndex+1:], n.Children[nodeIndex:])
+		// n.Children[nodeIndex] = c
 	} else {
 		n.AppendChild(c)
 	}
