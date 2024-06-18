@@ -93,7 +93,7 @@ func (c *CSS) GetStyles(n element.Node) map[string]string {
 	styles := map[string]string{}
 
 	if n.Parent != nil {
-		ps := c.GetStyles(*n.Parent)
+		ps := n.Parent.Style
 		for _, v := range inheritedProps {
 			if ps[v] != "" {
 				styles[v] = ps[v]

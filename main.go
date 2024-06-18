@@ -192,7 +192,6 @@ func View(data *Window, width, height int32) {
 			newDoc := CopyNode(data.CSS, data.Document.Children[0], &data.Document)
 
 			newDoc = data.CSS.Transform(newDoc)
-			fmt.Println(time.Since(lastChange))
 
 			data.CSS.ComputeNodeStyle(&newDoc, &state)
 			rd = data.Render(newDoc, &state)
@@ -202,6 +201,7 @@ func View(data *Window, width, height int32) {
 			// fmt.Println(newDoc.QuerySelector("body").InnerHTML)
 
 			AddHTML(&data.Document)
+			fmt.Println(time.Since(lastChange))
 		}
 		wm.Draw(rd)
 

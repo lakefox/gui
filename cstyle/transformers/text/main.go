@@ -38,6 +38,7 @@ func Init() cstyle.Transformer {
 							isLast = "true"
 						}
 						el.SetAttribute("last", isLast)
+
 						n.Parent.InsertAfter(el, n)
 
 					}
