@@ -54,18 +54,18 @@ func parseStyles(styleBlock string) map[string]string {
 func ParseStyleAttribute(styleValue string) map[string]string {
 	styleMap := make(map[string]string)
 
-	// Regular expression to match key-value pairs in the style attribute
-	re := regexp.MustCompile(`\s*([\w-]+)\s*:\s*([^;]+)\s*;`)
+	// Split the style attribute by ';'
+	styles := strings.Split(styleValue, ";")
 
-	// Find all matches in the style attribute value
-	matches := re.FindAllStringSubmatch(styleValue, -1)
-
-	// Populate the map with key-value pairs
-	for _, match := range matches {
-		if len(match) == 3 {
-			key := strings.TrimSpace(match[1])
-			value := strings.TrimSpace(match[2])
-			styleMap[key] = value
+	for _, style := range styles {
+		// Split each key-value pair by ':'
+		parts := strings.SplitN(style, ":", 2)
+		if len(parts) == 2 {
+			key := strings.TrimSpace(parts[0])
+			value := strings.TrimSpace(parts[1])
+			if key != "" && value != "" {
+				styleMap[key] = value
+			}
 		}
 	}
 

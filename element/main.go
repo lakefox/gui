@@ -209,16 +209,12 @@ func TestSelector(selectString string, n *Node) bool {
 	parts := strings.Split(selectString, ">")
 
 	selectors := []string{}
-	if n.Properties.Focusable {
-		if n.Properties.Focused {
-			selectors = append(selectors, ":focus")
-		}
+	if n.Properties.Focusable && n.Properties.Focused {
+		selectors = append(selectors, ":focus")
 	}
 
-	classes := n.ClassList.Classes
-
-	for _, v := range classes {
-		selectors = append(selectors, "."+v)
+	for _, class := range n.ClassList.Classes {
+		selectors = append(selectors, "."+class)
 	}
 
 	if n.Id != "" {
@@ -226,16 +222,14 @@ func TestSelector(selectString string, n *Node) bool {
 	}
 
 	selectors = append(selectors, n.TagName)
-
 	part := selector.SplitSelector(strings.TrimSpace(parts[len(parts)-1]))
 
 	has := selector.Contains(part, selectors)
 
 	if len(parts) == 1 || !has {
 		return has
-	} else {
-		return TestSelector(strings.Join(parts[0:len(parts)-1], ">"), n.Parent)
 	}
+	return TestSelector(strings.Join(parts[:len(parts)-1], ">"), n.Parent)
 }
 
 var (

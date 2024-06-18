@@ -8,7 +8,6 @@ import (
 	"gui/parser"
 	"gui/utils"
 	"os"
-	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -89,52 +88,62 @@ var inheritedProps = []string{
 	"display",
 }
 
-func (c *CSS) GetStyles(n element.Node) map[string]string {
-	styles := map[string]string{}
+func (c *CSS) GetStyles(n *element.Node) map[string]string {
+	styles := make(map[string]string)
 
+	// Inherit styles from parent
 	if n.Parent != nil {
 		ps := n.Parent.Style
-		for _, v := range inheritedProps {
-			if ps[v] != "" {
-				styles[v] = ps[v]
+		for _, prop := range inheritedProps {
+			if value, ok := ps[prop]; ok && value != "" {
+				styles[prop] = value
 			}
 		}
 	}
+
+	// Add node's own styles
 	for k, v := range n.Style {
 		styles[k] = v
 	}
+
+	// Check if node is hovered
 	hovered := false
-	if slices.Contains(n.ClassList.Classes, ":hover") {
-		hovered = true
+	for _, class := range n.ClassList.Classes {
+		if class == ":hover" {
+			hovered = true
+			break
+		}
 	}
 
+	// Apply styles from style sheets
 	for _, styleSheet := range c.StyleSheets {
-		for selector := range styleSheet {
-			// fmt.Println(selector, n.Properties.Id)
-			key := selector
-			if strings.Contains(selector, ":hover") && hovered {
+		for selector, rules := range styleSheet {
+			originalSelector := selector
+
+			if hovered && strings.Contains(selector, ":hover") {
 				selector = strings.Replace(selector, ":hover", "", -1)
 			}
-			if element.TestSelector(selector, &n) {
-				for k, v := range styleSheet[key] {
+
+			if element.TestSelector(selector, n) {
+				for k, v := range rules {
 					styles[k] = v
 				}
 			}
 
+			selector = originalSelector // Restore original selector
 		}
 	}
 
-	// This is different than node.Style
-	// temp1 = <span style=​"color:​#a6e22e">​CSS​</span>​
-	// temp1.style == CSSStyleDeclaration {0: 'color', accentColor: '', additiveSymbols: '', alignContent: '', alignItems: '', alignSelf: '', …}
-	// temp1.getAttribute("style") == 'color:#a6e22e'
-	inline := parser.ParseStyleAttribute(n.GetAttribute("style") + ";")
-	styles = utils.Merge(styles, inline)
-	// add hover and focus css events
+	// Parse inline styles
+	inlineStyles := parser.ParseStyleAttribute(n.GetAttribute("style"))
+	for k, v := range inlineStyles {
+		styles[k] = v
+	}
 
-	if n.Parent != nil {
-		if styles["z-index"] == "" && n.Parent.Style["z-index"] != "" {
-			z, _ := strconv.Atoi(n.Parent.Style["z-index"])
+	// Handle z-index inheritance
+	if n.Parent != nil && styles["z-index"] == "" {
+		if parentZIndex, ok := n.Parent.Style["z-index"]; ok && parentZIndex != "" {
+			z, _ := strconv.Atoi(parentZIndex)
 			z += 1
 			styles["z-index"] = strconv.Itoa(z)
 		}

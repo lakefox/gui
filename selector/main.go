@@ -31,28 +31,28 @@ func GetInitCSSSelectors(node *html.Node, selectors []string) []string {
 
 func SplitSelector(s string) []string {
 	var result []string
-	var current string
+	var current strings.Builder
 
 	for _, char := range s {
 		switch char {
 		case '.', '#', '[', ']', ':':
-			if current != "" {
-				if string(char) == "]" {
-					current += string(char)
+			if current.Len() > 0 {
+				if char == ']' {
+					current.WriteRune(char)
 				}
-				result = append(result, current)
+				result = append(result, current.String())
+				current.Reset()
 			}
-			current = ""
-			if string(char) != "]" {
-				current += string(char)
+			if char != ']' {
+				current.WriteRune(char)
 			}
 		default:
-			current += string(char)
+			current.WriteRune(char)
 		}
 	}
 
-	if current != "" && current != "]" {
-		result = append(result, current)
+	if current.Len() > 0 {
+		result = append(result, current.String())
 	}
 
 	return result

@@ -32,7 +32,9 @@ func Init() cstyle.Transformer {
 						el := n.CreateElement("notaspan")
 						el.InnerText = DecodeHTMLEscapes(words[a])
 						el.Parent = &n
-						el.Style = c.GetStyles(el)
+						// lastChange := time.Now()
+						el.Style = c.GetStyles(&el)
+						// fmt.Println(1, time.Since(lastChange))
 						isLast := "false"
 						if a == 0 {
 							isLast = "true"
@@ -50,7 +52,7 @@ func Init() cstyle.Transformer {
 						el := n.CreateElement("notaspan")
 						el.InnerText = DecodeHTMLEscapes(words[i])
 						el.Parent = &n
-						el.Style = c.GetStyles(el)
+						el.Style = c.GetStyles(&el)
 						el.Style["font-size"] = "1em"
 						isLast := "false"
 						if i == len(words)-1 {

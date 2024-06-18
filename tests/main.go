@@ -4,14 +4,13 @@ import (
 	"fmt"
 	"gui"
 	"gui/element"
-
-	"github.com/pkg/profile"
+	// "github.com/pkg/profile"
 )
 
 // go tool pprof --pdf ./main.go /var/folders/7b/c07zbwkj03nf7cs4vm_0yw1w0000gn/T/profile1893611654/cpu.pprof > file.pdf
 
 func main() {
-	defer profile.Start().Stop() // CPU
+	// defer profile.Start().Stop() // CPU
 	// defer profile.Start(profile.MemProfile).Stop() // Memory
 	// defaults read ~/Library/Preferences/.GlobalPreferences.plist
 

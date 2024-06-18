@@ -244,7 +244,7 @@ func CopyNode(c cstyle.CSS, node element.Node, parent *element.Node) element.Nod
 
 	n.Parent = parent
 
-	n.Style = c.GetStyles(n)
+	n.Style = c.GetStyles(&n)
 
 	for _, v := range node.Children {
 		n.Children = append(n.Children, CopyNode(c, v, &n))
