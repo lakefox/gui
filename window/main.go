@@ -72,6 +72,7 @@ func (wm *WindowManager) LoadTextures(nodes []element.State) {
 	if wm.Textures == nil {
 		wm.Textures = map[int]Texture{}
 	}
+
 	for i, node := range nodes {
 		if node.Texture != nil {
 			// !TODO: Make a faster hash algo that minimises the time to detect if a image is different
@@ -146,14 +147,7 @@ func (wm *WindowManager) WindowShouldClose() bool {
 }
 
 func computeImageHash(img *image.RGBA) uint64 {
-	var hash uint64
 	hasher := fnv.New64a()
-
-	// Combine the pixel values to generate the hash
-	for _, pixel := range img.Pix {
-		hasher.Write([]byte{pixel})
-	}
-	hash = hasher.Sum64()
-
-	return hash
+	hasher.Write(img.Pix)
+	return hasher.Sum64()
 }

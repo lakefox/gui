@@ -187,14 +187,13 @@ func View(data *Window, width, height int32) {
 			if wm.FPS != 30 {
 				wm.SetFPS(30)
 			}
-			hash = newHash
 			lastChange = time.Now()
+			hash = newHash
 			newDoc := CopyNode(data.CSS, data.Document.Children[0], &data.Document)
 
 			newDoc = data.CSS.Transform(newDoc)
 
 			data.CSS.ComputeNodeStyle(&newDoc, &state)
-			fmt.Println(time.Since(lastChange))
 			rd = data.Render(newDoc, &state)
 			wm.LoadTextures(rd)
 
@@ -202,6 +201,7 @@ func View(data *Window, width, height int32) {
 			// fmt.Println(newDoc.QuerySelector("body").InnerHTML)
 
 			AddHTML(&data.Document)
+			fmt.Println(time.Since(lastChange))
 		}
 		wm.Draw(rd)
 

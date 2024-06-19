@@ -3,7 +3,7 @@ inline
 position absolute,relitive (needs fixed and others)
 margin
 padding
-flex - row,col,justify-row,reverse
+flex - row,col,justify-row,reverse,align-items,align-content
 queryselector(all)
 events
 hover
