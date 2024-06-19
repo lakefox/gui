@@ -266,33 +266,47 @@ func Init() cstyle.Plugin {
 			// Column doesn't really need a lot done bc it is basically block styling rn
 			if flexDirection == "column" {
 				if !flexWrapped {
-					if n.Style["height"] != "" || n.Style["min-height"] != "" {
-						h := selfHeight / float32(len(n.Children))
+					// if the container has a size restriction
+					if n.Style["height"] != "" {
+						var totalHeight float32
+						var fixedHeightElements int
+						for _, v := range n.Children {
+							vState := s[v.Properties.Id]
+							if v.Style["min-height"] != "" {
+								selfHeight -= vState.Height + vState.Margin.Top + vState.Margin.Bottom + (vState.Border.Width * 2)
+								fixedHeightElements++
+							} else {
+								totalHeight += vState.Height + vState.Margin.Top + vState.Margin.Bottom + (vState.Border.Width * 2)
+							}
+						}
+
+						heightDelta := selfHeight - totalHeight
+						if heightDelta < 0 {
+							heightDelta = -heightDelta
+						}
+						heightAdj := heightDelta / float32(len(n.Children)-fixedHeightElements)
+						if heightAdj < 0 {
+							heightAdj = -heightAdj
+						}
+						// We are calculating the amount a element needs to shrink because of its siblings
 						for i, v := range n.Children {
 							vState := s[v.Properties.Id]
-							yStore := vState.Y
-							adjH := h - (vState.Margin.Top + vState.Margin.Bottom + (vState.Border.Width * 2))
-							if adjH < vState.Height {
-
-								if minHeights[i] > adjH {
-									vState.Height = minHeights[i]
-									if i > 0 {
-										sib := s[n.Children[i-1].Properties.Id]
-										vState.Y = sib.Y + sib.Height + sib.Margin.Bottom + sib.Border.Width + vState.Margin.Top + vState.Border.Width
-									}
-								} else {
-									vState.Height = adjH
-									vState.Y = self.Y + self.Padding.Top + self.Border.Width + (h * float32(i)) + vState.Margin.Top
+							if v.Style["min-height"] == "" {
+								vState.Height -= heightAdj
+								if i > 0 {
+									vState.Y -= heightAdj * float32(i)
 								}
-								propagateOffsets(&v, vState.X, yStore, vState.X, vState.Y, state)
 								(*state)[v.Properties.Id] = vState
 							}
 						}
+
 					}
 					for i, v := range n.Children {
 						vState := s[v.Properties.Id]
 						rows = append(rows, []int{i, i + 1, int(vState.Height)})
 					}
+
+				} else {
 
 				}
 				if flexReversed {
