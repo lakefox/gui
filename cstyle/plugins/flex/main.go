@@ -276,6 +276,7 @@ func Init() cstyle.Plugin {
 								selfHeight -= vState.Height + vState.Margin.Top + vState.Margin.Bottom + (vState.Border.Width * 2)
 								fixedHeightElements++
 							} else {
+								// accoutn for element min height
 								totalHeight += vState.Height + vState.Margin.Top + vState.Margin.Bottom + (vState.Border.Width * 2)
 							}
 						}
@@ -293,9 +294,17 @@ func Init() cstyle.Plugin {
 							vState := s[v.Properties.Id]
 							if v.Style["min-height"] == "" {
 								vState.Height -= heightAdj
-								if i > 0 {
-									vState.Y -= heightAdj * float32(i)
+								yStore := vState.Y
+								if vState.Height < minHeights[i] {
+									vState.Height = minHeights[i]
 								}
+								if i > 0 {
+									sib := s[n.Children[i-1].Properties.Id]
+
+									vState.Y = sib.Y + sib.Height + sib.Margin.Bottom + sib.Border.Width + vState.Margin.Top + vState.Border.Width
+								}
+								propagateOffsets(&v, vState.X, yStore, vState.X, vState.Y, state)
+
 								(*state)[v.Properties.Id] = vState
 							}
 						}
@@ -307,6 +316,63 @@ func Init() cstyle.Plugin {
 					}
 
 				} else {
+					var colHeight float32
+					var colIndex int
+					cols := [][][]float32{}
+
+					// Map elements to columns
+					for i, v := range n.Children {
+						vState := s[v.Properties.Id]
+
+						height := vState.Height + vState.Margin.Top + vState.Margin.Bottom + (vState.Border.Width * 2)
+						if colHeight+height > selfHeight {
+							colHeight = height
+							colIndex++
+							width := vState.Width + vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2)
+							if colIndex >= len(cols) {
+								cols = append(cols, [][]float32{})
+							}
+							cols[colIndex] = append(cols[colIndex], []float32{float32(i), height, width})
+						} else {
+							colHeight += height
+							width := vState.Width + vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2)
+							if colIndex >= len(cols) {
+								cols = append(cols, [][]float32{})
+							}
+							cols[colIndex] = append(cols[colIndex], []float32{float32(i), height, width})
+						}
+					}
+
+					// Find the max total width of all columns
+					var totalMaxWidth float32
+					maxWidths := []float32{}
+					for _, col := range cols {
+						var maxWidth float32
+						for _, element := range col {
+							maxWidth = utils.Max(element[2], maxWidth)
+						}
+						totalMaxWidth += maxWidth
+						maxWidths = append(maxWidths, maxWidth)
+					}
+					offset := (selfWidth - totalMaxWidth) / float32(len(cols))
+					// Move the elements into the correct position
+					var xOffset float32
+					for i, col := range cols {
+						// Move the elements into the correct position
+						yOffset := self.Y + self.Border.Width + self.Padding.Top
+						for _, element := range col {
+							vState := s[n.Children[int(element[0])].Properties.Id]
+							xStore := vState.X
+							yStore := vState.Y
+							vState.X = self.X + self.Padding.Left + self.Border.Width + xOffset + vState.Margin.Left + vState.Border.Width
+							vState.Y = yOffset + vState.Margin.Top + vState.Border.Width
+							propagateOffsets(&n.Children[int(element[0])], xStore, yStore, vState.X, vState.Y, state)
+
+							yOffset += vState.Margin.Top + vState.Border.Width + vState.Height + vState.Margin.Bottom + vState.Border.Width
+							(*state)[n.Children[int(element[0])].Properties.Id] = vState
+						}
+						xOffset += maxWidths[i] + offset
+					}
 
 				}
 				if flexReversed {
