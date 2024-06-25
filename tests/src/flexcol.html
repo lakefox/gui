@@ -6,15 +6,16 @@
         <style>
             #cont {
                 display: flex;
-                flex-direction: column;
-                flex-wrap: wrap;
+                flex-direction: row;
+                /* flex-wrap: wrap; */
                 height: 260px;
                 border: 1px solid;
                 padding: 10px;
-                justify-content: space-around;
+                /* align-items: center; */
+                /* align-content: space-around; */
             }
             .item {
-                width: 100px;
+                /* width: 100px; */
                 height: 50px;
                 background: #eee;
                 border: 1px solid #000;
@@ -25,11 +26,11 @@
     <body>
         <div id="cont">
             <div class="item">Item 1</div>
-            <div class="item" style="height: 100px">Item 2</div>
+            <div class="item" style="height: 100px; width: 50px">Item 2</div>
             <div class="item">Item 3</div>
             <div class="item">Item 4</div>
             <div class="item">Item 5</div>
-            <div class="item">Item 6</div>
+            <div class="item" style="margin: 43px">Item 6</div>
             <div class="item">Item 7</div>
             <div class="item">Item 8</div>
             <div class="item">Item 9</div>

@@ -343,8 +343,6 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 	(*state)[n.Parent.Properties.Id] = parent
 	// Call children here
 
-	// Check to see if node is in fov
-	// if self.Y < c.Height {
 	var childYOffset float32
 	for i := 0; i < len(n.Children); i++ {
 		v := n.Children[i]
@@ -369,11 +367,9 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 		}
 	}
 
-	// } else {
-	// return n
-	// }
-
-	self.Height += self.Padding.Bottom
+	if n.Style["height"] == "" {
+		self.Height += self.Padding.Bottom
+	}
 
 	(*state)[n.Properties.Id] = self
 
