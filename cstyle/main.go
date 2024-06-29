@@ -285,7 +285,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 		for i, v := range n.Parent.Children {
 			if v.Style["position"] != "absolute" {
 				if v.Properties.Id == n.Properties.Id {
-					if i-1 > -1 {
+					if i > 0 {
 						sib := n.Parent.Children[i-1]
 						sibling := s[sib.Properties.Id]
 						if sib.Style["position"] != "absolute" {
@@ -299,7 +299,6 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 								y = sibling.Y + sibling.Height + (sibling.Border.Width * 2) + sibling.Margin.Bottom
 							}
 						}
-
 					}
 					break
 				} else if n.Style["display"] != "inline" {

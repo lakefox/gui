@@ -13,7 +13,7 @@ func Init() cstyle.Plugin {
 			}
 			matches := true
 			for name, value := range styles {
-				if (n.Style[name] != value || n.Style[name] == "") && !(value == "*") {
+				if n.Style[name] != value && !(value == "*") && n.Style[name] != "" {
 					matches = false
 				}
 			}
@@ -27,34 +27,32 @@ func Init() cstyle.Plugin {
 			copyOfX := self.X
 			copyOfY := self.Y
 
-			xCollect := float32(0)
+			// xCollect := float32(0)
 			for i, v := range n.Parent.Children {
-				vState := s[v.Properties.Id]
-				if v.Style["position"] != "absolute" {
-					if v.Style["display"] != "inline" {
-						xCollect = 0
-					} else {
+				// vState := s[v.Properties.Id]
+				if i > 0 {
+					if v.Style["position"] != "absolute" {
 						if v.Properties.Id == n.Properties.Id {
-							if self.X+xCollect+self.Width > ((parent.Width)-parent.Padding.Right)+parent.X+parent.Border.Width && i > 0 {
-								// Break Node
-								sibling := s[n.Parent.Children[i-1].Properties.Id]
-								self.Y += sibling.Height
+							sib := n.Parent.Children[i-1]
+							sibling := s[sib.Properties.Id]
+							if sibling.X+sibling.Width+self.Width > ((parent.Width)-parent.Padding.Right)+parent.X {
+								// Break Node.Id
+								self.Y = sibling.Y + sibling.Height
 								self.X = copyOfX
-							} else if i > 0 {
+							} else {
 								// Node did not break
-								self.X += xCollect
+								if sib.Style["display"] != "inline" {
+									self.Y = sibling.Y + sibling.Height
+								} else {
+									self.Y = sibling.Y
+									self.X = sibling.X + sibling.Width
+								}
 							}
 							break
-						} else {
-							if colliderDetection(vState, self) {
-								xCollect += vState.Width
-							} else {
-								xCollect = vState.Width
-								self.Y = vState.Y
-							}
 						}
 					}
 				}
+
 			}
 			propagateOffsets(n, copyOfX, copyOfY, self, state)
 			(*state)[n.Properties.Id] = self

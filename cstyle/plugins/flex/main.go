@@ -105,7 +105,6 @@ func Init() cstyle.Plugin {
 				// if the elements are less than the size of the parent, don't change widths. Just set mins
 				if !flexWrapped {
 					if add2d(innerSizes, 0) < selfWidth {
-						fmt.Println("here")
 						for i := range innerSizes {
 							// for i, _ := range n.Children {
 							// vState := s[v.Properties.Id]
@@ -242,15 +241,47 @@ func Init() cstyle.Plugin {
 					}
 				}
 
+				var totalHeight float32
+
+				for _, v := range rows {
+					totalHeight += float32(v[2])
+					for i := v[0]; i < v[1]; i++ {
+						vState := s[n.Children[i].Properties.Id]
+						if vState.Height == float32(v[2]) {
+							totalHeight += vState.Margin.Top + vState.Margin.Bottom
+							v[2] += int(vState.Margin.Top + vState.Margin.Bottom + (vState.Border.Width * 2))
+						}
+					}
+				}
+				var yOffset float32
 				for _, v := range rows {
 					for i := v[0]; i < v[1]; i++ {
 						vState := s[n.Children[i].Properties.Id]
 						// height := float32(v[2])
-						if (n.Style["height"] != "" && n.Style["min-height"] != "") && !flexWrapped {
+						if n.Children[i].Style["height"] == "" && n.Children[i].Style["min-height"] == "" && !flexWrapped {
 							height := self.Height - self.Padding.Top - self.Padding.Bottom - vState.Margin.Top - vState.Margin.Bottom - (vState.Border.Width * 2)
 							vState.Height = minHeight(n.Children[i], state, height)
+						} else if flexWrapped && (n.Style["height"] != "" || n.Style["min-height"] != "") {
+							height := ((selfHeight / totalHeight) * float32(v[2])) - (vState.Margin.Top + vState.Margin.Bottom + (vState.Border.Width * 2))
+							vState.Height = minHeight(n.Children[i], state, height)
+							yStore := vState.Y
+							vState.Y = self.Y + self.Padding.Top + yOffset + vState.Margin.Top + vState.Border.Width
+							propagateOffsets(&n.Children[i], vState.X, yStore, vState.X, vState.Y, state)
+						} else if flexWrapped {
+							if vState.Height+vState.Margin.Top+vState.Margin.Bottom+(vState.Border.Width*2) != float32(v[2]) {
+								height := vState.Height - (vState.Margin.Top + vState.Margin.Bottom + (vState.Border.Width * 2))
+								vState.Height = minHeight(n.Children[i], state, height)
+							}
+							yStore := vState.Y
+							vState.Y = self.Y + self.Padding.Top + yOffset + vState.Margin.Top + vState.Border.Width
+							propagateOffsets(&n.Children[i], vState.X, yStore, vState.X, vState.Y, state)
 						}
 						(*state)[n.Children[i].Properties.Id] = vState
+					}
+					if flexWrapped && (n.Style["height"] != "" || n.Style["min-height"] != "") {
+						yOffset += ((selfHeight / totalHeight) * float32(v[2]))
+					} else if flexWrapped {
+						yOffset += float32(v[2])
 					}
 				}
 				// Reverse elements
@@ -298,7 +329,7 @@ func Init() cstyle.Plugin {
 					for i, v := range n.Children {
 						vState := s[v.Properties.Id]
 						yStore := vState.Y
-						if v.Style["min-height"] == "" {
+						if v.Style["min-height"] != "" {
 							vState.Height = minHeights[i] - heightAdj
 							if vState.Height < minHeights[i] {
 								vState.Height = minHeights[i]
@@ -318,6 +349,7 @@ func Init() cstyle.Plugin {
 					rows = append(rows, []int{0, len(n.Children) - 1, int(maxH)})
 
 				} else {
+					fmt.Println("here")
 					var colHeight float32
 					var colIndex int
 					cols := [][][]float32{}
@@ -351,7 +383,7 @@ func Init() cstyle.Plugin {
 					for _, col := range cols {
 						var maxWidth, maxHeight float32
 						for _, element := range col {
-							maxHeight = utils.Max(element[1], maxHeight)
+							maxHeight = utils.Max(utils.Max(element[1], minHeights[int(element[0])]), maxHeight)
 							maxWidth = utils.Max(element[2], maxWidth)
 						}
 						rows = append(rows, []int{int(col[0][0]), int(col[len(col)-1][0]), int(maxHeight)})
@@ -370,12 +402,13 @@ func Init() cstyle.Plugin {
 							yStore := vState.Y
 							vState.X = self.X + self.Padding.Left + self.Border.Width + xOffset + vState.Margin.Left
 							vState.Y = yOffset + vState.Margin.Top + vState.Border.Width
+							vState.Height = minHeights[int(element[0])]
 							propagateOffsets(&n.Children[int(element[0])], xStore, yStore, vState.X, vState.Y, state)
 							// vState.Width = element[2] - (vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2))
 							fmt.Println(vState.Width, element[2])
 							// vState.Width = 120
 
-							yOffset += vState.Margin.Top + vState.Border.Width + vState.Height + vState.Margin.Bottom + vState.Border.Width
+							yOffset += vState.Margin.Top + vState.Border.Width + minHeights[int(element[0])] + vState.Margin.Bottom + vState.Border.Width
 							(*state)[n.Children[int(element[0])].Properties.Id] = vState
 						}
 						xOffset += maxWidths[i] + offset
@@ -725,21 +758,6 @@ func colReverse(cols [][]int, n *element.Node, state *map[string]element.State) 
 		for i := 0; i < len(tempStates); i++ {
 			e := col[0] + i
 			n.Children[e] = tempNodes[i]
-		}
-
-		for i := col[1]; i >= col[0]; i-- {
-			vState := s[n.Children[i].Properties.Id]
-			var yChng float32
-			if i < col[1] {
-				sib := s[n.Children[i+1].Properties.Id]
-				yChng = sib.Y - (sib.Border.Width + sib.Margin.Top + vState.Margin.Bottom + vState.Border.Width + vState.Height)
-			} else {
-				parent := s[n.Properties.Id]
-				yChng = ((((parent.Y + parent.Height) - parent.Padding.Bottom) - vState.Height) - vState.Margin.Bottom) - (vState.Border.Width)
-			}
-			propagateOffsets(&n.Children[i], vState.X, vState.Y, vState.X, yChng, state)
-			vState.Y = yChng
-			(*state)[n.Children[i].Properties.Id] = vState
 		}
 	}
 }
