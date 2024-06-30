@@ -349,6 +349,7 @@ func Init() cstyle.Plugin {
 					rows = append(rows, []int{0, len(n.Children) - 1, int(maxH)})
 
 				} else {
+					// need to redo this, with col wrap make each row the width of the longest element unless set otherwise (width, max-width) get width with min-width
 					fmt.Println("here")
 					var colHeight float32
 					var colIndex int
@@ -358,60 +359,86 @@ func Init() cstyle.Plugin {
 					for i, v := range n.Children {
 						vState := s[v.Properties.Id]
 
+						w, _ := getInnerSize(&v, state)
+
+						fmt.Println(w, selfWidth, colIndex)
+
 						height := vState.Height + vState.Margin.Top + vState.Margin.Bottom + (vState.Border.Width * 2)
+						width := vState.Width + vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2)
+
 						if colHeight+height > selfHeight {
 							colHeight = height
 							colIndex++
-							width := vState.Width + vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2)
-							if colIndex >= len(cols) {
-								cols = append(cols, [][]float32{})
-							}
-							cols[colIndex] = append(cols[colIndex], []float32{float32(i), height, width})
 						} else {
 							colHeight += height
-							width := vState.Width + vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2)
-							if colIndex >= len(cols) {
-								cols = append(cols, [][]float32{})
-							}
-							cols[colIndex] = append(cols[colIndex], []float32{float32(i), height, width})
 						}
+						if colIndex >= len(cols) {
+							cols = append(cols, [][]float32{})
+						}
+						cols[colIndex] = append(cols[colIndex], []float32{float32(i), height, width, w})
 					}
 
 					// Find the max total width of all columns
 					var totalMaxWidth float32
-					maxWidths := []float32{}
+					maxWidths := [][]float32{}
 					for _, col := range cols {
-						var maxWidth, maxHeight float32
+						var maxWidth, maxHeight, actualWidth float32
 						for _, element := range col {
 							maxHeight = utils.Max(utils.Max(element[1], minHeights[int(element[0])]), maxHeight)
 							maxWidth = utils.Max(element[2], maxWidth)
+							if element[2] == maxWidth {
+								actualWidth = element[3]
+							}
 						}
 						rows = append(rows, []int{int(col[0][0]), int(col[len(col)-1][0]), int(maxHeight)})
 						totalMaxWidth += maxWidth
-						maxWidths = append(maxWidths, maxWidth)
+						maxWidths = append(maxWidths, []float32{actualWidth, maxWidth})
+						fmt.Println(actualWidth)
 					}
-					offset := (selfWidth - totalMaxWidth) / float32(len(cols))
+
 					// Move the elements into the correct position
 					var xOffset float32
 					for i, col := range cols {
 						// Move the elements into the correct position
 						yOffset := self.Y + self.Border.Width + self.Padding.Top
 						for _, element := range col {
-							vState := s[n.Children[int(element[0])].Properties.Id]
+							v := n.Children[int(element[0])]
+							vState := s[v.Properties.Id]
 							xStore := vState.X
 							yStore := vState.Y
 							vState.X = self.X + self.Padding.Left + self.Border.Width + xOffset + vState.Margin.Left
 							vState.Y = yOffset + vState.Margin.Top + vState.Border.Width
 							vState.Height = minHeights[int(element[0])]
-							propagateOffsets(&n.Children[int(element[0])], xStore, yStore, vState.X, vState.Y, state)
-							// vState.Width = element[2] - (vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2))
-							fmt.Println(vState.Width, element[2])
-							// vState.Width = 120
+							fmt.Println(totalMaxWidth > selfWidth)
+							if totalMaxWidth > selfWidth {
+								if v.Style["width"] == "" && v.Style["max-width"] == "" {
+									vState.Width = maxWidths[i][0]
+								} else {
+									if v.Style["width"] != "" {
+										w := utils.ConvertToPixels(v.Style["width"], vState.EM, self.Width)
+										vState.Width = w + vState.Padding.Left + vState.Padding.Right
+									} else if v.Style["max-width"] != "" {
+										mw := utils.ConvertToPixels(v.Style["max-width"], vState.EM, self.Width)
+										vState.Width = utils.Max(mw, maxWidths[i][0])
+									}
+								}
+							} else {
+								nw := selfWidth / float32(len(rows))
+								vState.Width = nw - (vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2))
+							}
+
+							propagateOffsets(&v, xStore, yStore, vState.X, vState.Y, state)
 
 							yOffset += vState.Margin.Top + vState.Border.Width + minHeights[int(element[0])] + vState.Margin.Bottom + vState.Border.Width
-							(*state)[n.Children[int(element[0])].Properties.Id] = vState
+							(*state)[v.Properties.Id] = vState
 						}
-						xOffset += maxWidths[i] + offset
+						if totalMaxWidth <= selfWidth {
+							nw := selfWidth / float32(len(rows))
+							xOffset += nw
+						} else {
+							xOffset += maxWidths[i][1]
+						}
+
 					}
 
 				}
@@ -643,30 +670,6 @@ func getNodeWidth(n *element.Node, state *map[string]element.State) float32 {
 	return w
 }
 
-// func getMaxHeight(n *element.Node, state *map[string]element.State) float32 {
-// 	s := *state
-// 	self := s[n.Properties.Id]
-// 	selfHeight := float32(0)
-
-// 	if len(n.Children) > 0 {
-// 		var maxRowHeight, rowHeight float32
-
-// 		for _, v := range n.Children {
-// 			rowHeight += getNodeHeight(&v, state)
-// 			if v.Style["display"] != "inline" {
-// 				maxRowHeight = utils.Max(rowHeight, maxRowHeight)
-// 				rowHeight = 0
-// 			}
-// 		}
-// 		selfHeight = utils.Max(rowHeight, maxRowHeight)
-// 	} else {
-// 		selfHeight = self.Height
-// 	}
-
-// 	selfHeight += self.Padding.Top + self.Padding.Bottom
-// 	return selfHeight
-// }
-
 func getNodeHeight(n *element.Node, state *map[string]element.State) float32 {
 	s := *state
 	self := s[n.Properties.Id]
@@ -701,8 +704,8 @@ func getInnerSize(n *element.Node, state *map[string]element.State) (float32, fl
 		minx = utils.Min(vState.X, minx)
 		miny = utils.Min(vState.Y-vState.Margin.Top, miny)
 		// Don't add the top or left because the x&y values already take that into account
-		hOffset := (vState.Border.Width * 2) + vState.Margin.Bottom
-		wOffset := (vState.Border.Width * 2) + vState.Margin.Right
+		hOffset := (vState.Border.Width) + vState.Margin.Bottom
+		wOffset := (vState.Border.Width) + vState.Margin.Right
 		maxw = utils.Max(vState.X+vState.Width+wOffset, maxw)
 		maxh = utils.Max(vState.Y+vState.Height+hOffset, maxh)
 	}
