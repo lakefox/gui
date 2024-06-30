@@ -364,7 +364,7 @@ func Init() cstyle.Plugin {
 						fmt.Println(w, selfWidth, colIndex)
 
 						height := vState.Height + vState.Margin.Top + vState.Margin.Bottom + (vState.Border.Width * 2)
-						width := vState.Width + vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2)
+						width := w + vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2)
 
 						if colHeight+height > selfHeight {
 							colHeight = height
