@@ -1,7 +1,6 @@
 package flex
 
 import (
-	"fmt"
 	"gui/cstyle"
 	"gui/cstyle/plugins/inline"
 	"gui/element"
@@ -329,13 +328,7 @@ func Init() cstyle.Plugin {
 					for i, v := range n.Children {
 						vState := s[v.Properties.Id]
 						yStore := vState.Y
-						if v.Style["min-height"] != "" {
-							vState.Height = minHeights[i] - heightAdj
-							if vState.Height < minHeights[i] {
-								vState.Height = minHeights[i]
-							}
-
-						}
+						vState.Height = setHeight(&v, state, minHeights[i]-heightAdj)
 						if i > 0 {
 							sib := s[n.Children[i-1].Properties.Id]
 
@@ -350,7 +343,6 @@ func Init() cstyle.Plugin {
 
 				} else {
 					// need to redo this, with col wrap make each row the width of the longest element unless set otherwise (width, max-width) get width with min-width
-					fmt.Println("here")
 					var colHeight float32
 					var colIndex int
 					cols := [][][]float32{}
@@ -359,43 +351,39 @@ func Init() cstyle.Plugin {
 					for i, v := range n.Children {
 						vState := s[v.Properties.Id]
 
-						w, _ := getInnerSize(&v, state)
-
-						fmt.Println(w, selfWidth, colIndex)
-
 						height := vState.Height + vState.Margin.Top + vState.Margin.Bottom + (vState.Border.Width * 2)
-						width := w + vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2)
-
 						if colHeight+height > selfHeight {
 							colHeight = height
 							colIndex++
+							width := vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2)
+							if colIndex >= len(cols) {
+								cols = append(cols, [][]float32{})
+							}
+							cols[colIndex] = append(cols[colIndex], []float32{float32(i), height, width})
 						} else {
 							colHeight += height
+							width := vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2)
+							if colIndex >= len(cols) {
+								cols = append(cols, [][]float32{})
+							}
+							cols[colIndex] = append(cols[colIndex], []float32{float32(i), height, width})
 						}
-						if colIndex >= len(cols) {
-							cols = append(cols, [][]float32{})
-						}
-						cols[colIndex] = append(cols[colIndex], []float32{float32(i), height, width, w})
 					}
 
 					// Find the max total width of all columns
 					var totalMaxWidth float32
-					maxWidths := [][]float32{}
+					maxWidths := []float32{}
 					for _, col := range cols {
-						var maxWidth, maxHeight, actualWidth float32
+						var maxWidth, maxHeight float32
 						for _, element := range col {
 							maxHeight = utils.Max(utils.Max(element[1], minHeights[int(element[0])]), maxHeight)
 							maxWidth = utils.Max(element[2], maxWidth)
-							if element[2] == maxWidth {
-								actualWidth = element[3]
-							}
 						}
 						rows = append(rows, []int{int(col[0][0]), int(col[len(col)-1][0]), int(maxHeight)})
 						totalMaxWidth += maxWidth
-						maxWidths = append(maxWidths, []float32{actualWidth, maxWidth})
-						fmt.Println(actualWidth)
+						maxWidths = append(maxWidths, maxWidth)
 					}
-
+					offset := (selfWidth - totalMaxWidth) / float32(len(cols))
 					// Move the elements into the correct position
 					var xOffset float32
 					for i, col := range cols {
@@ -406,39 +394,15 @@ func Init() cstyle.Plugin {
 							vState := s[v.Properties.Id]
 							xStore := vState.X
 							yStore := vState.Y
-							vState.X = self.X + self.Padding.Left + self.Border.Width + xOffset + vState.Margin.Left
+							vState.X = self.X + self.Padding.Left + self.Border.Width + xOffset + vState.Margin.Left + vState.Border.Width
 							vState.Y = yOffset + vState.Margin.Top + vState.Border.Width
-							vState.Height = minHeights[int(element[0])]
-							fmt.Println(totalMaxWidth > selfWidth)
-							if totalMaxWidth > selfWidth {
-								if v.Style["width"] == "" && v.Style["max-width"] == "" {
-									vState.Width = maxWidths[i][0]
-								} else {
-									if v.Style["width"] != "" {
-										w := utils.ConvertToPixels(v.Style["width"], vState.EM, self.Width)
-										vState.Width = w + vState.Padding.Left + vState.Padding.Right
-									} else if v.Style["max-width"] != "" {
-										mw := utils.ConvertToPixels(v.Style["max-width"], vState.EM, self.Width)
-										vState.Width = utils.Max(mw, maxWidths[i][0])
-									}
-								}
-							} else {
-								nw := selfWidth / float32(len(rows))
-								vState.Width = nw - (vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2))
-							}
-
 							propagateOffsets(&v, xStore, yStore, vState.X, vState.Y, state)
 
-							yOffset += vState.Margin.Top + vState.Border.Width + minHeights[int(element[0])] + vState.Margin.Bottom + vState.Border.Width
+							vState.Width = setWidth(&v, state, (maxWidths[i]+offset)-(vState.Margin.Left+vState.Margin.Right+(vState.Border.Width*2)))
+							yOffset += vState.Margin.Top + vState.Border.Width + vState.Height + vState.Margin.Bottom + vState.Border.Width
 							(*state)[v.Properties.Id] = vState
 						}
-						if totalMaxWidth <= selfWidth {
-							nw := selfWidth / float32(len(rows))
-							xOffset += nw
-						} else {
-							xOffset += maxWidths[i][1]
-						}
-
+						xOffset += maxWidths[i] + offset
 					}
 
 				}
@@ -668,6 +632,46 @@ func getNodeWidth(n *element.Node, state *map[string]element.State) float32 {
 	}
 
 	return w
+}
+
+func setWidth(n *element.Node, state *map[string]element.State, width float32) float32 {
+	s := *state
+	self := s[n.Properties.Id]
+
+	if n.Style["width"] != "" {
+		return utils.ConvertToPixels(n.Style["width"], self.EM, s[n.Parent.Properties.Id].Width)
+	}
+
+	var maxWidth, minWidth float32
+	maxWidth = 10e9
+	if n.Style["min-width"] != "" {
+		minWidth = utils.ConvertToPixels(n.Style["min-width"], self.EM, s[n.Parent.Properties.Id].Width)
+	}
+	if n.Style["max-width"] != "" {
+		maxWidth = utils.ConvertToPixels(n.Style["min-width"], self.EM, s[n.Parent.Properties.Id].Width)
+	}
+
+	return utils.Max(minWidth, utils.Min(width, maxWidth))
+}
+
+func setHeight(n *element.Node, state *map[string]element.State, height float32) float32 {
+	s := *state
+	self := s[n.Properties.Id]
+
+	if n.Style["height"] != "" {
+		return utils.ConvertToPixels(n.Style["height"], self.EM, s[n.Parent.Properties.Id].Height)
+	}
+
+	var maxHeight, minHeight float32
+	maxHeight = 10e9
+	if n.Style["min-height"] != "" {
+		minHeight = utils.ConvertToPixels(n.Style["min-height"], self.EM, s[n.Parent.Properties.Id].Height)
+	}
+	if n.Style["max-height"] != "" {
+		maxHeight = utils.ConvertToPixels(n.Style["min-height"], self.EM, s[n.Parent.Properties.Id].Height)
+	}
+
+	return utils.Max(minHeight, utils.Min(height, maxHeight))
 }
 
 func getNodeHeight(n *element.Node, state *map[string]element.State) float32 {
@@ -1214,127 +1218,118 @@ func alignCols(cols [][]int, n *element.Node, state *map[string]element.State, a
 	s := *state
 	self := s[n.Properties.Id]
 
+	if (align == "stretch" && content == "stretch") || (align == "stretch" && content == "normal") || (align == "normal" && content == "stretch") {
+		return
+	}
+
 	selfWidth := (self.Width - self.Padding.Left) - self.Padding.Right
 
-	var minX, maxX, minX2, maxX2 float32
-	minX += 10e9
-	minX2 += 10e9
+	var rowWidth float32
+	colWidths := []float32{}
 	for _, col := range cols {
+		var maxWidth float32
 		for i := col[0]; i <= col[1]; i++ {
 			v := n.Children[i]
 			vState := s[v.Properties.Id]
-			if v.Style["width"] == "" && v.Style["min-width"] == "" && align != "stretch" {
-				vState.Width = minWidths[i][0]
-			}
-			minX = utils.Min(vState.X-vState.Border.Width-vState.Margin.Left, minX)
-			maxX = utils.Max(vState.X+vState.Width+vState.Border.Width+vState.Margin.Right, maxX)
+			vState.Width = setWidth(&v, state, minWidths[i][0])
+			maxWidth = utils.Max(maxWidth, vState.Width+vState.Margin.Left+vState.Margin.Right+(vState.Border.Width*2))
 			(*state)[v.Properties.Id] = vState
-
 		}
+		colWidths = append(colWidths, maxWidth)
+		rowWidth += maxWidth
 	}
-	rowWidth := maxX - minX
-
+	var xOffset float32
 	for c, col := range cols {
 
-		if content == "normal" {
-			var offset float32
-			if align == "center" {
-				offset = ((selfWidth - rowWidth) / 2)
-			}
-			if align == "end" || align == "flex-end" || align == "self-end" {
-				offset = (selfWidth - rowWidth)
-			}
+		if align != "normal" {
+			// var offset float32
 			for i := col[0]; i <= col[1]; i++ {
 				v := n.Children[i]
 				vState := s[v.Properties.Id]
 				xStore := vState.X
-				vState.X += offset
+				vState.X = self.X + self.Padding.Left + self.Border.Width + xOffset + vState.Margin.Left + vState.Border.Width
+				if align == "center" {
+					vState.X += ((colWidths[c] - (vState.Width + vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2))) / 2)
+				} else if align == "end" || align == "flex-end" || align == "self-end" {
+					vState.X += (colWidths[c] - (vState.Width + vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2)))
+				} else if align == "stretch" {
+					vState.Width = (colWidths[c] - (vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2)))
+				}
 				propagateOffsets(&n.Children[i], xStore, vState.Y, vState.X, vState.Y, state)
 				(*state)[v.Properties.Id] = vState
 			}
-			if align == "stretch" {
-				offset = selfWidth / float32(len(col)+1)
-				for i := col[0]; i <= col[1]; i++ {
-					v := n.Children[i]
-					vState := s[v.Properties.Id]
-					xStore := vState.X
-					// !ISSUE: Does not account for max/min width
-					if v.Style["width"] == "" {
-						vState.Width = offset - (vState.Margin.Left + (vState.Border.Width * 2) + vState.Margin.Right)
-					}
-					propagateOffsets(&n.Children[i], xStore, vState.Y, vState.X, vState.Y, state)
-					(*state)[v.Properties.Id] = vState
-				}
-			}
+			xOffset += colWidths[c]
 		} else {
-			var width float32
+			// if align is set to normal then make the elements the size of the column
+			// the size of the column is
 			for i := col[0]; i <= col[1]; i++ {
 				v := n.Children[i]
 				vState := s[v.Properties.Id]
-				width = utils.Max(vState.Width+vState.Margin.Left+vState.Margin.Right, width)
-			}
-			var offset float32
-			if c > 0 {
-				sib := s[n.Children[cols[c-1][0]].Properties.Id]
-				offset = sib.X + sib.Width + sib.Border.Width + sib.Margin.Right
-			}
-
-			for i := col[0]; i <= col[1]; i++ {
-				v := n.Children[i]
-				vState := s[v.Properties.Id]
-				xStore := vState.X
-				vState.Width = width - (vState.Margin.Left + vState.Margin.Right)
-				if c > 0 {
-					vState.X = offset + vState.Margin.Left + vState.Border.Width
-				}
-				propagateOffsets(&n.Children[i], xStore, vState.Y, vState.X, vState.Y, state)
-				minX2 = utils.Min(vState.X-vState.Border.Width-vState.Margin.Left, minX2)
-				maxX2 = utils.Max(vState.X+vState.Width+vState.Border.Width+vState.Margin.Right, maxX2)
+				vState.Width = colWidths[c] - (vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2))
 				(*state)[v.Properties.Id] = vState
 			}
 		}
 	}
 
-	if content != "normal" {
-		rowWidth2 := maxX2 - minX2
-		var offset float32
-		if content == "center" {
-			offset = ((selfWidth - rowWidth2) / 2)
+	var offset float32
+	if content == "center" {
+		offset = ((selfWidth - rowWidth) / 2)
+	}
+	if content == "end" || content == "flex-end" {
+		offset = (selfWidth - rowWidth)
+	}
+	if content == "space-evenly" {
+		offset = (selfWidth - rowWidth) / (float32(len(cols) + 1))
+	}
+	if content == "space-between" {
+		offset = (selfWidth - rowWidth) / (float32(len(cols) - 1))
+	}
+	if content == "space-around" {
+		offset = (selfWidth - rowWidth) / (float32(len(cols)))
+	}
+	if content == "normal" || content == "stretch" {
+		if align == "start" || align == "end" || content == "flex-end" {
+			offset = (selfWidth - rowWidth) / (float32(len(cols)))
 		}
-		if content == "end" || content == "flex-end" {
-			offset = (selfWidth - rowWidth2)
+		if align == "center" {
+			offset = ((selfWidth - rowWidth) / (float32(len(cols))))
 		}
-		if content == "space-evenly" {
-			offset = (selfWidth - rowWidth2) / (float32(len(cols) + 1))
-		}
-		if content == "space-between" {
-			offset = (selfWidth - rowWidth2) / (float32(len(cols) - 1))
-		}
-		if content == "space-around" {
-			offset = (selfWidth - rowWidth2) / (float32(len(cols)))
-		}
-		for c, col := range cols {
+	}
+	for c, col := range cols {
 
-			for i := col[0]; i <= col[1]; i++ {
-				v := n.Children[i]
-				vState := s[v.Properties.Id]
-				xStore := vState.X
-				if content == "center" || content == "end" || content == "flex-end" {
-					vState.X += offset
-				} else if content == "space-evenly" {
-					vState.X += offset * float32(c+1)
-				} else if content == "space-between" {
+		for i := col[0]; i <= col[1]; i++ {
+			v := n.Children[i]
+			vState := s[v.Properties.Id]
+			xStore := vState.X
+			if content == "center" || content == "end" || content == "flex-end" {
+				vState.X += offset
+			} else if content == "space-evenly" {
+				vState.X += offset * float32(c+1)
+			} else if content == "space-between" {
+				vState.X += offset * float32(c)
+			} else if content == "space-around" {
+				if c == 0 {
+					vState.X += offset / 2
+				} else {
+					vState.X += (offset * float32(c)) + (offset / 2)
+				}
+			} else if content == "normal" || content == "stretch" {
+				if align == "start" {
 					vState.X += offset * float32(c)
-				} else if content == "space-around" {
+				}
+				if align == "end" || content == "flex-end" {
+					vState.X += offset * float32(c+1)
+				}
+				if align == "center" {
 					if c == 0 {
 						vState.X += offset / 2
 					} else {
 						vState.X += (offset * float32(c)) + (offset / 2)
 					}
 				}
-				propagateOffsets(&n.Children[i], xStore, vState.Y, vState.X, vState.Y, state)
-				(*state)[v.Properties.Id] = vState
 			}
+			propagateOffsets(&n.Children[i], xStore, vState.Y, vState.X, vState.Y, state)
+			(*state)[v.Properties.Id] = vState
 		}
 	}
 }
