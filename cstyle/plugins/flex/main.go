@@ -350,19 +350,20 @@ func Init() cstyle.Plugin {
 					// Map elements to columns
 					for i, v := range n.Children {
 						vState := s[v.Properties.Id]
-
 						height := vState.Height + vState.Margin.Top + vState.Margin.Bottom + (vState.Border.Width * 2)
 						if colHeight+height > selfHeight {
 							colHeight = height
 							colIndex++
-							width := vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2)
+							width := innerSizes[i][0]
+							// width := vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2) + w
 							if colIndex >= len(cols) {
 								cols = append(cols, [][]float32{})
 							}
 							cols[colIndex] = append(cols[colIndex], []float32{float32(i), height, width})
 						} else {
 							colHeight += height
-							width := vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2)
+							width := innerSizes[i][0]
+							// width := vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2) + w
 							if colIndex >= len(cols) {
 								cols = append(cols, [][]float32{})
 							}
@@ -383,12 +384,13 @@ func Init() cstyle.Plugin {
 						totalMaxWidth += maxWidth
 						maxWidths = append(maxWidths, maxWidth)
 					}
-					offset := (selfWidth - totalMaxWidth) / float32(len(cols))
 					// Move the elements into the correct position
 					var xOffset float32
+					var index int
 					for i, col := range cols {
 						// Move the elements into the correct position
 						yOffset := self.Y + self.Border.Width + self.Padding.Top
+						var marginOffset float32
 						for _, element := range col {
 							v := n.Children[int(element[0])]
 							vState := s[v.Properties.Id]
@@ -397,12 +399,15 @@ func Init() cstyle.Plugin {
 							vState.X = self.X + self.Padding.Left + self.Border.Width + xOffset + vState.Margin.Left + vState.Border.Width
 							vState.Y = yOffset + vState.Margin.Top + vState.Border.Width
 							propagateOffsets(&v, xStore, yStore, vState.X, vState.Y, state)
-
-							vState.Width = setWidth(&v, state, (maxWidths[i]+offset)-(vState.Margin.Left+vState.Margin.Right+(vState.Border.Width*2)))
+							if innerSizes[index][0] == maxWidths[i] {
+								marginOffset = vState.Margin.Right + vState.Margin.Left + (vState.Border.Width * 2)
+							}
+							vState.Width = setWidth(&v, state, maxWidths[i])
 							yOffset += vState.Margin.Top + vState.Border.Width + vState.Height + vState.Margin.Bottom + vState.Border.Width
 							(*state)[v.Properties.Id] = vState
+							index++
 						}
-						xOffset += maxWidths[i] + offset
+						xOffset += maxWidths[i] + marginOffset
 					}
 
 				}
@@ -639,16 +644,18 @@ func setWidth(n *element.Node, state *map[string]element.State, width float32) f
 	self := s[n.Properties.Id]
 
 	if n.Style["width"] != "" {
-		return utils.ConvertToPixels(n.Style["width"], self.EM, s[n.Parent.Properties.Id].Width)
+		return utils.ConvertToPixels(n.Style["width"], self.EM, s[n.Parent.Properties.Id].Width) + self.Padding.Left + self.Padding.Right
 	}
 
 	var maxWidth, minWidth float32
 	maxWidth = 10e9
 	if n.Style["min-width"] != "" {
 		minWidth = utils.ConvertToPixels(n.Style["min-width"], self.EM, s[n.Parent.Properties.Id].Width)
+		minWidth += self.Padding.Left + self.Padding.Right
 	}
 	if n.Style["max-width"] != "" {
 		maxWidth = utils.ConvertToPixels(n.Style["min-width"], self.EM, s[n.Parent.Properties.Id].Width)
+		maxWidth += self.Padding.Left + self.Padding.Right
 	}
 
 	return utils.Max(minWidth, utils.Min(width, maxWidth))
@@ -1002,7 +1009,6 @@ func justifyRow(rows [][]int, n *element.Node, state *map[string]element.State, 
 
 func alignRow(rows [][]int, n *element.Node, state *map[string]element.State, align, content string) {
 	// !ISSUE: Baseline isn't properly impleamented
-
 	s := *state
 	self := s[n.Properties.Id]
 
@@ -1011,13 +1017,15 @@ func alignRow(rows [][]int, n *element.Node, state *map[string]element.State, al
 	for _, row := range rows {
 		var maxH float32
 		for i := row[0]; i < row[1]; i++ {
-			vState := s[n.Children[i].Properties.Id]
-			_, h := getInnerSize(&n.Children[i], state)
-			h = minHeight(n.Children[i], state, h)
+			v := n.Children[i]
+			vState := s[v.Properties.Id]
+			_, h := getInnerSize(&v, state)
+			h = minHeight(v, state, h)
+			h = setHeight(&v, state, h)
 			vState.Height = h
 			h += vState.Margin.Top + vState.Margin.Bottom + (vState.Border.Width * 2)
 			maxH = utils.Max(maxH, h)
-			(*state)[n.Children[i].Properties.Id] = vState
+			(*state)[v.Properties.Id] = vState
 		}
 		maxes = append(maxes, maxH)
 		maxesTotal += maxH
@@ -1265,13 +1273,16 @@ func alignCols(cols [][]int, n *element.Node, state *map[string]element.State, a
 			for i := col[0]; i <= col[1]; i++ {
 				v := n.Children[i]
 				vState := s[v.Properties.Id]
-				vState.Width = colWidths[c] - (vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2))
+				vState.Width = setWidth(&v, state, colWidths[c]-(vState.Margin.Left+vState.Margin.Right+(vState.Border.Width*2)))
 				(*state)[v.Properties.Id] = vState
 			}
 		}
 	}
 
 	var offset float32
+	if selfWidth < rowWidth {
+		selfWidth = rowWidth
+	}
 	if content == "center" {
 		offset = ((selfWidth - rowWidth) / 2)
 	}
