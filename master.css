@@ -228,8 +228,10 @@ ol {
     padding-left: 40px;
 }
 li {
-    display: list-item;
-    text-align: inline-block;
+    /* display: list-item;
+    text-align: inline-block; */
+    display: flex;
+    align-items: center;
 }
 ul ul,
 ol ul {

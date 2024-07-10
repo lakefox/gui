@@ -11,7 +11,9 @@ import (
 	"gui/cstyle/plugins/flex"
 	"gui/cstyle/plugins/inline"
 	"gui/cstyle/plugins/textAlign"
+	flexprep "gui/cstyle/transformers/flex"
 	"gui/cstyle/transformers/text"
+	"gui/cstyle/transformers/ul"
 	"gui/window"
 	"time"
 
@@ -73,6 +75,8 @@ func New() Window {
 	// css.AddPlugin(inlineText.Init())
 	css.AddPlugin(flex.Init())
 
+	css.AddTransformer(flexprep.Init())
+	css.AddTransformer(ul.Init())
 	css.AddTransformer(text.Init())
 
 	el := element.Node{}
@@ -136,7 +140,7 @@ func View(data *Window, width, height int32) {
 	data.Document.Style["height"] = strconv.Itoa(int(height)) + "px"
 
 	wm := window.NewWindowManager()
-	wm.FPSCounterOn = true
+	// wm.FPSCounterOn = true
 
 	wm.OpenWindow(width, height)
 	defer wm.CloseWindow()
