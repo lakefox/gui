@@ -14,14 +14,11 @@ func main() {
 	// defer profile.Start(profile.MemProfile).Stop() // Memory
 	// defaults read ~/Library/Preferences/.GlobalPreferences.plist
 
-	window := gui.Open("./src/trans.html")
+	window := gui.Open("./src/index.html")
 	// window.AddAdapter(raylib)
 	document := window.Document
 
-	document.QuerySelector("body").AddEventListener("click", func(e element.Event) {
-		fmt.Println("click")
-		fmt.Println(document.QuerySelector("body").InnerHTML)
-	})
+	tgt(document.QuerySelector("body"))
 
 	// btns := document.QuerySelectorAll(".button")
 
@@ -39,4 +36,15 @@ func main() {
 
 	// input, output := gui.Render(&window, 850, 400)
 	// go adapter.View(input, output)
+}
+func tgt(e *element.Node) {
+	e.AddEventListener("click", func(e element.Event) {
+		// fmt.Println(document.QuerySelector("body").InnerHTML)
+		fmt.Println(e.Target.TagName)
+	})
+
+	for i := range e.Children {
+
+		tgt(&e.Children[i])
+	}
 }

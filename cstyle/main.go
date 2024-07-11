@@ -47,7 +47,7 @@ func (c *CSS) Transform(n element.Node) element.Node {
 	for i := 0; i < len(n.Children); i++ {
 		v := n.Children[i]
 		tc := c.Transform(v)
-		n = *tc.Parent
+		// n = *tc.Parent
 		n.Children[i] = tc
 	}
 

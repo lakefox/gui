@@ -2,6 +2,8 @@
 
 CStyle is a single pass style computer.
 
+> WARNING: if you are building a transformer, use c.QuickStyles to get the styles of the element as it speed it up by over 50%. However, QuickStyles does not add any style sheet (master.css) styles to the tags, you will have to add them manually.
+
 ## StyleSheet?(go)
 
 ## StyleTag?(go)

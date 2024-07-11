@@ -12,8 +12,10 @@ import (
 	"gui/cstyle/plugins/inline"
 	"gui/cstyle/plugins/textAlign"
 	flexprep "gui/cstyle/transformers/flex"
+	"gui/cstyle/transformers/ol"
 	"gui/cstyle/transformers/text"
 	"gui/cstyle/transformers/ul"
+	"gui/font"
 	"gui/window"
 	"time"
 
@@ -26,6 +28,8 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	imgFont "golang.org/x/image/font"
 
 	rl "github.com/gen2brain/raylib-go/raylib"
 	"golang.org/x/net/html"
@@ -77,6 +81,7 @@ func New() Window {
 
 	css.AddTransformer(flexprep.Init())
 	css.AddTransformer(ul.Init())
+	css.AddTransformer(ol.Init())
 	css.AddTransformer(text.Init())
 
 	el := element.Node{}
@@ -157,6 +162,16 @@ func View(data *Window, width, height int32) {
 	var rd []element.State
 
 	lastChange := time.Now()
+
+	// Load init font
+	if data.CSS.Fonts == nil {
+		data.CSS.Fonts = map[string]imgFont.Face{}
+	}
+	fid := "Georgia 16px false false"
+	if data.CSS.Fonts[fid] == nil {
+		f, _ := font.LoadFont("Georgia", 16, false, false)
+		data.CSS.Fonts[fid] = f
+	}
 
 	// Main game loop
 	for !wm.WindowShouldClose() && !shouldStop {
