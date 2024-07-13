@@ -13,7 +13,7 @@ func Init() cstyle.Transformer {
 		Selector: func(n *element.Node) bool {
 			return n.Style["flex"] != ""
 		},
-		Handler: func(n element.Node, c *cstyle.CSS) element.Node {
+		Handler: func(n *element.Node, c *cstyle.CSS) *element.Node {
 			flex, _ := parseFlex(n.Style["flex"])
 
 			n.Style["flex-basis"] = flex.FlexBasis

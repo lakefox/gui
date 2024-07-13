@@ -17,8 +17,8 @@ func Init() cstyle.Transformer {
 				return false
 			}
 		},
-		Handler: func(n element.Node, c *cstyle.CSS) element.Node {
-			if utils.IsParent(n, "head") {
+		Handler: func(n *element.Node, c *cstyle.CSS) *element.Node {
+			if utils.IsParent(*n, "head") {
 				return n
 			}
 			words := strings.Split(strings.TrimSpace(n.InnerText), " ")
@@ -31,19 +31,12 @@ func Init() cstyle.Transformer {
 					if len(strings.TrimSpace(words[a])) > 0 {
 						el := n.CreateElement("notaspan")
 						el.InnerText = DecodeHTMLEscapes(words[a])
-						el.Parent = &n
+						el.Parent = n
 
 						el.Style = c.QuickStyles(&el)
 						el.Style["display"] = "inline"
 
-						isLast := "false"
-						if a == 0 {
-							isLast = "true"
-						}
-						el.SetAttribute("last", isLast)
-
-						n.Parent.InsertAfter(el, n)
-
+						n.Parent.InsertAfter(&el, n)
 					}
 				}
 
@@ -52,19 +45,13 @@ func Init() cstyle.Transformer {
 					if len(strings.TrimSpace(words[i])) > 0 {
 						el := n.CreateElement("notaspan")
 						el.InnerText = DecodeHTMLEscapes(words[i])
-						el.Parent = &n
+						el.Parent = n
 
 						el.Style = c.QuickStyles(&el)
 						el.Style["display"] = "inline"
 						el.Style["font-size"] = "1em"
 
-						isLast := "false"
-						if i == len(words)-1 {
-							isLast = "true"
-						}
-						el.SetAttribute("last", isLast)
-
-						n.AppendChild(el)
+						n.AppendChild(&el)
 					}
 				}
 			}

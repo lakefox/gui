@@ -18,7 +18,7 @@ type Node struct {
 	InnerHTML string
 	OuterHTML string
 	Parent    *Node `json:"-"`
-	Children  []Node
+	Children  []*Node
 	Style     map[string]string
 	Id        string
 	ClassList ClassList
@@ -149,7 +149,7 @@ func (n *Node) CreateElement(name string) Node {
 		InnerText: "",
 		OuterHTML: "",
 		InnerHTML: "",
-		Children:  []Node{},
+		Children:  []*Node{},
 		Style:     make(map[string]string),
 		Id:        "",
 		ClassList: ClassList{
@@ -180,7 +180,7 @@ func (n *Node) QuerySelectorAll(selectString string) *[]*Node {
 	}
 
 	for i := range n.Children {
-		el := &n.Children[i]
+		el := n.Children[i]
 		cr := el.QuerySelectorAll(selectString)
 		if len(*cr) > 0 {
 			results = append(results, *cr...)
@@ -195,7 +195,7 @@ func (n *Node) QuerySelector(selectString string) *Node {
 	}
 
 	for i := range n.Children {
-		el := &n.Children[i]
+		el := n.Children[i]
 		cr := el.QuerySelector(selectString)
 		if cr.Properties.Id != "" {
 			return cr
@@ -247,42 +247,31 @@ func generateUniqueId(tagName string) string {
 	return tagName + strconv.FormatInt(idCounter, 10)
 }
 
-func (n *Node) AppendChild(c Node) {
+func (n *Node) AppendChild(c *Node) {
 	c.Parent = n
-	// Set Id
-
 	c.Properties.Id = generateUniqueId(c.TagName)
-	// fmt.Println(c.Properties.Id)
-
 	n.Children = append(n.Children, c)
 }
 
-func (n *Node) InsertAfter(c, tgt Node) {
+func (n *Node) InsertAfter(c, tgt *Node) {
 	c.Parent = n
-	// Set Id
 	c.Properties.Id = generateUniqueId(c.TagName)
-
-	// fmt.Println(c.Properties.Id)
 
 	nodeIndex := -1
 	for i, v := range n.Children {
-
 		if v.Properties.Id == tgt.Properties.Id {
 			nodeIndex = i
 			break
 		}
 	}
 	if nodeIndex > -1 {
-		n.Children = append(n.Children[:nodeIndex+1], append([]Node{c}, n.Children[nodeIndex+1:]...)...)
-		// n.Children = append(n.Children, Node{}) // Add a zero value to expand the slice
-		// copy(n.Children[nodeIndex+2:], n.Children[nodeIndex+1:])
-		// n.Children[nodeIndex+1] = c
+		n.Children = append(n.Children[:nodeIndex+1], append([]*Node{c}, n.Children[nodeIndex+1:]...)...)
 	} else {
 		n.AppendChild(c)
 	}
 }
 
-func (n *Node) InsertBefore(c, tgt Node) {
+func (n *Node) InsertBefore(c, tgt *Node) {
 	c.Parent = n
 	// Set Id
 
@@ -296,7 +285,7 @@ func (n *Node) InsertBefore(c, tgt Node) {
 		}
 	}
 	if nodeIndex > 0 {
-		n.Children = append(n.Children[:nodeIndex], append([]Node{c}, n.Children[nodeIndex:]...)...)
+		n.Children = append(n.Children[:nodeIndex], append([]*Node{c}, n.Children[nodeIndex:]...)...)
 		// n.Children = append(n.Children, Node{}) // Add a zero value to expand the slice
 		// copy(n.Children[nodeIndex+1:], n.Children[nodeIndex:])
 		// n.Children[nodeIndex] = c

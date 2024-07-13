@@ -67,16 +67,16 @@ func propagateOffsets(n *element.Node, copyOfX, copyOfY float32, self element.St
 		vState.X += self.X - copyOfX
 		vState.Y += self.Y - copyOfY
 		if len(v.Children) > 0 {
-			propagateOffsets(&v, copyOfX, copyOfY, self, state)
+			propagateOffsets(v, copyOfX, copyOfY, self, state)
 		}
 		(*state)[v.Properties.Id] = vState
 	}
 }
 
-func colliderDetection(s1, s2 element.State) bool {
-	s1Min := s1.Y
-	s1Max := s1.Y + s1.Height
-	s2Min := s2.Y
-	s2Max := s2.Y + s2.Height
-	return s1Min > s2Min && s1Min < s2Max || s1Max > s2Min && s1Min < s2Max || s2Min > s1Min && s2Min < s1Max || s2Max > s1Min && s2Min < s1Max
-}
+// func colliderDetection(s1, s2 element.State) bool {
+// 	s1Min := s1.Y
+// 	s1Max := s1.Y + s1.Height
+// 	s2Min := s2.Y
+// 	s2Max := s2.Y + s2.Height
+// 	return s1Min > s2Min && s1Min < s2Max || s1Max > s2Min && s1Min < s2Max || s2Min > s1Min && s2Min < s1Max || s2Max > s1Min && s2Min < s1Max
+// }

@@ -10,3 +10,10 @@ hover
 text algin
 text decroation
 bold underline overline italic
+ul
+ol
+
+
+needs: 
+scroll
+borders

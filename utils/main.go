@@ -453,6 +453,9 @@ func GetPositionOffsetNode(n *element.Node) *element.Node {
 }
 
 func IsParent(n element.Node, name string) bool {
+	if n.Parent == nil {
+		return false
+	}
 	if n.Parent.TagName != "ROOT" {
 		if n.Parent.TagName == name {
 			return true
@@ -470,14 +473,14 @@ func ChildrenHaveText(n *element.Node) bool {
 			return true
 		}
 		// Recursively check if any child nodes have text
-		if ChildrenHaveText(&child) {
+		if ChildrenHaveText(child) {
 			return true
 		}
 	}
 	return false
 }
 
-func NodeToHTML(node element.Node) (string, string) {
+func NodeToHTML(node *element.Node) (string, string) {
 	// if node.TagName == "notaspan" {
 	// 	return node.InnerText + " ", ""
 	// }
@@ -551,13 +554,13 @@ func NodeToHTML(node element.Node) (string, string) {
 	buffer.WriteString(">")
 
 	// Add inner text if present
-	if node.InnerText != "" && !ChildrenHaveText(&node) {
+	if node.InnerText != "" && !ChildrenHaveText(node) {
 		buffer.WriteString(node.InnerText)
 	}
 	return buffer.String(), "</" + node.TagName + ">"
 }
 
-func OuterHTML(node element.Node) string {
+func OuterHTML(node *element.Node) string {
 	var buffer bytes.Buffer
 
 	tag, closing := NodeToHTML(node)
@@ -574,7 +577,7 @@ func OuterHTML(node element.Node) string {
 	return buffer.String()
 }
 
-func InnerHTML(node element.Node) string {
+func InnerHTML(node *element.Node) string {
 	var buffer bytes.Buffer
 	// Recursively add children
 	for _, child := range node.Children {

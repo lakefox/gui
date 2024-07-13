@@ -25,7 +25,7 @@ type Plugin struct {
 
 type Transformer struct {
 	Selector func(*element.Node) bool
-	Handler  func(element.Node, *CSS) element.Node
+	Handler  func(*element.Node, *CSS) *element.Node
 }
 
 type CSS struct {
@@ -38,16 +38,19 @@ type CSS struct {
 	Fonts        map[string]imgFont.Face
 }
 
-func (c *CSS) Transform(n element.Node) element.Node {
+func (c *CSS) Transform(n *element.Node) *element.Node {
 	for _, v := range c.Transformers {
-		if v.Selector(&n) {
+		if v.Selector(n) {
 			n = v.Handler(n, c)
 		}
 	}
+
 	for i := 0; i < len(n.Children); i++ {
-		v := n.Children[i]
-		tc := c.Transform(v)
-		// n = *tc.Parent
+		tc := c.Transform(n.Children[i])
+		// Removing this causes text to break, what does this do??????
+		// its because we are using the dom methods to inject on text, not like ulol, prob need to get those working bc they effect user dom as well
+		// todo: dom fix, inline-block, text align vert (poss by tgting parent node instead), scroll
+		// n = tc.Parent
 		n.Children[i] = tc
 	}
 
@@ -347,7 +350,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 		v := n.Children[i]
 		v.Parent = n
 		// This is were the tainting comes from
-		n.Children[i] = *c.ComputeNodeStyle(&v, state)
+		n.Children[i] = c.ComputeNodeStyle(v, state)
 
 		cState := (*state)[n.Children[i].Properties.Id]
 		if n.Style["height"] == "" && n.Style["min-height"] == "" {

@@ -82,15 +82,15 @@ func Init() cstyle.Plugin {
 				textTotal += count
 				textCounts = append(textCounts, count)
 
-				minw := getMinWidth(&v, state)
+				minw := getMinWidth(v, state)
 				minWidths = append(minWidths, minw)
 
-				maxw := getMaxWidth(&v, state)
+				maxw := getMaxWidth(v, state)
 				maxWidths = append(maxWidths, maxw)
 
-				w, h := getInnerSize(&v, state)
+				w, h := getInnerSize(v, state)
 
-				minh := getMinHeight(&v, state)
+				minh := getMinHeight(v, state)
 				minHeights = append(minHeights, minh)
 
 				// maxh := getMaxHeight(&v, state)
@@ -149,16 +149,16 @@ func Init() cstyle.Plugin {
 						if i > 0 {
 							sState := s[n.Children[i-1].Properties.Id]
 							vState.X = sState.X + sState.Width + sState.Margin.Right + vState.Margin.Left + sState.Border.Width + vState.Border.Width
-							propagateOffsets(&v, xStore, vState.Y, vState.X, fState.Y+vState.Margin.Top, state)
+							propagateOffsets(v, xStore, vState.Y, vState.X, fState.Y+vState.Margin.Top, state)
 						}
 
 						vState.Y = fState.Y + vState.Margin.Top
 
 						(*state)[v.Properties.Id] = vState
-						deInline(&v, state)
-						applyInline(&v, state)
-						applyBlock(&v, state)
-						_, h := getInnerSize(&v, state)
+						deInline(v, state)
+						applyInline(v, state)
+						applyBlock(v, state)
+						_, h := getInnerSize(v, state)
 						h = utils.Max(h, vState.Height)
 						maxH = utils.Max(maxH, h)
 					}
@@ -181,7 +181,7 @@ func Init() cstyle.Plugin {
 							if w+sum > selfWidth {
 								sum = w + vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2)
 							} else {
-								propagateOffsets(&v, vState.X, vState.Y, vState.X, sib.Y, state)
+								propagateOffsets(v, vState.X, vState.Y, vState.X, sib.Y, state)
 								vState.Y = sib.Y
 								(*state)[v.Properties.Id] = vState
 								sum += w + vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2)
@@ -220,16 +220,16 @@ func Init() cstyle.Plugin {
 								start = i
 								maxH = 0
 							}
-							propagateOffsets(&v, vState.X, vState.Y, xStore, yStore, state)
+							propagateOffsets(v, vState.X, vState.Y, xStore, yStore, state)
 						}
 						vState.X = xStore
 						vState.Y = yStore
 
 						(*state)[v.Properties.Id] = vState
-						deInline(&v, state)
-						applyInline(&v, state)
-						applyBlock(&v, state)
-						_, h := getInnerSize(&v, state)
+						deInline(v, state)
+						applyInline(v, state)
+						applyBlock(v, state)
+						_, h := getInnerSize(v, state)
 						h = utils.Max(h, vState.Height)
 						maxH = utils.Max(maxH, h)
 						vState.Height = minHeight(v, state, h)
@@ -265,7 +265,7 @@ func Init() cstyle.Plugin {
 							vState.Height = minHeight(n.Children[i], state, height)
 							yStore := vState.Y
 							vState.Y = self.Y + self.Padding.Top + yOffset + vState.Margin.Top + vState.Border.Width
-							propagateOffsets(&n.Children[i], vState.X, yStore, vState.X, vState.Y, state)
+							propagateOffsets(n.Children[i], vState.X, yStore, vState.X, vState.Y, state)
 						} else if flexWrapped {
 							if vState.Height+vState.Margin.Top+vState.Margin.Bottom+(vState.Border.Width*2) != float32(v[2]) {
 								height := vState.Height - (vState.Margin.Top + vState.Margin.Bottom + (vState.Border.Width * 2))
@@ -273,7 +273,7 @@ func Init() cstyle.Plugin {
 							}
 							yStore := vState.Y
 							vState.Y = self.Y + self.Padding.Top + yOffset + vState.Margin.Top + vState.Border.Width
-							propagateOffsets(&n.Children[i], vState.X, yStore, vState.X, vState.Y, state)
+							propagateOffsets(n.Children[i], vState.X, yStore, vState.X, vState.Y, state)
 						}
 						(*state)[n.Children[i].Properties.Id] = vState
 					}
@@ -328,13 +328,13 @@ func Init() cstyle.Plugin {
 					for i, v := range n.Children {
 						vState := s[v.Properties.Id]
 						yStore := vState.Y
-						vState.Height = setHeight(&v, state, minHeights[i]-heightAdj)
+						vState.Height = setHeight(v, state, minHeights[i]-heightAdj)
 						if i > 0 {
 							sib := s[n.Children[i-1].Properties.Id]
 
 							vState.Y = sib.Y + sib.Height + sib.Margin.Bottom + sib.Border.Width + vState.Margin.Top + vState.Border.Width
 						}
-						propagateOffsets(&v, vState.X, yStore, vState.X, vState.Y, state)
+						propagateOffsets(v, vState.X, yStore, vState.X, vState.Y, state)
 
 						(*state)[v.Properties.Id] = vState
 					}
@@ -398,11 +398,11 @@ func Init() cstyle.Plugin {
 							yStore := vState.Y
 							vState.X = self.X + self.Padding.Left + self.Border.Width + xOffset + vState.Margin.Left + vState.Border.Width
 							vState.Y = yOffset + vState.Margin.Top + vState.Border.Width
-							propagateOffsets(&v, xStore, yStore, vState.X, vState.Y, state)
+							propagateOffsets(v, xStore, yStore, vState.X, vState.Y, state)
 							if innerSizes[index][0] == maxWidths[i] {
 								marginOffset = vState.Margin.Right + vState.Margin.Left + (vState.Border.Width * 2)
 							}
-							vState.Width = setWidth(&v, state, maxWidths[i])
+							vState.Width = setWidth(v, state, maxWidths[i])
 							yOffset += vState.Margin.Top + vState.Border.Width + vState.Height + vState.Margin.Bottom + vState.Border.Width
 							(*state)[v.Properties.Id] = vState
 							index++
@@ -440,7 +440,7 @@ func applyBlock(n *element.Node, state *map[string]element.State) {
 		lastHeight := float32(0)
 		baseY := s[n.Children[0].Properties.Id].Y
 		for i := 0; i < len(n.Children); i++ {
-			v := &n.Children[i]
+			v := n.Children[i]
 			vState := s[v.Properties.Id]
 
 			if v.Style["display"] != "block" {
@@ -480,7 +480,7 @@ func deInline(n *element.Node, state *map[string]element.State) {
 		}
 
 		if len(v.Children) > 0 {
-			deInline(&v, state)
+			deInline(v, state)
 		}
 	}
 
@@ -489,7 +489,7 @@ func deInline(n *element.Node, state *map[string]element.State) {
 func applyInline(n *element.Node, state *map[string]element.State) {
 	pl := inline.Init()
 	for i := 0; i < len(n.Children); i++ {
-		v := &n.Children[i]
+		v := n.Children[i]
 
 		if len(v.Children) > 0 {
 			applyInline(v, state)
@@ -509,7 +509,7 @@ func propagateOffsets(n *element.Node, prevx, prevy, newx, newy float32, state *
 		yStore := (vState.Y - prevy) + newy
 
 		if len(v.Children) > 0 {
-			propagateOffsets(&v, vState.X, vState.Y, xStore, yStore, state)
+			propagateOffsets(v, vState.X, vState.Y, xStore, yStore, state)
 		}
 		vState.X = xStore
 		vState.Y = yStore
@@ -518,7 +518,7 @@ func propagateOffsets(n *element.Node, prevx, prevy, newx, newy float32, state *
 
 }
 
-func countText(n element.Node) int {
+func countText(n *element.Node) int {
 	count := 0
 	groups := []int{}
 	for _, v := range n.Children {
@@ -541,7 +541,7 @@ func countText(n element.Node) int {
 	return groups[0]
 }
 
-func minHeight(n element.Node, state *map[string]element.State, prev float32) float32 {
+func minHeight(n *element.Node, state *map[string]element.State, prev float32) float32 {
 	s := *state
 	self := s[n.Properties.Id]
 	if n.Style["min-height"] != "" {
@@ -560,7 +560,7 @@ func getMinHeight(n *element.Node, state *map[string]element.State) float32 {
 
 	if len(n.Children) > 0 {
 		for _, v := range n.Children {
-			selfHeight = utils.Max(selfHeight, getNodeHeight(&v, state))
+			selfHeight = utils.Max(selfHeight, getNodeHeight(v, state))
 		}
 	} else {
 		selfHeight = self.Height
@@ -581,7 +581,7 @@ func getMinWidth(n *element.Node, state *map[string]element.State) float32 {
 
 	if len(n.Children) > 0 {
 		for _, v := range n.Children {
-			selfWidth = utils.Max(selfWidth, getNodeWidth(&v, state))
+			selfWidth = utils.Max(selfWidth, getNodeWidth(v, state))
 		}
 	} else {
 		selfWidth = self.Width
@@ -603,7 +603,7 @@ func getMaxWidth(n *element.Node, state *map[string]element.State) float32 {
 		var maxRowWidth, rowWidth float32
 
 		for _, v := range n.Children {
-			rowWidth += getNodeWidth(&v, state)
+			rowWidth += getNodeWidth(v, state)
 			if v.Style["display"] != "inline" {
 				maxRowWidth = utils.Max(rowWidth, maxRowWidth)
 				rowWidth = 0
@@ -633,7 +633,7 @@ func getNodeWidth(n *element.Node, state *map[string]element.State) float32 {
 	w += self.Border.Width * 2
 
 	for _, v := range n.Children {
-		w = utils.Max(w, getNodeWidth(&v, state))
+		w = utils.Max(w, getNodeWidth(v, state))
 	}
 
 	return w
@@ -696,7 +696,7 @@ func getNodeHeight(n *element.Node, state *map[string]element.State) float32 {
 	h += self.Border.Width * 2
 
 	for _, v := range n.Children {
-		h = utils.Max(h, getNodeHeight(&v, state))
+		h = utils.Max(h, getNodeHeight(v, state))
 	}
 
 	return h
@@ -754,7 +754,7 @@ func add2d(arr [][]float32, index int) float32 {
 func colReverse(cols [][]int, n *element.Node, state *map[string]element.State) {
 	s := *state
 	for _, col := range cols {
-		tempNodes := []element.Node{}
+		tempNodes := []*element.Node{}
 		tempStates := []element.State{}
 
 		for i := col[1]; i >= col[0]; i-- {
@@ -765,7 +765,7 @@ func colReverse(cols [][]int, n *element.Node, state *map[string]element.State) 
 		for i := 0; i < len(tempStates); i++ {
 			e := col[0] + i
 			vState := s[n.Children[e].Properties.Id]
-			propagateOffsets(&n.Children[e], vState.X, vState.Y, tempStates[i].X, tempStates[i].Y, state)
+			propagateOffsets(n.Children[e], vState.X, vState.Y, tempStates[i].X, tempStates[i].Y, state)
 			vState.Y = tempStates[i].Y
 			(*state)[n.Children[e].Properties.Id] = vState
 		}
@@ -779,7 +779,7 @@ func colReverse(cols [][]int, n *element.Node, state *map[string]element.State) 
 func rowReverse(rows [][]int, n *element.Node, state *map[string]element.State) {
 	s := *state
 	for _, row := range rows {
-		tempNodes := []element.Node{}
+		tempNodes := []*element.Node{}
 		tempStates := []element.State{}
 
 		for i := row[1] - 1; i >= row[0]; i-- {
@@ -790,7 +790,7 @@ func rowReverse(rows [][]int, n *element.Node, state *map[string]element.State) 
 		for i := 0; i < len(tempStates); i++ {
 			e := row[0] + i
 			vState := s[n.Children[e].Properties.Id]
-			propagateOffsets(&n.Children[e], vState.X, vState.Y, tempStates[i].X, tempStates[i].Y, state)
+			propagateOffsets(n.Children[e], vState.X, vState.Y, tempStates[i].X, tempStates[i].Y, state)
 			vState.X = tempStates[i].X
 			(*state)[n.Children[e].Properties.Id] = vState
 		}
@@ -810,7 +810,7 @@ func rowReverse(rows [][]int, n *element.Node, state *map[string]element.State) 
 				xChng = ((((parent.X + parent.Width) - parent.Padding.Right) - vState.Width) - vState.Margin.Right) - (vState.Border.Width)
 
 			}
-			propagateOffsets(&n.Children[i], vState.X, vState.Y, xChng, vState.Y, state)
+			propagateOffsets(n.Children[i], vState.X, vState.Y, xChng, vState.Y, state)
 			vState.X = xChng
 			(*state)[n.Children[i].Properties.Id] = vState
 		}
@@ -833,7 +833,7 @@ func justifyRow(rows [][]int, n *element.Node, state *map[string]element.State, 
 					xChng = ((((parent.X + parent.Width) - parent.Padding.Right) - vState.Width) - vState.Margin.Right) - (vState.Border.Width)
 
 				}
-				propagateOffsets(&n.Children[i], vState.X, vState.Y, xChng, vState.Y, state)
+				propagateOffsets(n.Children[i], vState.X, vState.Y, xChng, vState.Y, state)
 				vState.X = xChng
 				(*state)[n.Children[i].Properties.Id] = vState
 			}
@@ -849,7 +849,7 @@ func justifyRow(rows [][]int, n *element.Node, state *map[string]element.State, 
 					xChng = parent.X + parent.Padding.Right + vState.Margin.Left + vState.Border.Width + parent.Border.Width
 
 				}
-				propagateOffsets(&n.Children[i], vState.X, vState.Y, xChng, vState.Y, state)
+				propagateOffsets(n.Children[i], vState.X, vState.Y, xChng, vState.Y, state)
 				vState.X = xChng
 				(*state)[n.Children[i].Properties.Id] = vState
 			}
@@ -865,10 +865,10 @@ func justifyRow(rows [][]int, n *element.Node, state *map[string]element.State, 
 				vState := s[n.Children[i].Properties.Id]
 
 				if !reversed {
-					propagateOffsets(&n.Children[i], vState.X, vState.Y, vState.X+offset, vState.Y, state)
+					propagateOffsets(n.Children[i], vState.X, vState.Y, vState.X+offset, vState.Y, state)
 					vState.X += offset
 				} else {
-					propagateOffsets(&n.Children[i], vState.X, vState.Y, vState.X-offset, vState.Y, state)
+					propagateOffsets(n.Children[i], vState.X, vState.Y, vState.X-offset, vState.Y, state)
 					vState.X -= offset
 				}
 				(*state)[n.Children[i].Properties.Id] = vState
@@ -907,7 +907,7 @@ func justifyRow(rows [][]int, n *element.Node, state *map[string]element.State, 
 
 					}
 
-					propagateOffsets(&n.Children[i], vState.X, vState.Y, offset, vState.Y, state)
+					propagateOffsets(n.Children[i], vState.X, vState.Y, offset, vState.Y, state)
 					vState.X = offset
 					(*state)[n.Children[i].Properties.Id] = vState
 				}
@@ -951,12 +951,12 @@ func justifyRow(rows [][]int, n *element.Node, state *map[string]element.State, 
 
 				if !reversed {
 					offset := po * (float32(i-row[0]) + 1)
-					propagateOffsets(&n.Children[i], vState.X, vState.Y, vState.X+offset, vState.Y, state)
+					propagateOffsets(n.Children[i], vState.X, vState.Y, vState.X+offset, vState.Y, state)
 					vState.X += offset
 				} else {
 					offset := po * float32(((row[1]-1)-row[0])-((i-row[0])-1))
 
-					propagateOffsets(&n.Children[i], vState.X, vState.Y, vState.X-offset, vState.Y, state)
+					propagateOffsets(n.Children[i], vState.X, vState.Y, vState.X-offset, vState.Y, state)
 					vState.X -= offset
 				}
 				(*state)[n.Children[i].Properties.Id] = vState
@@ -989,14 +989,14 @@ func justifyRow(rows [][]int, n *element.Node, state *map[string]element.State, 
 						m -= 0.5
 					}
 					offset := po * m
-					propagateOffsets(&n.Children[i], vState.X, vState.Y, vState.X+offset, vState.Y, state)
+					propagateOffsets(n.Children[i], vState.X, vState.Y, vState.X+offset, vState.Y, state)
 					vState.X += offset
 				} else {
 					m := float32(((row[1] - 1) - row[0]) - ((i - row[0]) - 1))
 					m -= 0.5
 					offset := po * m
 
-					propagateOffsets(&n.Children[i], vState.X, vState.Y, vState.X-offset, vState.Y, state)
+					propagateOffsets(n.Children[i], vState.X, vState.Y, vState.X-offset, vState.Y, state)
 					vState.X -= offset
 				}
 				(*state)[n.Children[i].Properties.Id] = vState
@@ -1019,9 +1019,9 @@ func alignRow(rows [][]int, n *element.Node, state *map[string]element.State, al
 		for i := row[0]; i < row[1]; i++ {
 			v := n.Children[i]
 			vState := s[v.Properties.Id]
-			_, h := getInnerSize(&v, state)
+			_, h := getInnerSize(v, state)
 			h = minHeight(v, state, h)
-			h = setHeight(&v, state, h)
+			h = setHeight(v, state, h)
 			vState.Height = h
 			h += vState.Margin.Top + vState.Margin.Bottom + (vState.Border.Width * 2)
 			maxH = utils.Max(maxH, h)
@@ -1071,7 +1071,7 @@ func alignRow(rows [][]int, n *element.Node, state *map[string]element.State, al
 					offset += ((os) * float32(c))
 				}
 
-				propagateOffsets(&n.Children[i], vState.X, vState.Y, vState.X, offset, state)
+				propagateOffsets(n.Children[i], vState.X, vState.Y, vState.X, offset, state)
 				vState.Y = offset
 				(*state)[n.Children[i].Properties.Id] = vState
 			}
@@ -1088,7 +1088,7 @@ func alignRow(rows [][]int, n *element.Node, state *map[string]element.State, al
 				if vState.Height+vState.Margin.Top+vState.Margin.Bottom+(vState.Border.Width*2) < maxH {
 					offset += (maxH - (vState.Height + vState.Margin.Top + vState.Margin.Bottom + (vState.Border.Width * 2))) / 2
 				}
-				propagateOffsets(&n.Children[i], vState.X, vState.Y, vState.X, offset, state)
+				propagateOffsets(n.Children[i], vState.X, vState.Y, vState.X, offset, state)
 				vState.Y = offset
 				(*state)[n.Children[i].Properties.Id] = vState
 			}
@@ -1105,7 +1105,7 @@ func alignRow(rows [][]int, n *element.Node, state *map[string]element.State, al
 				if vState.Height+vState.Margin.Top+vState.Margin.Bottom+(vState.Border.Width*2) < maxH {
 					offset += (maxH - (vState.Height + vState.Margin.Top + vState.Margin.Bottom + (vState.Border.Width * 2)))
 				}
-				propagateOffsets(&n.Children[i], vState.X, vState.Y, vState.X, offset, state)
+				propagateOffsets(n.Children[i], vState.X, vState.Y, vState.X, offset, state)
 				vState.Y = offset
 				(*state)[n.Children[i].Properties.Id] = vState
 
@@ -1120,7 +1120,7 @@ func alignRow(rows [][]int, n *element.Node, state *map[string]element.State, al
 					offset += ((os) * float32(c))
 				}
 
-				propagateOffsets(&n.Children[i], vState.X, vState.Y, vState.X, offset, state)
+				propagateOffsets(n.Children[i], vState.X, vState.Y, vState.X, offset, state)
 				vState.Y = offset
 				vState.Height = maxH - (vState.Margin.Top + vState.Margin.Bottom + (vState.Border.Width * 2))
 				(*state)[n.Children[i].Properties.Id] = vState
@@ -1153,7 +1153,7 @@ func justifyCols(cols [][]int, n *element.Node, state *map[string]element.State,
 				yStore := vState.Y
 				vState.Y = yCollect + vState.Margin.Top
 				yCollect += vState.Height + vState.Margin.Bottom + vState.Border.Width + vState.Margin.Top + vState.Border.Width
-				propagateOffsets(&n.Children[i], vState.X, yStore, vState.X, vState.Y, state)
+				propagateOffsets(n.Children[i], vState.X, yStore, vState.X, vState.Y, state)
 				(*state)[v.Properties.Id] = vState
 			}
 		}
@@ -1167,7 +1167,7 @@ func justifyCols(cols [][]int, n *element.Node, state *map[string]element.State,
 				yStore := vState.Y
 				vState.Y = yCollect + vState.Border.Width + vState.Margin.Top
 				yCollect += vState.Height + vState.Margin.Bottom + vState.Border.Width + vState.Margin.Top + vState.Border.Width
-				propagateOffsets(&n.Children[i], vState.X, yStore, vState.X, vState.Y, state)
+				propagateOffsets(n.Children[i], vState.X, yStore, vState.X, vState.Y, state)
 				(*state)[v.Properties.Id] = vState
 			}
 		}
@@ -1180,7 +1180,7 @@ func justifyCols(cols [][]int, n *element.Node, state *map[string]element.State,
 				yStore := vState.Y
 				vState.Y = yCollect + vState.Border.Width + vState.Margin.Top + offset
 				yCollect += vState.Height + vState.Margin.Bottom + vState.Border.Width + vState.Margin.Top + vState.Border.Width + offset
-				propagateOffsets(&n.Children[i], vState.X, yStore, vState.X, vState.Y, state)
+				propagateOffsets(n.Children[i], vState.X, yStore, vState.X, vState.Y, state)
 				(*state)[v.Properties.Id] = vState
 			}
 		}
@@ -1198,7 +1198,7 @@ func justifyCols(cols [][]int, n *element.Node, state *map[string]element.State,
 					vState.Y += selfHeight - (vState.Height + vState.Margin.Bottom + vState.Border.Width + vState.Margin.Top + vState.Border.Width)
 				}
 				yCollect += vState.Height + vState.Margin.Bottom + vState.Border.Width + vState.Margin.Top + vState.Border.Width
-				propagateOffsets(&n.Children[i], vState.X, yStore, vState.X, vState.Y, state)
+				propagateOffsets(n.Children[i], vState.X, yStore, vState.X, vState.Y, state)
 				(*state)[v.Properties.Id] = vState
 			}
 		}
@@ -1215,7 +1215,7 @@ func justifyCols(cols [][]int, n *element.Node, state *map[string]element.State,
 					vState.Y += (offset * float32(i-col[0])) + (offset / 2)
 				}
 				yCollect += vState.Height + vState.Margin.Bottom + vState.Border.Width + vState.Margin.Top + vState.Border.Width
-				propagateOffsets(&n.Children[i], vState.X, yStore, vState.X, vState.Y, state)
+				propagateOffsets(n.Children[i], vState.X, yStore, vState.X, vState.Y, state)
 				(*state)[v.Properties.Id] = vState
 			}
 		}
@@ -1239,7 +1239,7 @@ func alignCols(cols [][]int, n *element.Node, state *map[string]element.State, a
 		for i := col[0]; i <= col[1]; i++ {
 			v := n.Children[i]
 			vState := s[v.Properties.Id]
-			vState.Width = setWidth(&v, state, minWidths[i][0])
+			vState.Width = setWidth(v, state, minWidths[i][0])
 			maxWidth = utils.Max(maxWidth, vState.Width+vState.Margin.Left+vState.Margin.Right+(vState.Border.Width*2))
 			(*state)[v.Properties.Id] = vState
 		}
@@ -1263,7 +1263,7 @@ func alignCols(cols [][]int, n *element.Node, state *map[string]element.State, a
 				} else if align == "stretch" {
 					vState.Width = (colWidths[c] - (vState.Margin.Left + vState.Margin.Right + (vState.Border.Width * 2)))
 				}
-				propagateOffsets(&n.Children[i], xStore, vState.Y, vState.X, vState.Y, state)
+				propagateOffsets(n.Children[i], xStore, vState.Y, vState.X, vState.Y, state)
 				(*state)[v.Properties.Id] = vState
 			}
 			xOffset += colWidths[c]
@@ -1273,7 +1273,7 @@ func alignCols(cols [][]int, n *element.Node, state *map[string]element.State, a
 			for i := col[0]; i <= col[1]; i++ {
 				v := n.Children[i]
 				vState := s[v.Properties.Id]
-				vState.Width = setWidth(&v, state, colWidths[c]-(vState.Margin.Left+vState.Margin.Right+(vState.Border.Width*2)))
+				vState.Width = setWidth(v, state, colWidths[c]-(vState.Margin.Left+vState.Margin.Right+(vState.Border.Width*2)))
 				(*state)[v.Properties.Id] = vState
 			}
 		}
@@ -1339,7 +1339,7 @@ func alignCols(cols [][]int, n *element.Node, state *map[string]element.State, a
 					}
 				}
 			}
-			propagateOffsets(&n.Children[i], xStore, vState.Y, vState.X, vState.Y, state)
+			propagateOffsets(n.Children[i], xStore, vState.Y, vState.X, vState.Y, state)
 			(*state)[v.Properties.Id] = vState
 		}
 	}

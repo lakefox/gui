@@ -199,7 +199,7 @@ func loop(el *element.Node, state *map[string]element.State, data RLData, eventT
 
 	eventTracker = &et
 	for i, v := range el.Children {
-		el.Children[i] = *loop(&v, state, data, eventTracker)
+		el.Children[i] = loop(v, state, data, eventTracker)
 	}
 	return el
 }

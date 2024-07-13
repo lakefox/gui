@@ -2,6 +2,8 @@
 
 CStyle is a single pass style computer.
 
+Transformers are for injecting elements at runtime and plugins are for modifying element properties.
+
 > WARNING: if you are building a transformer, use c.QuickStyles to get the styles of the element as it speed it up by over 50%. However, QuickStyles does not add any style sheet (master.css) styles to the tags, you will have to add them manually.
 
 ## StyleSheet?(go)

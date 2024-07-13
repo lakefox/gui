@@ -10,7 +10,9 @@ func Init() cstyle.Transformer {
 		Selector: func(n *element.Node) bool {
 			return n.TagName == "ul"
 		},
-		Handler: func(n element.Node, c *cstyle.CSS) element.Node {
+		Handler: func(n *element.Node, c *cstyle.CSS) *element.Node {
+			// The reason tN (temporary Node) is used, is because we have to go through the n.Children and it makes it hard to insert/remove the old one
+			// its better to just replace it
 			tN := n.CreateElement(n.TagName)
 			for _, v := range n.Children {
 				li := n.CreateElement("li")
@@ -27,15 +29,15 @@ func Init() cstyle.Transformer {
 				content.Style = v.Style
 				content.Style = c.QuickStyles(&content)
 				content.Style["display"] = "block"
-				li.AppendChild(dot)
-				li.AppendChild(content)
-				li.Parent = &n
+				li.AppendChild(&dot)
+				li.AppendChild(&content)
+				li.Parent = n
 
 				li.Style["display"] = "flex"
 				li.Style["align-items"] = "center"
 				li.Style = c.QuickStyles(&li)
 
-				tN.AppendChild(li)
+				tN.AppendChild(&li)
 			}
 			n.Children = tN.Children
 			return n

@@ -41,10 +41,11 @@ func tgt(e *element.Node) {
 	e.AddEventListener("click", func(e element.Event) {
 		// fmt.Println(document.QuerySelector("body").InnerHTML)
 		fmt.Println(e.Target.TagName)
+		e.Target.Style["background"] = "red"
 	})
 
 	for i := range e.Children {
 
-		tgt(&e.Children[i])
+		tgt(e.Children[i])
 	}
 }

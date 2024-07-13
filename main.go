@@ -82,6 +82,7 @@ func New() Window {
 	css.AddTransformer(flexprep.Init())
 	css.AddTransformer(ul.Init())
 	css.AddTransformer(ol.Init())
+	// css.AddTransformer(textInline.Init())
 	css.AddTransformer(text.Init())
 
 	el := element.Node{}
@@ -95,7 +96,7 @@ func New() Window {
 	}
 }
 
-func (w *Window) Render(doc element.Node, state *map[string]element.State) []element.State {
+func (w *Window) Render(doc *element.Node, state *map[string]element.State) []element.State {
 	s := *state
 
 	flatDoc := flatten(doc)
@@ -125,8 +126,8 @@ func (w *Window) Render(doc element.Node, state *map[string]element.State) []ele
 	return store
 }
 
-func flatten(n element.Node) []element.Node {
-	var nodes []element.Node
+func flatten(n *element.Node) []*element.Node {
+	var nodes []*element.Node
 	nodes = append(nodes, n)
 
 	children := n.Children
@@ -201,7 +202,7 @@ func View(data *Window, width, height int32) {
 		}
 
 		newHash, _ := hashStruct(&data.Document.Children[0])
-		eventStore = events.GetEvents(&data.Document.Children[0], &state, eventStore)
+		eventStore = events.GetEvents(data.Document.Children[0], &state, eventStore)
 		if !bytes.Equal(hash, newHash) || resize {
 			if wm.FPS != 30 {
 				wm.SetFPS(30)
@@ -212,7 +213,7 @@ func View(data *Window, width, height int32) {
 
 			newDoc = data.CSS.Transform(newDoc)
 
-			data.CSS.ComputeNodeStyle(&newDoc, &state)
+			data.CSS.ComputeNodeStyle(newDoc, &state)
 			rd = data.Render(newDoc, &state)
 			wm.LoadTextures(rd)
 
@@ -239,7 +240,7 @@ func View(data *Window, width, height int32) {
 	}
 }
 
-func CopyNode(c cstyle.CSS, node element.Node, parent *element.Node) element.Node {
+func CopyNode(c cstyle.CSS, node *element.Node, parent *element.Node) *element.Node {
 	n := element.Node{}
 	n.TagName = node.TagName
 	n.InnerText = node.InnerText
@@ -268,7 +269,7 @@ func CopyNode(c cstyle.CSS, node element.Node, parent *element.Node) element.Nod
 	for _, v := range node.Children {
 		n.Children = append(n.Children, CopyNode(c, v, &n))
 	}
-	return n
+	return &n
 }
 
 func CreateNode(node *html.Node, parent *element.Node) {
@@ -301,7 +302,7 @@ func CreateNode(node *html.Node, parent *element.Node) {
 				CreateNode(child, &newNode)
 			}
 		}
-		parent.AppendChild(newNode)
+		parent.AppendChild(&newNode)
 
 	} else {
 		for child := node.FirstChild; child != nil; child = child.NextSibling {
@@ -314,11 +315,11 @@ func CreateNode(node *html.Node, parent *element.Node) {
 
 func AddHTML(n *element.Node) {
 	// Head is not renderable
-	n.InnerHTML = utils.InnerHTML(*n)
-	tag, closing := utils.NodeToHTML(*n)
+	n.InnerHTML = utils.InnerHTML(n)
+	tag, closing := utils.NodeToHTML(n)
 	n.OuterHTML = tag + n.InnerHTML + closing
 	for i := range n.Children {
-		AddHTML(&n.Children[i])
+		AddHTML(n.Children[i])
 	}
 }
 
