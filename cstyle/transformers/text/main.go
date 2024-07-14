@@ -35,6 +35,7 @@ func Init() cstyle.Transformer {
 
 						el.Style = c.QuickStyles(&el)
 						el.Style["display"] = "inline"
+						// el.Style["margin-top"] = "10px"
 
 						n.Parent.InsertAfter(&el, n)
 					}
@@ -50,6 +51,7 @@ func Init() cstyle.Transformer {
 						el.Style = c.QuickStyles(&el)
 						el.Style["display"] = "inline"
 						el.Style["font-size"] = "1em"
+						// el.Style["margin-top"] = "10px"
 
 						n.AppendChild(&el)
 					}

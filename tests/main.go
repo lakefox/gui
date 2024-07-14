@@ -38,6 +38,7 @@ func main() {
 	// go adapter.View(input, output)
 }
 func tgt(e *element.Node) {
+	// events need to be transfered to broke out elements
 	e.AddEventListener("click", func(e element.Event) {
 		// fmt.Println(document.QuerySelector("body").InnerHTML)
 		fmt.Println(e.Target.TagName)

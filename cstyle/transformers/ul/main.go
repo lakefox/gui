@@ -13,6 +13,8 @@ func Init() cstyle.Transformer {
 		Handler: func(n *element.Node, c *cstyle.CSS) *element.Node {
 			// The reason tN (temporary Node) is used, is because we have to go through the n.Children and it makes it hard to insert/remove the old one
 			// its better to just replace it
+
+			// !ISSUE: make stylable
 			tN := n.CreateElement(n.TagName)
 			for _, v := range n.Children {
 				li := n.CreateElement("li")

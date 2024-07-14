@@ -1,8 +1,10 @@
 package inline
 
 import (
+	"fmt"
 	"gui/cstyle"
 	"gui/element"
+	"math"
 )
 
 func Init() cstyle.Plugin {
@@ -35,10 +37,11 @@ func Init() cstyle.Plugin {
 						if v.Properties.Id == n.Properties.Id {
 							sib := n.Parent.Children[i-1]
 							sibling := s[sib.Properties.Id]
-							if sibling.X+sibling.Width+self.Width > ((parent.Width)-parent.Padding.Right)+parent.X {
+							if sibling.X+sibling.Width+self.Width > (parent.Width)+parent.X {
 								// Break Node.Id
 								self.Y = sibling.Y + sibling.Height
 								self.X = copyOfX
+								fmt.Println(n.InnerText, sibling.X+sibling.Width, self.Width)
 							} else {
 								// Node did not break
 								if sib.Style["display"] != "inline" {
@@ -47,6 +50,30 @@ func Init() cstyle.Plugin {
 									self.Y = sibling.Y
 									self.X = sibling.X + sibling.Width
 								}
+							}
+							// !ISSUE: should prob only tgt elements with text
+							baseY := sibling.Y
+							var max float32
+							for a := i; a >= 0; a-- {
+								b := n.Parent.Children[a]
+								bStyle := s[b.Properties.Id]
+								if bStyle.Y == baseY {
+									if bStyle.EM > max {
+										max = bStyle.EM
+									}
+								}
+							}
+
+							for a := i; a >= 0; a-- {
+								b := n.Parent.Children[a]
+								bStyle := s[b.Properties.Id]
+								if bStyle.Y == baseY {
+									bStyle.Y += (float32(math.Ceil(float64((max - (max * 0.3))))) - float32(math.Ceil(float64(bStyle.EM-(bStyle.EM*0.3)))))
+									(*state)[b.Properties.Id] = bStyle
+								}
+							}
+							if self.Y == baseY {
+								self.Y += (float32(math.Ceil(float64((max - (max * 0.3))))) - float32(math.Ceil(float64(self.EM-(self.EM*0.3)))))
 							}
 							break
 						}
