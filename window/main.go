@@ -104,25 +104,26 @@ func (wm *WindowManager) Draw(nodes []element.State) {
 				rad = rad * 3
 				p := node.Padding
 
-				rect := rl.NewRectangle(node.X+node.Border.Width,
-					node.Y+node.Border.Width,
-					node.Width,
-					(node.Height),
+				rect := rl.NewRectangle(node.X,
+					node.Y,
+					node.Width+node.Border.Left.Width+node.Border.Right.Width,
+					node.Height+node.Border.Top.Width+node.Border.Bottom.Width,
 				)
 
-				// node.Background.A = 100
-				// node.Background.R = uint8((255 / len(nodes)) * i)
-				// node.Background.G = uint8((255 / len(nodes)) * i)
-				// node.Background.B = uint8((255 / len(nodes)) * i)
-
-				rl.DrawRectangleRoundedLines(rect, rad/200, 1000, node.Border.Width, node.Border.Color)
 				rl.DrawRectangleRounded(rect, rad/200, 1000, node.Background)
 
-				// Adding a mask to the state that tell here how to cut off text and other elements could be used for scroll and overflow
+				// Draw the border based on the style for each side
+				img := image.NewRGBA(image.Rect(int(node.X),
+					int(node.Y), int(node.X+
+						node.Width+node.Border.Left.Width+node.Border.Right.Width),
+					int(node.Y+node.Height+node.Border.Top.Width+node.Border.Bottom.Width)))
+				DrawBorder(img, img.Bounds(), node.Border, 0)
+
+				rl.DrawTexture(rl.LoadTextureFromImage(rl.NewImageFromImage(img)), int32(node.X), int32(node.Y), rl.White)
 
 				if node.Texture != nil {
 					r, g, b, a := node.Color.RGBA()
-					rl.DrawTexture(wm.Textures[i].Image, int32(node.X+p.Left+node.Border.Width), int32(node.Y+p.Top+node.Border.Width), ic.RGBA{uint8(r), uint8(g), uint8(b), uint8(a)})
+					rl.DrawTexture(wm.Textures[i].Image, int32(node.X+p.Left+node.Border.Left.Width), int32(node.Y+p.Top+node.Border.Top.Width), ic.RGBA{uint8(r), uint8(g), uint8(b), uint8(a)})
 				}
 			} else {
 				if !slices.Contains(indexes, node.Z) {

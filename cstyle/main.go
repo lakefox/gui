@@ -2,6 +2,7 @@ package cstyle
 
 import (
 	"fmt"
+	"gui/border"
 	"gui/color"
 	"gui/element"
 	"gui/font"
@@ -217,7 +218,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 	parent := s[n.Parent.Properties.Id]
 
 	self.Background = color.Parse(n.Style, "background")
-	self.Border, _ = CompleteBorder(n.Style, self, parent)
+	self.Border, _ = border.Parse(n.Style, self, parent)
 
 	fs := utils.ConvertToPixels(n.Style["font-size"], parent.EM, parent.Width)
 	self.EM = fs
@@ -299,14 +300,14 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 									y = sibling.Y + sibling.Height
 								}
 							} else {
-								y = sibling.Y + sibling.Height + (sibling.Border.Width * 2) + sibling.Margin.Bottom
+								y = sibling.Y + sibling.Height + (sibling.Border.Top.Width + sibling.Border.Bottom.Width) + sibling.Margin.Bottom
 							}
 						}
 					}
 					break
 				} else if n.Style["display"] != "inline" {
 					vState := s[v.Properties.Id]
-					y += vState.Margin.Top + vState.Margin.Bottom + vState.Padding.Top + vState.Padding.Bottom + vState.Height + (self.Border.Width)
+					y += vState.Margin.Top + vState.Margin.Bottom + vState.Padding.Top + vState.Padding.Bottom + vState.Height + (self.Border.Top.Width)
 				}
 			}
 		}
@@ -356,12 +357,12 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 		if n.Style["height"] == "" && n.Style["min-height"] == "" {
 			if v.Style["position"] != "absolute" && cState.Y+cState.Height > childYOffset {
 				childYOffset = cState.Y + cState.Height
-				self.Height = (cState.Y - self.Border.Width) - (self.Y) + cState.Height
+				self.Height = (cState.Y - self.Border.Top.Width) - (self.Y) + cState.Height
 				self.Height += cState.Margin.Top
 				self.Height += cState.Margin.Bottom
 				self.Height += cState.Padding.Top
 				self.Height += cState.Padding.Bottom
-				self.Height += cState.Border.Width * 2
+				self.Height += cState.Border.Top.Width + cState.Border.Bottom.Width
 			}
 		}
 		if cState.Width > self.Width {
@@ -388,56 +389,6 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 
 	// CheckNode(n, state)
 	return n
-}
-
-func CompleteBorder(cssProperties map[string]string, self, parent element.State) (element.Border, error) {
-	// Split the shorthand into components
-	borderComponents := strings.Fields(cssProperties["border"])
-
-	// Default values
-	width := "0px" // Default width
-	style := "solid"
-	borderColor := "#000000" // Default color
-
-	// Suffixes for width properties
-	widthSuffixes := []string{"px", "em", "pt", "pc", "%", "vw", "vh", "cm", "in"}
-
-	// Identify each component regardless of order
-	for _, component := range borderComponents {
-		if isWidthComponent(component, widthSuffixes) {
-			width = component
-		} else {
-			switch component {
-			case "thin", "medium", "thick":
-				width = component
-			case "none", "hidden", "dotted", "dashed", "solid", "double", "groove", "ridge", "inset", "outset":
-				style = component
-			default:
-				// Handle colors
-				borderColor = component
-			}
-		}
-	}
-
-	parsedColor, _ := color.Color(borderColor)
-	w := utils.ConvertToPixels(width, self.EM, parent.Width)
-
-	return element.Border{
-		Width:  w,
-		Style:  style,
-		Color:  parsedColor,
-		Radius: cssProperties["border-radius"],
-	}, nil
-}
-
-// Helper function to determine if a component is a width value
-func isWidthComponent(component string, suffixes []string) bool {
-	for _, suffix := range suffixes {
-		if strings.HasSuffix(component, suffix) {
-			return true
-		}
-	}
-	return false
 }
 
 func genTextNode(n *element.Node, state *map[string]element.State, css *CSS) element.State {

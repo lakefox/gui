@@ -98,10 +98,25 @@ func (c *ClassList) Remove(class string) {
 }
 
 type Border struct {
-	Width  float32
-	Style  string
-	Color  ic.RGBA
-	Radius string
+	Top     BorderSide
+	Right   BorderSide
+	Bottom  BorderSide
+	Left    BorderSide
+	Radius  BorderRadius
+	Texture *image.RGBA
+}
+
+type BorderSide struct {
+	Width float32
+	Style string
+	Color ic.RGBA
+}
+
+type BorderRadius struct {
+	TopLeft     float32
+	TopRight    float32
+	BottomLeft  float32
+	BottomRight float32
 }
 
 type Text struct {

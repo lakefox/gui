@@ -51,7 +51,7 @@ func Init() cstyle.Plugin {
 							baseY = next.Y + next.Height
 							for a := last; a < i+1; a++ {
 								cState := s[n.Children[a].Properties.Id]
-								cState.X += (((self.Width + (self.Border.Width * 2)) - (maxXW - minX)) / 2) - (minX - self.X)
+								cState.X += (((self.Width + (self.Border.Left.Width + self.Border.Right.Width)) - (maxXW - minX)) / 2) - (minX - self.X)
 								(*state)[n.Children[a].Properties.Id] = cState
 							}
 							minX = 9e15
@@ -64,7 +64,7 @@ func Init() cstyle.Plugin {
 					maxXW = s[n.Children[len(n.Children)-1].Properties.Id].X + s[n.Children[len(n.Children)-1].Properties.Id].Width
 					for a := last; a < len(n.Children); a++ {
 						cState := s[n.Children[a].Properties.Id]
-						cState.X += (((self.Width + (self.Border.Width * 2)) - (maxXW - minX)) / 2) - (minX - self.X)
+						cState.X += (((self.Width + (self.Border.Left.Width + self.Border.Right.Width)) - (maxXW - minX)) / 2) - (minX - self.X)
 						(*state)[n.Children[a].Properties.Id] = cState
 					}
 				}
@@ -89,7 +89,7 @@ func Init() cstyle.Plugin {
 							baseY = next.Y + next.Height
 							for a := last; a < i+1; a++ {
 								cState := s[n.Children[a].Properties.Id]
-								cState.X += ((self.Width + (self.Border.Width * 2)) - (maxXW - minX)) + ((self.X - minX) * 2)
+								cState.X += ((self.Width + (self.Border.Left.Width + self.Border.Right.Width)) - (maxXW - minX)) + ((self.X - minX) * 2)
 								(*state)[n.Children[a].Properties.Id] = cState
 							}
 							minX = 9e15
@@ -102,7 +102,7 @@ func Init() cstyle.Plugin {
 					maxXW = s[n.Children[len(n.Children)-1].Properties.Id].X + s[n.Children[len(n.Children)-1].Properties.Id].Width
 					for a := last; a < len(n.Children); a++ {
 						cState := s[n.Children[a].Properties.Id]
-						cState.X += ((self.Width + (self.Border.Width * 2)) - (maxXW - minX)) + ((self.X - minX) * 2)
+						cState.X += ((self.Width + (self.Border.Left.Width + self.Border.Right.Width)) - (maxXW - minX)) + ((self.X - minX) * 2)
 						(*state)[n.Children[a].Properties.Id] = cState
 					}
 

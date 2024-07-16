@@ -1,7 +1,6 @@
 package inline
 
 import (
-	"fmt"
 	"gui/cstyle"
 	"gui/element"
 	"math"
@@ -40,11 +39,10 @@ func Init() cstyle.Plugin {
 						if v.Properties.Id == n.Properties.Id {
 							sib := n.Parent.Children[i-1]
 							sibling := s[sib.Properties.Id]
-							if sibling.X+sibling.Width+self.Width > (parent.Width+parent.X+parent.Border.Width)-parent.Padding.Left {
+							if sibling.X+sibling.Width+self.Width > (parent.Width+parent.X+parent.Border.Left.Width)-parent.Padding.Left {
 								// Break Node.Id
 								self.Y = sibling.Y + sibling.Height
 								self.X = copyOfX
-								fmt.Println(n.InnerText, self.X, parent.X)
 							} else {
 								// Node did not break
 								if sib.Style["display"] != "inline" {

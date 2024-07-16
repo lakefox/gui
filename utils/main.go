@@ -21,8 +21,8 @@ func GetXY(n *element.Node, state *map[string]element.State) (float32, float32) 
 	if n.Parent != nil {
 		parent := s[n.Parent.Properties.Id]
 		// x, y := GetXY(n.Parent, state)
-		offsetX += parent.Border.Width + parent.Padding.Left
-		offsetY += parent.Border.Width + parent.Padding.Top
+		offsetX += parent.Border.Left.Width + parent.Padding.Left
+		offsetY += parent.Border.Top.Width + parent.Padding.Top
 	}
 
 	return offsetX, offsetY
@@ -105,7 +105,7 @@ func GetWH(n element.Node, state *map[string]element.State) WidthHeight {
 	}
 
 	if wStyle == "100%" {
-		wh.Width = wh.Width - ((self.Margin.Right + self.Margin.Left + (self.Border.Width * 2)) + (parent.Padding.Left + parent.Padding.Right) + (self.Padding.Left + self.Padding.Right))
+		wh.Width = wh.Width - ((self.Margin.Right + self.Margin.Left + (self.Border.Left.Width + self.Border.Right.Width)) + (parent.Padding.Left + parent.Padding.Right) + (self.Padding.Left + self.Padding.Right))
 	}
 
 	if n.Style["height"] == "100%" {
