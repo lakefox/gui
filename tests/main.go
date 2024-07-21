@@ -20,18 +20,6 @@ func main() {
 
 	tgt(document.QuerySelector("body"))
 
-	// btns := document.QuerySelectorAll(".button")
-
-	// for i := range *btns {
-	// 	v := *btns
-	// 	v[i].AddEventListener("click", func(e element.Event) {
-	// 		fmt.Println(e.Target.InnerText)
-	// 		if e.Target.InnerText == "Start" {
-	// 			e.Target.InnerText = "Mason"
-	// 		}
-	// 	})
-	// }
-
 	gui.View(&window, 850, 400)
 
 	// input, output := gui.Render(&window, 850, 400)

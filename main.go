@@ -16,6 +16,8 @@ import (
 	"gui/cstyle/transformers/text"
 	"gui/cstyle/transformers/ul"
 	"gui/font"
+	"gui/scripts"
+	"gui/scripts/a"
 	"gui/window"
 	"time"
 
@@ -44,6 +46,7 @@ type Window struct {
 	CSS      cstyle.CSS
 	Document element.Node
 	Adapter  func()
+	Scripts  scripts.Scripts
 }
 
 func Open(path string) Window {
@@ -90,9 +93,14 @@ func New() Window {
 	document.Style["width"] = "800px"
 	document.Style["height"] = "450px"
 	document.Properties.Id = "ROOT"
+
+	s := scripts.Scripts{}
+	s.Add(a.Init())
+
 	return Window{
 		CSS:      css,
 		Document: document,
+		Scripts:  s,
 	}
 }
 
@@ -221,6 +229,8 @@ func View(data *Window, width, height int32) {
 			// fmt.Println(newDoc.QuerySelector("body").InnerHTML)
 
 			AddHTML(&data.Document)
+
+			data.Scripts.Run(&data.Document)
 			fmt.Println(time.Since(lastChange))
 		}
 		wm.Draw(rd)

@@ -1,6 +1,8 @@
 package element
 
 import (
+	"fmt"
+	"gui/canvas"
 	"gui/selector"
 	"image"
 	ic "image/color"
@@ -55,6 +57,7 @@ type State struct {
 	Color      ic.RGBA
 	Margin     MarginPadding
 	Padding    MarginPadding
+	Canvas     *canvas.Canvas
 }
 
 // !FLAG: Plan to get rid of this
@@ -98,12 +101,11 @@ func (c *ClassList) Remove(class string) {
 }
 
 type Border struct {
-	Top     BorderSide
-	Right   BorderSide
-	Bottom  BorderSide
-	Left    BorderSide
-	Radius  BorderRadius
-	Texture *image.RGBA
+	Top    BorderSide
+	Right  BorderSide
+	Bottom BorderSide
+	Left   BorderSide
+	Radius BorderRadius
 }
 
 type BorderSide struct {
@@ -337,6 +339,10 @@ func (n *Node) Blur() {
 	}
 }
 
+func (n *Node) GetContext(width, height int) canvas.Canvas {
+	return *canvas.NewCanvas(width, height)
+}
+
 type Event struct {
 	X           int
 	Y           int
@@ -372,5 +378,16 @@ func (node *Node) AddEventListener(name string, callback func(Event)) {
 	if node.Properties.EventListeners[name] == nil {
 		node.Properties.EventListeners[name] = []func(Event){}
 	}
-	node.Properties.EventListeners[name] = append(node.Properties.EventListeners[name], callback)
+	if !funcInSlice(callback, node.Properties.EventListeners[name]) {
+		node.Properties.EventListeners[name] = append(node.Properties.EventListeners[name], callback)
+	}
+}
+func funcInSlice(f func(Event), slice []func(Event)) bool {
+	for _, item := range slice {
+		// Compare function values directly
+		if fmt.Sprintf("%p", item) == fmt.Sprintf("%p", f) {
+			return true
+		}
+	}
+	return false
 }

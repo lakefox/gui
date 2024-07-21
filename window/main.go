@@ -1,9 +1,9 @@
 package window
 
 import (
+	"gui/border"
 	"gui/element"
 	"gui/fps"
-	"gui/utils"
 	"hash/fnv"
 	"image"
 	ic "image/color"
@@ -85,7 +85,16 @@ func (wm *WindowManager) LoadTextures(nodes []element.State) {
 					Image: texture,
 				}
 			}
-
+		} else if node.Canvas != nil {
+			hash := computeImageHash(node.Canvas.Context)
+			if wm.Textures[i].Hash != hash {
+				rl.UnloadTexture(wm.Textures[i].Image)
+				texture := rl.LoadTextureFromImage(rl.NewImageFromImage(node.Canvas.Context))
+				wm.Textures[i] = Texture{
+					Hash:  hash,
+					Image: texture,
+				}
+			}
 		}
 
 	}
@@ -100,26 +109,19 @@ func (wm *WindowManager) Draw(nodes []element.State) {
 		for i, node := range nodes {
 
 			if node.Z == indexes[a] {
-				rad := utils.ConvertToPixels(node.Border.Radius, node.EM, node.Width)
-				rad = rad * 3
 				p := node.Padding
 
-				rect := rl.NewRectangle(node.X,
+				DrawRoundedRect(node.X,
 					node.Y,
 					node.Width+node.Border.Left.Width+node.Border.Right.Width,
 					node.Height+node.Border.Top.Width+node.Border.Bottom.Width,
-				)
-
-				rl.DrawRectangleRounded(rect, rad/200, 1000, node.Background)
+					node.Border.Radius.TopLeft, node.Border.Radius.TopRight, node.Border.Radius.BottomLeft, node.Border.Radius.BottomRight, node.Background)
 
 				// Draw the border based on the style for each side
-				img := image.NewRGBA(image.Rect(int(node.X),
-					int(node.Y), int(node.X+
-						node.Width+node.Border.Left.Width+node.Border.Right.Width),
-					int(node.Y+node.Height+node.Border.Top.Width+node.Border.Bottom.Width)))
-				DrawBorder(img, img.Bounds(), node.Border, 0)
-
-				rl.DrawTexture(rl.LoadTextureFromImage(rl.NewImageFromImage(img)), int32(node.X), int32(node.Y), rl.White)
+				border.Draw(&node)
+				if node.Canvas != nil {
+					rl.DrawTexture(rl.LoadTextureFromImage(rl.NewImageFromImage(node.Canvas.Context)), int32(node.X), int32(node.Y), rl.White)
+				}
 
 				if node.Texture != nil {
 					r, g, b, a := node.Color.RGBA()
@@ -152,4 +154,70 @@ func computeImageHash(img *image.RGBA) uint64 {
 	hasher := fnv.New64a()
 	hasher.Write(img.Pix)
 	return hasher.Sum64()
+}
+
+func DrawRoundedRect(x, y, width, height float32, topLeftRadius, topRightRadius, bottomLeftRadius, bottomRightRadius float32, color rl.Color) {
+	if topLeftRadius > width-bottomLeftRadius {
+		topLeftRadius = width - bottomLeftRadius
+	}
+	if topLeftRadius > height-bottomLeftRadius {
+		topLeftRadius = height - bottomLeftRadius
+	}
+
+	if topRightRadius > width-bottomRightRadius {
+		topRightRadius = width - bottomRightRadius
+	}
+	if topRightRadius > height-bottomRightRadius {
+		topRightRadius = height - bottomRightRadius
+	}
+
+	if bottomLeftRadius > width-topLeftRadius {
+		bottomLeftRadius = width - topLeftRadius
+	}
+	if bottomLeftRadius > height-topLeftRadius {
+		bottomLeftRadius = height - topLeftRadius
+	}
+
+	if bottomRightRadius > width-topRightRadius {
+		bottomRightRadius = width - topRightRadius
+	}
+	if bottomRightRadius > height-topRightRadius {
+		bottomRightRadius = height - topRightRadius
+	}
+
+	if topLeftRadius+topRightRadius > width {
+		topLeftRadius = width / 2
+		topRightRadius = width / 2
+	}
+	if bottomLeftRadius+bottomRightRadius > width {
+		bottomLeftRadius = width / 2
+		bottomRightRadius = width / 2
+	}
+
+	if topLeftRadius+bottomLeftRadius > height {
+		topLeftRadius = height / 2
+		bottomLeftRadius = height / 2
+	}
+	if topRightRadius+bottomRightRadius > height {
+		topRightRadius = height / 2
+		bottomRightRadius = height / 2
+	}
+
+	// Draw the main rectangle excluding corners
+	rl.DrawRectangle(int32(x+topLeftRadius), int32(y), int32(width-topLeftRadius-topRightRadius), int32(height), color)
+	rl.DrawRectangle(int32(x), int32(y+topLeftRadius), int32(topLeftRadius), int32(height-topLeftRadius-bottomLeftRadius), color)
+	rl.DrawRectangle(int32(x+width-topRightRadius), int32(y+topRightRadius), int32(topRightRadius), int32(height-topRightRadius-bottomRightRadius), color)
+	rl.DrawRectangle(int32(x+bottomLeftRadius), int32(y+height-bottomLeftRadius), int32(width-bottomLeftRadius-bottomRightRadius), int32(bottomLeftRadius), color)
+
+	// Draw the corner circles
+	rl.DrawCircleSector(rl.Vector2{X: x + topLeftRadius, Y: y + topLeftRadius}, topLeftRadius, 180, 270, 16, color)
+	rl.DrawCircleSector(rl.Vector2{X: x + width - topRightRadius, Y: y + topRightRadius}, topRightRadius, 270, 360, 16, color)
+	rl.DrawCircleSector(rl.Vector2{X: x + width - bottomRightRadius, Y: y + height - bottomRightRadius}, bottomRightRadius, 0, 90, 16, color)
+	rl.DrawCircleSector(rl.Vector2{X: x + bottomLeftRadius, Y: y + height - bottomLeftRadius}, bottomLeftRadius, 90, 180, 16, color)
+
+	// Draw rectangle parts to fill the gaps
+	rl.DrawRectangle(int32(x+topLeftRadius), int32(y), int32(width-topLeftRadius-topRightRadius), int32(topLeftRadius), color)                                     // Top
+	rl.DrawRectangle(int32(x), int32(y+topLeftRadius), int32(topLeftRadius), int32(height-topLeftRadius-bottomLeftRadius), color)                                  // Left
+	rl.DrawRectangle(int32(x+width-topRightRadius), int32(y+topRightRadius), int32(topRightRadius), int32(height-topRightRadius-bottomRightRadius), color)         // Right
+	rl.DrawRectangle(int32(x+bottomLeftRadius), int32(y+height-bottomLeftRadius), int32(width-bottomLeftRadius-bottomRightRadius), int32(bottomLeftRadius), color) // Bottom
 }

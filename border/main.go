@@ -1,11 +1,13 @@
 package border
 
 import (
+	"gui/canvas"
 	"gui/color"
 	"gui/element"
 	"gui/utils"
 	"image"
 	ic "image/color"
+	"math"
 	"strings"
 )
 
@@ -71,11 +73,32 @@ func Parse(cssProperties map[string]string, self, parent element.State) (element
 		}
 	}
 
+	var topLeftRadius,
+		topRightRadius,
+		bottomLeftRadius,
+		bottomRightRadius float32
+
+	if cssProperties["border-radius"] != "" {
+		rad := parseBorderRadiusComponent(cssProperties["border-radius"])
+		topLeftRadius = rad
+		topRightRadius = rad
+		bottomLeftRadius = rad
+		bottomRightRadius = rad
+	}
+
 	// Parse border-radius
-	topLeftRadius := parseBorderRadiusComponent(cssProperties["border-top-left-radius"])
-	topRightRadius := parseBorderRadiusComponent(cssProperties["border-top-right-radius"])
-	bottomLeftRadius := parseBorderRadiusComponent(cssProperties["border-bottom-left-radius"])
-	bottomRightRadius := parseBorderRadiusComponent(cssProperties["border-bottom-right-radius"])
+	if cssProperties["border-top-left-radius"] != "" {
+		topLeftRadius = parseBorderRadiusComponent(cssProperties["border-top-left-radius"])
+	}
+	if cssProperties["border-top-right-radius"] != "" {
+		topRightRadius = parseBorderRadiusComponent(cssProperties["border-top-right-radius"])
+	}
+	if cssProperties["border-bottom-left-radius"] != "" {
+		bottomLeftRadius = parseBorderRadiusComponent(cssProperties["border-bottom-left-radius"])
+	}
+	if cssProperties["border-bottom-right-radius"] != "" {
+		bottomRightRadius = parseBorderRadiusComponent(cssProperties["border-bottom-right-radius"])
+	}
 
 	// Convert to pixels
 	topWidthPx := utils.ConvertToPixels(topWidth, self.EM, parent.Width)
@@ -116,11 +139,37 @@ func Parse(cssProperties map[string]string, self, parent element.State) (element
 			BottomLeft:  bottomLeftRadius,
 			BottomRight: bottomRightRadius,
 		},
-		Texture: nil,
 	}, nil
 }
 
-func DrawBorder(img *image.RGBA, rect image.Rectangle, border element.Border, radius float32) {
+func Draw(n *element.State) {
+	if n.Border.Left.Width != 0 {
+		ctx := canvas.NewCanvas(int(n.X+
+			n.Width+n.Border.Left.Width+n.Border.Right.Width),
+			int(n.Y+n.Height+n.Border.Top.Width+n.Border.Bottom.Width))
+		ctx.StrokeStyle = ic.RGBA{0, 0, 0, 255}
+		ctx.BeginPath()
+		ctx.MoveTo(50, 50)
+		ctx.LineTo(150, 50)
+		ctx.LineTo(150, 150)
+		ctx.LineTo(50, 150)
+		ctx.Stroke()
+
+		ctx.BeginPath()
+		ctx.Arc(200, 200, 50, 0, 2*math.Pi)
+		ctx.Stroke()
+
+		ctx.FillRect(250, 250, 50, 50)
+		ctx.StrokeRect(300, 300, 50, 50)
+
+		ctx.SetFont("/System/Library/Fonts/Monaco.ttf")
+		ctx.FillText("Hello, Canvas!", 50, 250, 24)
+		n.Canvas = ctx
+	}
+
+}
+
+func Draw2(img *image.RGBA, rect image.Rectangle, border element.Border, radius float32) {
 	if border.Top.Width > 0 {
 		drawBorderSide(img, "top", rect, border.Top, radius)
 	}
