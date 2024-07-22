@@ -219,6 +219,10 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 
 	self.Background = color.Parse(n.Style, "background")
 	self.Border, _ = border.Parse(n.Style, self, parent)
+	// lastChange := time.Now()
+
+	border.Draw(&self)
+	// fmt.Println(time.Since(lastChange), n.TagName)
 
 	fs := utils.ConvertToPixels(n.Style["font-size"], parent.EM, parent.Width)
 	self.EM = fs

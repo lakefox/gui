@@ -5,9 +5,7 @@ import (
 	"gui/color"
 	"gui/element"
 	"gui/utils"
-	"image"
 	ic "image/color"
-	"math"
 	"strings"
 )
 
@@ -143,67 +141,46 @@ func Parse(cssProperties map[string]string, self, parent element.State) (element
 }
 
 func Draw(n *element.State) {
-	if n.Border.Left.Width != 0 {
-		ctx := canvas.NewCanvas(int(n.X+
-			n.Width+n.Border.Left.Width+n.Border.Right.Width),
-			int(n.Y+n.Height+n.Border.Top.Width+n.Border.Bottom.Width))
-		ctx.StrokeStyle = ic.RGBA{0, 0, 0, 255}
-		ctx.BeginPath()
-		ctx.MoveTo(50, 50)
-		ctx.LineTo(150, 50)
-		ctx.LineTo(150, 150)
-		ctx.LineTo(50, 150)
-		ctx.Stroke()
-
-		ctx.BeginPath()
-		ctx.Arc(200, 200, 50, 0, 2*math.Pi)
-		ctx.Stroke()
-
-		ctx.FillRect(250, 250, 50, 50)
-		ctx.StrokeRect(300, 300, 50, 50)
-
-		ctx.SetFont("/System/Library/Fonts/Monaco.ttf")
-		ctx.FillText("Hello, Canvas!", 50, 250, 24)
-		n.Canvas = ctx
+	ctx := canvas.NewCanvas(int(n.X+
+		n.Width+n.Border.Left.Width+n.Border.Right.Width),
+		int(n.Y+n.Height+n.Border.Top.Width+n.Border.Bottom.Width))
+	ctx.StrokeStyle = ic.RGBA{0, 0, 0, 255}
+	if n.Border.Top.Width > 0 {
+		drawBorderSide(ctx, "top", n.Border.Top, n)
 	}
+	if n.Border.Right.Width > 0 {
+		drawBorderSide(ctx, "right", n.Border.Right, n)
+	}
+	if n.Border.Bottom.Width > 0 {
+		drawBorderSide(ctx, "bottom", n.Border.Bottom, n)
+	}
+	if n.Border.Left.Width > 0 {
+		drawBorderSide(ctx, "left", n.Border.Left, n)
+	}
+	n.Canvas = ctx
 
 }
 
-func Draw2(img *image.RGBA, rect image.Rectangle, border element.Border, radius float32) {
-	if border.Top.Width > 0 {
-		drawBorderSide(img, "top", rect, border.Top, radius)
-	}
-	if border.Right.Width > 0 {
-		drawBorderSide(img, "right", rect, border.Right, radius)
-	}
-	if border.Bottom.Width > 0 {
-		drawBorderSide(img, "bottom", rect, border.Bottom, radius)
-	}
-	if border.Left.Width > 0 {
-		drawBorderSide(img, "left", rect, border.Left, radius)
-	}
-}
-
-func drawBorderSide(img *image.RGBA, side string, rect image.Rectangle, border element.BorderSide, radius float32) {
+func drawBorderSide(ctx *canvas.Canvas, side string, border element.BorderSide, s *element.State) {
 	switch border.Style {
 	case "solid":
-		drawSolidBorder(img, side, rect, border, radius)
+		drawSolidBorder(ctx, side, border, s)
 	case "dashed":
-		drawDashedBorder(img, side, rect, border, radius)
+		drawDashedBorder(ctx, side, border, s)
 	case "dotted":
-		drawDottedBorder(img, side, rect, border, radius)
+		drawDottedBorder(ctx, side, border, s)
 	case "double":
-		drawDoubleBorder(img, side, rect, border, radius)
+		drawDoubleBorder(ctx, side, border, s)
 	case "groove":
-		drawGrooveBorder(img, side, rect, border, radius)
+		drawGrooveBorder(ctx, side, border, s)
 	case "ridge":
-		drawRidgeBorder(img, side, rect, border, radius)
+		drawRidgeBorder(ctx, side, border, s)
 	case "inset":
-		drawInsetBorder(img, side, rect, border, radius)
+		drawInsetBorder(ctx, side, border, s)
 	case "outset":
-		drawOutsetBorder(img, side, rect, border, radius)
+		drawOutsetBorder(ctx, side, border, s)
 	default:
-		drawSolidBorder(img, side, rect, border, radius)
+		drawSolidBorder(ctx, side, border, s)
 	}
 }
 
@@ -217,234 +194,191 @@ func isWidthComponent(component string, suffixes []string) bool {
 	return false
 }
 
-func drawSolidBorder(img *image.RGBA, side string, rect image.Rectangle, border element.BorderSide, radius float32) {
-	drawLine := func(x1, y1, x2, y2 int) {
-		for i := 0; i < int(border.Width); i++ {
-			drawLineHelper(img, x1, y1+i, x2, y2+i, border.Color)
-		}
-	}
+func drawSolidBorder(ctx *canvas.Canvas, side string, border element.BorderSide, s *element.State) {
+	radius := int(s.Border.Radius.TopLeft) // Using one radius for simplicity, adjust as needed
+	ctx.StrokeStyle = border.Color
+	ctx.LineWidth = float64(border.Width)
+
 	switch side {
 	case "top":
-		drawLine(rect.Min.X, rect.Min.Y, rect.Max.X, rect.Min.Y)
+		ctx.RoundedRect(int(s.X), int(s.Y), int(s.Width), int(border.Width), radius)
 	case "right":
-		drawLine(rect.Max.X-int(border.Width), rect.Min.Y, rect.Max.X-int(border.Width), rect.Max.Y)
+		ctx.RoundedRect(int(s.X+s.Width-border.Width), int(s.Y), int(border.Width), int(s.Height), radius)
 	case "bottom":
-		drawLine(rect.Min.X, rect.Max.Y-int(border.Width), rect.Max.X, rect.Max.Y-int(border.Width))
+		ctx.RoundedRect(int(s.X), int(s.Y+s.Height-border.Width), int(s.Width), int(border.Width), radius)
 	case "left":
-		drawLine(rect.Min.X, rect.Min.Y, rect.Min.X, rect.Max.Y)
+		ctx.RoundedRect(int(s.X), int(s.Y), int(border.Width), int(s.Height), radius)
 	}
+	ctx.Stroke()
 }
 
-func drawDashedBorder(img *image.RGBA, side string, rect image.Rectangle, border element.BorderSide, radius float32) {
-	dashLength := 10
-	gapLength := 5
-	drawDashLine := func(x1, y1, x2, y2 int) {
-		for i := 0; i < int(border.Width); i++ {
-			for j := x1; j < x2; j += dashLength + gapLength {
-				drawLineHelper(img, j, y1+i, j+dashLength, y2+i, border.Color)
-			}
-		}
-	}
-	switch side {
-	case "top":
-		drawDashLine(rect.Min.X, rect.Min.Y, rect.Max.X, rect.Min.Y)
-	case "right":
-		drawDashLine(rect.Max.X-int(border.Width), rect.Min.Y, rect.Max.X-int(border.Width), rect.Max.Y)
-	case "bottom":
-		drawDashLine(rect.Min.X, rect.Max.Y-int(border.Width), rect.Max.X, rect.Max.Y-int(border.Width))
-	case "left":
-		drawDashLine(rect.Min.X, rect.Min.Y, rect.Min.X, rect.Max.Y)
-	}
+func drawDashedBorder(ctx *canvas.Canvas, side string, border element.BorderSide, s *element.State) {
+	// dashLength := 10
+	// gapLength := 5
+	// drawDashLine := func(x1, y1, x2, y2 int) {
+	// 	for i := 0; i < int(border.Width); i++ {
+	// 		for j := x1; j < x2; j += dashLength + gapLength {
+	// 			drawLineHelper(img, j, y1+i, j+dashLength, y2+i, border.Color)
+	// 		}
+	// 	}
+	// }
+	// switch side {
+	// case "top":
+	// 	drawDashLine(rect.Min.X, rect.Min.Y, rect.Max.X, rect.Min.Y)
+	// case "right":
+	// 	drawDashLine(rect.Max.X-int(border.Width), rect.Min.Y, rect.Max.X-int(border.Width), rect.Max.Y)
+	// case "bottom":
+	// 	drawDashLine(rect.Min.X, rect.Max.Y-int(border.Width), rect.Max.X, rect.Max.Y-int(border.Width))
+	// case "left":
+	// 	drawDashLine(rect.Min.X, rect.Min.Y, rect.Min.X, rect.Max.Y)
+	// }
 }
 
-func drawDottedBorder(img *image.RGBA, side string, rect image.Rectangle, border element.BorderSide, radius float32) {
-	dotSize := int(border.Width)
-	drawDot := func(x, y int) {
-		for i := 0; i < dotSize; i++ {
-			for j := 0; j < dotSize; j++ {
-				img.Set(x+i, y+j, border.Color)
-			}
-		}
-	}
-	switch side {
-	case "top":
-		for i := rect.Min.X; i < rect.Max.X; i += dotSize * 2 {
-			drawDot(i, rect.Min.Y)
-		}
-	case "right":
-		for i := rect.Min.Y; i < rect.Max.Y; i += dotSize * 2 {
-			drawDot(rect.Max.X-dotSize, i)
-		}
-	case "bottom":
-		for i := rect.Min.X; i < rect.Max.X; i += dotSize * 2 {
-			drawDot(i, rect.Max.Y-dotSize)
-		}
-	case "left":
-		for i := rect.Min.Y; i < rect.Max.Y; i += dotSize * 2 {
-			drawDot(rect.Min.X, i)
-		}
-	}
+func drawDottedBorder(ctx *canvas.Canvas, side string, border element.BorderSide, s *element.State) {
+	// dotSize := int(border.Width)
+	// drawDot := func(x, y int) {
+	// 	for i := 0; i < dotSize; i++ {
+	// 		for j := 0; j < dotSize; j++ {
+	// 			img.Set(x+i, y+j, border.Color)
+	// 		}
+	// 	}
+	// }
+	// switch side {
+	// case "top":
+	// 	for i := rect.Min.X; i < rect.Max.X; i += dotSize * 2 {
+	// 		drawDot(i, rect.Min.Y)
+	// 	}
+	// case "right":
+	// 	for i := rect.Min.Y; i < rect.Max.Y; i += dotSize * 2 {
+	// 		drawDot(rect.Max.X-dotSize, i)
+	// 	}
+	// case "bottom":
+	// 	for i := rect.Min.X; i < rect.Max.X; i += dotSize * 2 {
+	// 		drawDot(i, rect.Max.Y-dotSize)
+	// 	}
+	// case "left":
+	// 	for i := rect.Min.Y; i < rect.Max.Y; i += dotSize * 2 {
+	// 		drawDot(rect.Min.X, i)
+	// 	}
+	// }
 }
 
-func drawDoubleBorder(img *image.RGBA, side string, rect image.Rectangle, border element.BorderSide, radius float32) {
-	innerOffset := int(border.Width / 3)
-	outerOffset := innerOffset * 2
-	drawLine := func(x1, y1, x2, y2, offset int) {
-		for i := 0; i < innerOffset; i++ {
-			drawLineHelper(img, x1, y1+i+offset, x2, y2+i+offset, border.Color)
-		}
-	}
-	switch side {
-	case "top":
-		drawLine(rect.Min.X, rect.Min.Y, rect.Max.X, rect.Min.Y, 0)
-		drawLine(rect.Min.X, rect.Min.Y+outerOffset, rect.Max.X, rect.Min.Y+outerOffset, 0)
-	case "right":
-		drawLine(rect.Max.X-innerOffset, rect.Min.Y, rect.Max.X-innerOffset, rect.Max.Y, 0)
-		drawLine(rect.Max.X-outerOffset, rect.Min.Y, rect.Max.X-outerOffset, rect.Max.Y, 0)
-	case "bottom":
-		drawLine(rect.Min.X, rect.Max.Y-innerOffset, rect.Max.X, rect.Max.Y-innerOffset, 0)
-		drawLine(rect.Min.X, rect.Max.Y-outerOffset, rect.Max.X, rect.Max.Y-outerOffset, 0)
-	case "left":
-		drawLine(rect.Min.X, rect.Min.Y, rect.Min.X, rect.Max.Y, 0)
-		drawLine(rect.Min.X+outerOffset, rect.Min.Y, rect.Min.X+outerOffset, rect.Max.Y, 0)
-	}
+func drawDoubleBorder(ctx *canvas.Canvas, side string, border element.BorderSide, s *element.State) {
+	// innerOffset := int(border.Width / 3)
+	// outerOffset := innerOffset * 2
+	// drawLine := func(x1, y1, x2, y2, offset int) {
+	// 	for i := 0; i < innerOffset; i++ {
+	// 		drawLineHelper(img, x1, y1+i+offset, x2, y2+i+offset, border.Color)
+	// 	}
+	// }
+	// switch side {
+	// case "top":
+	// 	drawLine(rect.Min.X, rect.Min.Y, rect.Max.X, rect.Min.Y, 0)
+	// 	drawLine(rect.Min.X, rect.Min.Y+outerOffset, rect.Max.X, rect.Min.Y+outerOffset, 0)
+	// case "right":
+	// 	drawLine(rect.Max.X-innerOffset, rect.Min.Y, rect.Max.X-innerOffset, rect.Max.Y, 0)
+	// 	drawLine(rect.Max.X-outerOffset, rect.Min.Y, rect.Max.X-outerOffset, rect.Max.Y, 0)
+	// case "bottom":
+	// 	drawLine(rect.Min.X, rect.Max.Y-innerOffset, rect.Max.X, rect.Max.Y-innerOffset, 0)
+	// 	drawLine(rect.Min.X, rect.Max.Y-outerOffset, rect.Max.X, rect.Max.Y-outerOffset, 0)
+	// case "left":
+	// 	drawLine(rect.Min.X, rect.Min.Y, rect.Min.X, rect.Max.Y, 0)
+	// 	drawLine(rect.Min.X+outerOffset, rect.Min.Y, rect.Min.X+outerOffset, rect.Max.Y, 0)
+	// }
 }
 
-func drawGrooveBorder(img *image.RGBA, side string, rect image.Rectangle, border element.BorderSide, radius float32) {
-	shadowColor := ic.RGBA{border.Color.R / 2, border.Color.G / 2, border.Color.B / 2, border.Color.A}
-	highlightColor := ic.RGBA{border.Color.R * 2 / 3, border.Color.G * 2 / 3, border.Color.B * 2 / 3, border.Color.A}
-	drawLine := func(x1, y1, x2, y2 int, col ic.RGBA) {
-		for i := 0; i < int(border.Width/2); i++ {
-			drawLineHelper(img, x1, y1+i, x2, y2+i, col)
-		}
-	}
-	switch side {
-	case "top":
-		drawLine(rect.Min.X, rect.Min.Y, rect.Max.X, rect.Min.Y, shadowColor)
-		drawLine(rect.Min.X, rect.Min.Y+int(border.Width/2), rect.Max.X, rect.Min.Y+int(border.Width/2), highlightColor)
-	case "right":
-		drawLine(rect.Max.X-int(border.Width/2), rect.Min.Y, rect.Max.X-int(border.Width/2), rect.Max.Y, shadowColor)
-		drawLine(rect.Max.X-int(border.Width), rect.Min.Y, rect.Max.X-int(border.Width), rect.Max.Y, highlightColor)
-	case "bottom":
-		drawLine(rect.Min.X, rect.Max.Y-int(border.Width/2), rect.Max.X, rect.Max.Y-int(border.Width/2), highlightColor)
-		drawLine(rect.Min.X, rect.Max.Y-int(border.Width), rect.Max.X, rect.Max.Y-int(border.Width), shadowColor)
-	case "left":
-		drawLine(rect.Min.X, rect.Min.Y, rect.Min.X, rect.Max.Y, highlightColor)
-		drawLine(rect.Min.X+int(border.Width/2), rect.Min.Y, rect.Min.X+int(border.Width/2), rect.Max.Y, shadowColor)
-	}
+func drawGrooveBorder(ctx *canvas.Canvas, side string, border element.BorderSide, s *element.State) {
+	// shadowColor := ic.RGBA{border.Color.R / 2, border.Color.G / 2, border.Color.B / 2, border.Color.A}
+	// highlightColor := ic.RGBA{border.Color.R * 2 / 3, border.Color.G * 2 / 3, border.Color.B * 2 / 3, border.Color.A}
+	// drawLine := func(x1, y1, x2, y2 int, col ic.RGBA) {
+	// 	for i := 0; i < int(border.Width/2); i++ {
+	// 		drawLineHelper(img, x1, y1+i, x2, y2+i, col)
+	// 	}
+	// }
+	// switch side {
+	// case "top":
+	// 	drawLine(rect.Min.X, rect.Min.Y, rect.Max.X, rect.Min.Y, shadowColor)
+	// 	drawLine(rect.Min.X, rect.Min.Y+int(border.Width/2), rect.Max.X, rect.Min.Y+int(border.Width/2), highlightColor)
+	// case "right":
+	// 	drawLine(rect.Max.X-int(border.Width/2), rect.Min.Y, rect.Max.X-int(border.Width/2), rect.Max.Y, shadowColor)
+	// 	drawLine(rect.Max.X-int(border.Width), rect.Min.Y, rect.Max.X-int(border.Width), rect.Max.Y, highlightColor)
+	// case "bottom":
+	// 	drawLine(rect.Min.X, rect.Max.Y-int(border.Width/2), rect.Max.X, rect.Max.Y-int(border.Width/2), highlightColor)
+	// 	drawLine(rect.Min.X, rect.Max.Y-int(border.Width), rect.Max.X, rect.Max.Y-int(border.Width), shadowColor)
+	// case "left":
+	// 	drawLine(rect.Min.X, rect.Min.Y, rect.Min.X, rect.Max.Y, highlightColor)
+	// 	drawLine(rect.Min.X+int(border.Width/2), rect.Min.Y, rect.Min.X+int(border.Width/2), rect.Max.Y, shadowColor)
+	// }
 }
 
-func drawRidgeBorder(img *image.RGBA, side string, rect image.Rectangle, border element.BorderSide, radius float32) {
-	shadowColor := ic.RGBA{border.Color.R / 2, border.Color.G / 2, border.Color.B / 2, border.Color.A}
-	highlightColor := ic.RGBA{border.Color.R * 2 / 3, border.Color.G * 2 / 3, border.Color.B * 2 / 3, border.Color.A}
-	drawLine := func(x1, y1, x2, y2 int, col ic.RGBA) {
-		for i := 0; i < int(border.Width/2); i++ {
-			drawLineHelper(img, x1, y1+i, x2, y2+i, col)
-		}
-	}
-	switch side {
-	case "top":
-		drawLine(rect.Min.X, rect.Min.Y, rect.Max.X, rect.Min.Y, highlightColor)
-		drawLine(rect.Min.X, rect.Min.Y+int(border.Width/2), rect.Max.X, rect.Min.Y+int(border.Width/2), shadowColor)
-	case "right":
-		drawLine(rect.Max.X-int(border.Width/2), rect.Min.Y, rect.Max.X-int(border.Width/2), rect.Max.Y, highlightColor)
-		drawLine(rect.Max.X-int(border.Width), rect.Min.Y, rect.Max.X-int(border.Width), rect.Max.Y, shadowColor)
-	case "bottom":
-		drawLine(rect.Min.X, rect.Max.Y-int(border.Width/2), rect.Max.X, rect.Max.Y-int(border.Width/2), shadowColor)
-		drawLine(rect.Min.X, rect.Max.Y-int(border.Width), rect.Max.X, rect.Max.Y-int(border.Width), highlightColor)
-	case "left":
-		drawLine(rect.Min.X, rect.Min.Y, rect.Min.X, rect.Max.Y, shadowColor)
-		drawLine(rect.Min.X+int(border.Width/2), rect.Min.Y, rect.Min.X+int(border.Width/2), rect.Max.Y, highlightColor)
-	}
+func drawRidgeBorder(ctx *canvas.Canvas, side string, border element.BorderSide, s *element.State) {
+	// shadowColor := ic.RGBA{border.Color.R / 2, border.Color.G / 2, border.Color.B / 2, border.Color.A}
+	// highlightColor := ic.RGBA{border.Color.R * 2 / 3, border.Color.G * 2 / 3, border.Color.B * 2 / 3, border.Color.A}
+	// drawLine := func(x1, y1, x2, y2 int, col ic.RGBA) {
+	// 	for i := 0; i < int(border.Width/2); i++ {
+	// 		drawLineHelper(img, x1, y1+i, x2, y2+i, col)
+	// 	}
+	// }
+	// switch side {
+	// case "top":
+	// 	drawLine(rect.Min.X, rect.Min.Y, rect.Max.X, rect.Min.Y, highlightColor)
+	// 	drawLine(rect.Min.X, rect.Min.Y+int(border.Width/2), rect.Max.X, rect.Min.Y+int(border.Width/2), shadowColor)
+	// case "right":
+	// 	drawLine(rect.Max.X-int(border.Width/2), rect.Min.Y, rect.Max.X-int(border.Width/2), rect.Max.Y, highlightColor)
+	// 	drawLine(rect.Max.X-int(border.Width), rect.Min.Y, rect.Max.X-int(border.Width), rect.Max.Y, shadowColor)
+	// case "bottom":
+	// 	drawLine(rect.Min.X, rect.Max.Y-int(border.Width/2), rect.Max.X, rect.Max.Y-int(border.Width/2), shadowColor)
+	// 	drawLine(rect.Min.X, rect.Max.Y-int(border.Width), rect.Max.X, rect.Max.Y-int(border.Width), highlightColor)
+	// case "left":
+	// 	drawLine(rect.Min.X, rect.Min.Y, rect.Min.X, rect.Max.Y, shadowColor)
+	// 	drawLine(rect.Min.X+int(border.Width/2), rect.Min.Y, rect.Min.X+int(border.Width/2), rect.Max.Y, highlightColor)
+	// }
 }
 
-func drawInsetBorder(img *image.RGBA, side string, rect image.Rectangle, border element.BorderSide, radius float32) {
-	shadowColor := ic.RGBA{border.Color.R / 2, border.Color.G / 2, border.Color.B / 2, border.Color.A}
-	highlightColor := ic.RGBA{border.Color.R * 2 / 3, border.Color.G * 2 / 3, border.Color.B * 2 / 3, border.Color.A}
-	drawLine := func(x1, y1, x2, y2 int, col ic.RGBA) {
-		for i := 0; i < int(border.Width/2); i++ {
-			drawLineHelper(img, x1, y1+i, x2, y2+i, col)
-		}
-	}
-	switch side {
-	case "top":
-		drawLine(rect.Min.X, rect.Min.Y, rect.Max.X, rect.Min.Y, shadowColor)
-		drawLine(rect.Min.X, rect.Min.Y+int(border.Width/2), rect.Max.X, rect.Min.Y+int(border.Width/2), highlightColor)
-	case "right":
-		drawLine(rect.Max.X-int(border.Width/2), rect.Min.Y, rect.Max.X-int(border.Width/2), rect.Max.Y, shadowColor)
-		drawLine(rect.Max.X-int(border.Width), rect.Min.Y, rect.Max.X-int(border.Width), rect.Max.Y, highlightColor)
-	case "bottom":
-		drawLine(rect.Min.X, rect.Max.Y-int(border.Width/2), rect.Max.X, rect.Max.Y-int(border.Width/2), highlightColor)
-		drawLine(rect.Min.X, rect.Max.Y-int(border.Width), rect.Max.X, rect.Max.Y-int(border.Width), shadowColor)
-	case "left":
-		drawLine(rect.Min.X, rect.Min.Y, rect.Min.X, rect.Max.Y, highlightColor)
-		drawLine(rect.Min.X+int(border.Width/2), rect.Min.Y, rect.Min.X+int(border.Width/2), rect.Max.Y, shadowColor)
-	}
+func drawInsetBorder(ctx *canvas.Canvas, side string, border element.BorderSide, s *element.State) {
+	// shadowColor := ic.RGBA{border.Color.R / 2, border.Color.G / 2, border.Color.B / 2, border.Color.A}
+	// highlightColor := ic.RGBA{border.Color.R * 2 / 3, border.Color.G * 2 / 3, border.Color.B * 2 / 3, border.Color.A}
+	// drawLine := func(x1, y1, x2, y2 int, col ic.RGBA) {
+	// 	for i := 0; i < int(border.Width/2); i++ {
+	// 		drawLineHelper(img, x1, y1+i, x2, y2+i, col)
+	// 	}
+	// }
+	// switch side {
+	// case "top":
+	// 	drawLine(rect.Min.X, rect.Min.Y, rect.Max.X, rect.Min.Y, shadowColor)
+	// 	drawLine(rect.Min.X, rect.Min.Y+int(border.Width/2), rect.Max.X, rect.Min.Y+int(border.Width/2), highlightColor)
+	// case "right":
+	// 	drawLine(rect.Max.X-int(border.Width/2), rect.Min.Y, rect.Max.X-int(border.Width/2), rect.Max.Y, shadowColor)
+	// 	drawLine(rect.Max.X-int(border.Width), rect.Min.Y, rect.Max.X-int(border.Width), rect.Max.Y, highlightColor)
+	// case "bottom":
+	// 	drawLine(rect.Min.X, rect.Max.Y-int(border.Width/2), rect.Max.X, rect.Max.Y-int(border.Width/2), highlightColor)
+	// 	drawLine(rect.Min.X, rect.Max.Y-int(border.Width), rect.Max.X, rect.Max.Y-int(border.Width), shadowColor)
+	// case "left":
+	// 	drawLine(rect.Min.X, rect.Min.Y, rect.Min.X, rect.Max.Y, highlightColor)
+	// 	drawLine(rect.Min.X+int(border.Width/2), rect.Min.Y, rect.Min.X+int(border.Width/2), rect.Max.Y, shadowColor)
+	// }
 }
 
-func drawOutsetBorder(img *image.RGBA, side string, rect image.Rectangle, border element.BorderSide, radius float32) {
-	shadowColor := ic.RGBA{border.Color.R * 2 / 3, border.Color.G * 2 / 3, border.Color.B * 2 / 3, border.Color.A}
-	highlightColor := ic.RGBA{border.Color.R / 2, border.Color.G / 2, border.Color.B / 2, border.Color.A}
-	drawLine := func(x1, y1, x2, y2 int, col ic.RGBA) {
-		for i := 0; i < int(border.Width/2); i++ {
-			drawLineHelper(img, x1, y1+i, x2, y2+i, col)
-		}
-	}
-	switch side {
-	case "top":
-		drawLine(rect.Min.X, rect.Min.Y, rect.Max.X, rect.Min.Y, highlightColor)
-		drawLine(rect.Min.X, rect.Min.Y+int(border.Width/2), rect.Max.X, rect.Min.Y+int(border.Width/2), shadowColor)
-	case "right":
-		drawLine(rect.Max.X-int(border.Width/2), rect.Min.Y, rect.Max.X-int(border.Width/2), rect.Max.Y, highlightColor)
-		drawLine(rect.Max.X-int(border.Width), rect.Min.Y, rect.Max.X-int(border.Width), rect.Max.Y, shadowColor)
-	case "bottom":
-		drawLine(rect.Min.X, rect.Max.Y-int(border.Width/2), rect.Max.X, rect.Max.Y-int(border.Width/2), shadowColor)
-		drawLine(rect.Min.X, rect.Max.Y-int(border.Width), rect.Max.X, rect.Max.Y-int(border.Width), highlightColor)
-	case "left":
-		drawLine(rect.Min.X, rect.Min.Y, rect.Min.X, rect.Max.Y, shadowColor)
-		drawLine(rect.Min.X+int(border.Width/2), rect.Min.Y, rect.Min.X+int(border.Width/2), rect.Max.Y, highlightColor)
-	}
-}
-
-func drawLineHelper(img *image.RGBA, x1, y1, x2, y2 int, col ic.Color) {
-	// Basic line drawing (Bresenham's line algorithm)
-	dx := abs(x2 - x1)
-	dy := -abs(y2 - y1)
-	sx := 1
-	if x1 >= x2 {
-		sx = -1
-	}
-	sy := 1
-	if y1 >= y2 {
-		sy = -1
-	}
-	err := dx + dy
-	for {
-		img.Set(x1, y1, col)
-		if x1 == x2 && y1 == y2 {
-			break
-		}
-		e2 := 2 * err
-		if e2 >= dy {
-			if x1 == x2 {
-				break
-			}
-			err += dy
-			x1 += sx
-		}
-		if e2 <= dx {
-			if y1 == y2 {
-				break
-			}
-			err += dx
-			y1 += sy
-		}
-	}
-}
-
-func abs(x int) int {
-	if x < 0 {
-		return -x
-	}
-	return x
+func drawOutsetBorder(ctx *canvas.Canvas, side string, border element.BorderSide, s *element.State) {
+	// shadowColor := ic.RGBA{border.Color.R * 2 / 3, border.Color.G * 2 / 3, border.Color.B * 2 / 3, border.Color.A}
+	// highlightColor := ic.RGBA{border.Color.R / 2, border.Color.G / 2, border.Color.B / 2, border.Color.A}
+	// drawLine := func(x1, y1, x2, y2 int, col ic.RGBA) {
+	// 	for i := 0; i < int(border.Width/2); i++ {
+	// 		drawLineHelper(img, x1, y1+i, x2, y2+i, col)
+	// 	}
+	// }
+	// switch side {
+	// case "top":
+	// 	drawLine(rect.Min.X, rect.Min.Y, rect.Max.X, rect.Min.Y, highlightColor)
+	// 	drawLine(rect.Min.X, rect.Min.Y+int(border.Width/2), rect.Max.X, rect.Min.Y+int(border.Width/2), shadowColor)
+	// case "right":
+	// 	drawLine(rect.Max.X-int(border.Width/2), rect.Min.Y, rect.Max.X-int(border.Width/2), rect.Max.Y, highlightColor)
+	// 	drawLine(rect.Max.X-int(border.Width), rect.Min.Y, rect.Max.X-int(border.Width), rect.Max.Y, shadowColor)
+	// case "bottom":
+	// 	drawLine(rect.Min.X, rect.Max.Y-int(border.Width/2), rect.Max.X, rect.Max.Y-int(border.Width/2), shadowColor)
+	// 	drawLine(rect.Min.X, rect.Max.Y-int(border.Width), rect.Max.X, rect.Max.Y-int(border.Width), highlightColor)
+	// case "left":
+	// 	drawLine(rect.Min.X, rect.Min.Y, rect.Min.X, rect.Max.Y, shadowColor)
+	// 	drawLine(rect.Min.X+int(border.Width/2), rect.Min.Y, rect.Min.X+int(border.Width/2), rect.Max.Y, highlightColor)
+	// }
 }

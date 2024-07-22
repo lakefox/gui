@@ -1,7 +1,6 @@
 package window
 
 import (
-	"gui/border"
 	"gui/element"
 	"gui/fps"
 	"hash/fnv"
@@ -28,14 +27,20 @@ type Text struct {
 
 // WindowManager manages the window and rectangles
 type WindowManager struct {
-	Fonts        map[string]rl.Font
-	FPSCounterOn bool
-	FPS          int32
-	FPSCounter   fps.FPSCounter
-	Textures     map[int]Texture
+	Fonts          map[string]rl.Font
+	FPSCounterOn   bool
+	FPS            int32
+	FPSCounter     fps.FPSCounter
+	Textures       map[int]Texture
+	CanvasTextures map[int]CanvasTexture
 }
 
 type Texture struct {
+	Hash  uint64
+	Image rl.Texture2D
+}
+
+type CanvasTexture struct {
 	Hash  uint64
 	Image rl.Texture2D
 }
@@ -72,6 +77,9 @@ func (wm *WindowManager) LoadTextures(nodes []element.State) {
 	if wm.Textures == nil {
 		wm.Textures = map[int]Texture{}
 	}
+	if wm.CanvasTextures == nil {
+		wm.CanvasTextures = map[int]CanvasTexture{}
+	}
 
 	for i, node := range nodes {
 		if node.Texture != nil {
@@ -85,18 +93,20 @@ func (wm *WindowManager) LoadTextures(nodes []element.State) {
 					Image: texture,
 				}
 			}
-		} else if node.Canvas != nil {
+		}
+
+		if node.Canvas != nil {
+			// !TODO: Make a faster hash algo that minimises the time to detect if a image is different
 			hash := computeImageHash(node.Canvas.Context)
-			if wm.Textures[i].Hash != hash {
-				rl.UnloadTexture(wm.Textures[i].Image)
+			if wm.CanvasTextures[i].Hash != hash {
+				rl.UnloadTexture(wm.CanvasTextures[i].Image)
 				texture := rl.LoadTextureFromImage(rl.NewImageFromImage(node.Canvas.Context))
-				wm.Textures[i] = Texture{
+				wm.CanvasTextures[i] = CanvasTexture{
 					Hash:  hash,
 					Image: texture,
 				}
 			}
 		}
-
 	}
 }
 
@@ -118,9 +128,9 @@ func (wm *WindowManager) Draw(nodes []element.State) {
 					node.Border.Radius.TopLeft, node.Border.Radius.TopRight, node.Border.Radius.BottomLeft, node.Border.Radius.BottomRight, node.Background)
 
 				// Draw the border based on the style for each side
-				border.Draw(&node)
+
 				if node.Canvas != nil {
-					rl.DrawTexture(rl.LoadTextureFromImage(rl.NewImageFromImage(node.Canvas.Context)), int32(node.X), int32(node.Y), rl.White)
+					rl.DrawTexture(wm.CanvasTextures[i].Image, int32(node.X), int32(node.Y), rl.White)
 				}
 
 				if node.Texture != nil {
