@@ -205,90 +205,75 @@ func CheckNode(n *element.Node, state *map[string]element.State) {
 }
 
 func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State) *element.Node {
-
 	// Head is not renderable
 	if utils.IsParent(*n, "head") {
 		return n
 	}
 
 	plugins := c.Plugins
-
 	s := *state
 	self := s[n.Properties.Id]
 	parent := s[n.Parent.Properties.Id]
 
-	self.Background = color.Parse(n.Style, "background")
-	self.Border, _ = border.Parse(n.Style, self, parent)
-	// lastChange := time.Now()
+	// Cache the style map
+	style := n.Style
 
+	self.Background = color.Parse(style, "background")
+	self.Border, _ = border.Parse(style, self, parent)
 	border.Draw(&self)
-	// fmt.Println(time.Since(lastChange), n.TagName)
 
-	fs := utils.ConvertToPixels(n.Style["font-size"], parent.EM, parent.Width)
+	fs := utils.ConvertToPixels(style["font-size"], parent.EM, parent.Width)
 	self.EM = fs
 
-	if n.Style["display"] == "none" {
-		self.X = 0
-		self.Y = 0
-		self.Width = 0
-		self.Height = 0
+	if style["display"] == "none" {
+		self.X, self.Y, self.Width, self.Height = 0, 0, 0, 0
+		(*state)[n.Properties.Id] = self
 		return n
 	}
 
 	// Set Z index value to be sorted in window
-	if n.Style["z-index"] != "" {
-		z, _ := strconv.Atoi(n.Style["z-index"])
-		self.Z = float32(z)
+	if zIndex, err := strconv.Atoi(style["z-index"]); err == nil {
+		self.Z = float32(zIndex)
 	}
-
 	if parent.Z > 0 {
 		self.Z = parent.Z + 1
 	}
 
 	(*state)[n.Properties.Id] = self
-
 	wh := utils.GetWH(*n, state)
-	width := wh.Width
-	height := wh.Height
+	width, height := wh.Width, wh.Height
 
 	x, y := parent.X, parent.Y
-	// !NOTE: Would like to consolidate all XY function into this function like WH
 	offsetX, offsetY := utils.GetXY(n, state)
 	x += offsetX
 	y += offsetY
 
-	var top, left, right, bottom bool = false, false, false, false
-
 	m := utils.GetMP(*n, wh, state, "margin")
 	p := utils.GetMP(*n, wh, state, "padding")
-
 	self.Margin = m
 	self.Padding = p
 
-	if n.Style["position"] == "absolute" {
+	var top, left, right, bottom bool
+
+	if style["position"] == "absolute" {
 		bas := utils.GetPositionOffsetNode(n)
 		base := s[bas.Properties.Id]
-		if n.Style["top"] != "" {
-			v := utils.ConvertToPixels(n.Style["top"], self.EM, parent.Width)
-			y = v + base.Y
+		if topVal := style["top"]; topVal != "" {
+			y = utils.ConvertToPixels(topVal, self.EM, parent.Width) + base.Y
 			top = true
 		}
-		if n.Style["left"] != "" {
-			v := utils.ConvertToPixels(n.Style["left"], self.EM, parent.Width)
-			x = v + base.X
+		if leftVal := style["left"]; leftVal != "" {
+			x = utils.ConvertToPixels(leftVal, self.EM, parent.Width) + base.X
 			left = true
 		}
-		if n.Style["right"] != "" {
-			v := utils.ConvertToPixels(n.Style["right"], self.EM, parent.Width)
-			x = (base.Width - width) - v
+		if rightVal := style["right"]; rightVal != "" {
+			x = base.Width - width - utils.ConvertToPixels(rightVal, self.EM, parent.Width)
 			right = true
 		}
-		if n.Style["bottom"] != "" {
-			v := utils.ConvertToPixels(n.Style["bottom"], self.EM, parent.Width)
-			y = (base.Height - height) - v
+		if bottomVal := style["bottom"]; bottomVal != "" {
+			y = base.Height - height - utils.ConvertToPixels(bottomVal, self.EM, parent.Width)
 			bottom = true
 		}
-
 	} else {
 		for i, v := range n.Parent.Children {
 			if v.Style["position"] != "absolute" {
@@ -297,30 +282,26 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 						sib := n.Parent.Children[i-1]
 						sibling := s[sib.Properties.Id]
 						if sib.Style["position"] != "absolute" {
-							if n.Style["display"] == "inline" {
-								if sib.Style["display"] == "inline" {
-									y = sibling.Y
-								} else {
-									y = sibling.Y + sibling.Height
+							if style["display"] == "inline" {
+								y = sibling.Y
+								if sib.Style["display"] != "inline" {
+									y += sibling.Height
 								}
 							} else {
-								y = sibling.Y + sibling.Height + (sibling.Border.Top.Width + sibling.Border.Bottom.Width) + sibling.Margin.Bottom
+								y = sibling.Y + sibling.Height + sibling.Border.Top.Width + sibling.Border.Bottom.Width + sibling.Margin.Bottom
 							}
 						}
 					}
 					break
-				} else if n.Style["display"] != "inline" {
+				} else if style["display"] != "inline" {
 					vState := s[v.Properties.Id]
-					y += vState.Margin.Top + vState.Margin.Bottom + vState.Padding.Top + vState.Padding.Bottom + vState.Height + (self.Border.Top.Width)
+					y += vState.Margin.Top + vState.Margin.Bottom + vState.Padding.Top + vState.Padding.Bottom + vState.Height + self.Border.Top.Width
 				}
 			}
 		}
 	}
 
-	// Display modes need to be calculated here
-
 	relPos := !top && !left && !right && !bottom
-
 	if left || relPos {
 		x += m.Left
 	}
@@ -339,34 +320,25 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 	self.Width = width
 	self.Height = height
 	(*state)[n.Properties.Id] = self
-
 	if !utils.ChildrenHaveText(n) && len(n.InnerText) > 0 {
-		// Confirm text exists
 		n.InnerText = strings.TrimSpace(n.InnerText)
 		self = genTextNode(n, state, c)
 	}
 
 	(*state)[n.Properties.Id] = self
 	(*state)[n.Parent.Properties.Id] = parent
-	// Call children here
 
 	var childYOffset float32
 	for i := 0; i < len(n.Children); i++ {
 		v := n.Children[i]
 		v.Parent = n
-		// This is were the tainting comes from
 		n.Children[i] = c.ComputeNodeStyle(v, state)
-
 		cState := (*state)[n.Children[i].Properties.Id]
-		if n.Style["height"] == "" && n.Style["min-height"] == "" {
+		if style["height"] == "" && style["min-height"] == "" {
 			if v.Style["position"] != "absolute" && cState.Y+cState.Height > childYOffset {
 				childYOffset = cState.Y + cState.Height
-				self.Height = (cState.Y - self.Border.Top.Width) - (self.Y) + cState.Height
-				self.Height += cState.Margin.Top
-				self.Height += cState.Margin.Bottom
-				self.Height += cState.Padding.Top
-				self.Height += cState.Padding.Bottom
-				self.Height += cState.Border.Top.Width + cState.Border.Bottom.Width
+				self.Height = cState.Y - self.Border.Top.Width - self.Y + cState.Height
+				self.Height += cState.Margin.Top + cState.Margin.Bottom + cState.Padding.Top + cState.Padding.Bottom + cState.Border.Top.Width + cState.Border.Bottom.Width
 			}
 		}
 		if cState.Width > self.Width {
@@ -374,13 +346,11 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 		}
 	}
 
-	if n.Style["height"] == "" {
+	if style["height"] == "" {
 		self.Height += self.Padding.Bottom
 	}
 
 	(*state)[n.Properties.Id] = self
-
-	// Sorting the array by the Level field
 	sort.Slice(plugins, func(i, j int) bool {
 		return plugins[i].Level < plugins[j].Level
 	})
@@ -391,7 +361,6 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 		}
 	}
 
-	// CheckNode(n, state)
 	return n
 }
 

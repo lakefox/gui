@@ -164,6 +164,10 @@ func View(data *Window, width, height int32) {
 	eventStore := &evts
 
 	state := map[string]element.State{}
+	state["ROOT"] = element.State{
+		Width:  float32(width),
+		Height: float32(height),
+	}
 
 	shouldStop := false
 
@@ -215,15 +219,21 @@ func View(data *Window, width, height int32) {
 			if wm.FPS != 30 {
 				wm.SetFPS(30)
 			}
-			lastChange = time.Now()
 			hash = newHash
+			lastChange = time.Now()
 			newDoc := CopyNode(data.CSS, data.Document.Children[0], &data.Document)
 
 			newDoc = data.CSS.Transform(newDoc)
 
+			state["ROOT"] = element.State{
+				Width:  float32(width),
+				Height: float32(height),
+			}
+
 			data.CSS.ComputeNodeStyle(newDoc, &state)
 			rd = data.Render(newDoc, &state)
 			wm.LoadTextures(rd)
+			// fmt.Println(len(rd))
 
 			// AddHTML(&newDoc)
 			// fmt.Println(newDoc.QuerySelector("body").InnerHTML)
@@ -251,34 +261,40 @@ func View(data *Window, width, height int32) {
 }
 
 func CopyNode(c cstyle.CSS, node *element.Node, parent *element.Node) *element.Node {
-	n := element.Node{}
-	n.TagName = node.TagName
-	n.InnerText = node.InnerText
-	n.Style = node.Style
-	n.Id = node.Id
-	n.ClassList = node.ClassList
-	n.Href = node.Href
-	n.Src = node.Src
-	n.Title = node.Title
-	n.Attribute = node.Attribute
-	n.Value = node.Value
-	n.ScrollY = node.ScrollY
-	n.InnerHTML = node.InnerHTML
-	n.OuterHTML = node.OuterHTML
-	n.Properties.Id = node.Properties.Id
-	n.Properties.Focusable = node.Properties.Focusable
-	n.Properties.Focused = node.Properties.Focused
-	n.Properties.Editable = node.Properties.Editable
-	n.Properties.Hover = node.Properties.Hover
-	n.Properties.Selected = node.Properties.Selected
-
-	n.Parent = parent
+	n := element.Node{
+		TagName:   node.TagName,
+		InnerText: node.InnerText,
+		Style:     node.Style,
+		Id:        node.Id,
+		ClassList: node.ClassList,
+		Href:      node.Href,
+		Src:       node.Src,
+		Title:     node.Title,
+		Attribute: node.Attribute,
+		Value:     node.Value,
+		ScrollY:   node.ScrollY,
+		InnerHTML: node.InnerHTML,
+		OuterHTML: node.OuterHTML,
+		Parent:    parent,
+		Properties: element.Properties{
+			Id:        node.Properties.Id,
+			Focusable: node.Properties.Focusable,
+			Focused:   node.Properties.Focused,
+			Editable:  node.Properties.Editable,
+			Hover:     node.Properties.Hover,
+			Selected:  node.Properties.Selected,
+		},
+	}
 
 	n.Style = c.GetStyles(&n)
 
-	for _, v := range node.Children {
-		n.Children = append(n.Children, CopyNode(c, v, &n))
+	if len(node.Children) > 0 {
+		n.Children = make([]*element.Node, 0, len(node.Children))
+		for _, v := range node.Children {
+			n.Children = append(n.Children, CopyNode(c, v, &n))
+		}
 	}
+
 	return &n
 }
 

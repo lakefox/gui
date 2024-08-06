@@ -6,6 +6,7 @@ import (
 	"hash/fnv"
 	"image"
 	ic "image/color"
+	"math"
 	"slices"
 	"sort"
 
@@ -75,18 +76,20 @@ func (wm *WindowManager) CloseWindow() {
 
 func (wm *WindowManager) LoadTextures(nodes []element.State) {
 	if wm.Textures == nil {
-		wm.Textures = map[int]Texture{}
+		wm.Textures = make(map[int]Texture)
 	}
 	if wm.CanvasTextures == nil {
-		wm.CanvasTextures = map[int]CanvasTexture{}
+		wm.CanvasTextures = make(map[int]CanvasTexture)
 	}
 
 	for i, node := range nodes {
 		if node.Texture != nil {
-			// !TODO: Make a faster hash algo that minimises the time to detect if a image is different
 			hash := computeImageHash(node.Texture)
-			if wm.Textures[i].Hash != hash {
-				rl.UnloadTexture(wm.Textures[i].Image)
+			currentTexture, exists := wm.Textures[i]
+			if !exists || currentTexture.Hash != hash {
+				if exists {
+					rl.UnloadTexture(currentTexture.Image)
+				}
 				texture := rl.LoadTextureFromImage(rl.NewImageFromImage(node.Texture))
 				wm.Textures[i] = Texture{
 					Hash:  hash,
@@ -95,11 +98,13 @@ func (wm *WindowManager) LoadTextures(nodes []element.State) {
 			}
 		}
 
-		if node.Canvas != nil {
-			// !TODO: Make a faster hash algo that minimises the time to detect if a image is different
+		if node.Canvas != nil && node.Canvas.Context != nil {
 			hash := computeImageHash(node.Canvas.Context)
-			if wm.CanvasTextures[i].Hash != hash {
-				rl.UnloadTexture(wm.CanvasTextures[i].Image)
+			currentCanvasTexture, exists := wm.CanvasTextures[i]
+			if !exists || currentCanvasTexture.Hash != hash {
+				if exists {
+					rl.UnloadTexture(currentCanvasTexture.Image)
+				}
 				texture := rl.LoadTextureFromImage(rl.NewImageFromImage(node.Canvas.Context))
 				wm.CanvasTextures[i] = CanvasTexture{
 					Hash:  hash,
@@ -160,10 +165,29 @@ func (wm *WindowManager) WindowShouldClose() bool {
 	return rl.WindowShouldClose()
 }
 
+// computeImageHash calculates a hash of the image data
 func computeImageHash(img *image.RGBA) uint64 {
-	hasher := fnv.New64a()
-	hasher.Write(img.Pix)
-	return hasher.Sum64()
+	percentage := 20.0
+	if percentage <= 0 || percentage > 100 {
+		percentage = 100 // Ensure valid percentage range
+	}
+
+	totalPixels := len(img.Pix) / 4 // Each pixel consists of 4 bytes (RGBA)
+
+	if totalPixels == 0 {
+		return 0
+	} else {
+		hasher := fnv.New64a()
+		step := int(math.Max(1, float64(totalPixels)/(float64(totalPixels)*(percentage/100))))
+
+		// Process a subset of the image data based on the percentage
+		for i := 0; i < len(img.Pix); i += step * 4 {
+			hasher.Write(img.Pix[i : i+4])
+		}
+
+		return hasher.Sum64()
+	}
+
 }
 
 func DrawRoundedRect(x, y, width, height float32, topLeftRadius, topRightRadius, bottomLeftRadius, bottomRightRadius float32, color rl.Color) {
@@ -195,10 +219,10 @@ func DrawRoundedRect(x, y, width, height float32, topLeftRadius, topRightRadius,
 		bottomRightRadius = height - topRightRadius
 	}
 
-	if topLeftRadius+topRightRadius > width {
-		topLeftRadius = width / 2
-		topRightRadius = width / 2
-	}
+	// if topLeftRadius+topRightRadius > width {
+	// 	topLeftRadius = width / 2
+	// 	topRightRadius = width / 2
+	// }
 	if bottomLeftRadius+bottomRightRadius > width {
 		bottomLeftRadius = width / 2
 		bottomRightRadius = width / 2

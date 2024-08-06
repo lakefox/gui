@@ -6,6 +6,7 @@ import (
 	"gui/element"
 	"gui/utils"
 	ic "image/color"
+	"math"
 	"strings"
 )
 
@@ -141,24 +142,31 @@ func Parse(cssProperties map[string]string, self, parent element.State) (element
 }
 
 func Draw(n *element.State) {
-	ctx := canvas.NewCanvas(int(n.X+
-		n.Width+n.Border.Left.Width+n.Border.Right.Width),
-		int(n.Y+n.Height+n.Border.Top.Width+n.Border.Bottom.Width))
-	ctx.StrokeStyle = ic.RGBA{0, 0, 0, 255}
-	if n.Border.Top.Width > 0 {
-		drawBorderSide(ctx, "top", n.Border.Top, n)
+	// lastChange := time.Now()
+	if n.Border.Top.Width > 0 ||
+		n.Border.Right.Width > 0 ||
+		n.Border.Bottom.Width > 0 ||
+		n.Border.Left.Width > 0 {
+		ctx := canvas.NewCanvas(int(n.X+
+			n.Width+n.Border.Left.Width+n.Border.Right.Width),
+			int(n.Y+n.Height+n.Border.Top.Width+n.Border.Bottom.Width))
+		ctx.StrokeStyle = ic.RGBA{0, 0, 0, 255}
+		if n.Border.Top.Width > 0 {
+			drawBorderSide(ctx, "top", n.Border.Top, n)
+		}
+		if n.Border.Right.Width > 0 {
+			drawBorderSide(ctx, "right", n.Border.Right, n)
+		}
+		if n.Border.Bottom.Width > 0 {
+			drawBorderSide(ctx, "bottom", n.Border.Bottom, n)
+		}
+		if n.Border.Left.Width > 0 {
+			drawBorderSide(ctx, "left", n.Border.Left, n)
+		}
+		n.Canvas = ctx
 	}
-	if n.Border.Right.Width > 0 {
-		drawBorderSide(ctx, "right", n.Border.Right, n)
-	}
-	if n.Border.Bottom.Width > 0 {
-		drawBorderSide(ctx, "bottom", n.Border.Bottom, n)
-	}
-	if n.Border.Left.Width > 0 {
-		drawBorderSide(ctx, "left", n.Border.Left, n)
-	}
-	n.Canvas = ctx
 
+	// fmt.Println(time.Since(lastChange))
 }
 
 func drawBorderSide(ctx *canvas.Canvas, side string, border element.BorderSide, s *element.State) {
@@ -193,23 +201,145 @@ func isWidthComponent(component string, suffixes []string) bool {
 	}
 	return false
 }
+func degToRad(degrees float64) float64 {
+	return degrees * (math.Pi / 180.0)
+}
 
 func drawSolidBorder(ctx *canvas.Canvas, side string, border element.BorderSide, s *element.State) {
-	radius := int(s.Border.Radius.TopLeft) // Using one radius for simplicity, adjust as needed
+	// radius := int(s.Border.Radius.TopLeft) // Using one radius for simplicity, adjust as needed
+	// border.Color.A = 123
+	ctx.FillStyle = border.Color
 	ctx.StrokeStyle = border.Color
-	ctx.LineWidth = float64(border.Width)
+	// ctx.LineWidth = float64(border.Width)
 
 	switch side {
 	case "top":
-		ctx.RoundedRect(int(s.X), int(s.Y), int(s.Width), int(border.Width), radius)
+		ctx.BeginPath()
+		width := s.Width + s.Border.Left.Width + s.Border.Right.Width
+		h := math.Min(float64(s.Border.Radius.TopLeft), (float64(s.Height+s.Border.Top.Width+s.Border.Bottom.Width))-float64(s.Border.Radius.BottomLeft))
+		w := math.Min(float64(s.Border.Radius.TopLeft), float64(width)-float64(s.Border.Radius.TopRight))
+		v := math.Min(w, h)
+
+		startAngleLeft := ((-math.Pi / 2) / float64(border.Width+s.Border.Left.Width) * float64(border.Width)) - (math.Pi / 2)
+
+		ctx.Arc(v, v, v, startAngleLeft, -math.Pi/2, false) // top arc left
+		lineStart := ctx.Path[len(ctx.Path)-1][0]
+		arcLength := len(ctx.Path[len(ctx.Path)-1])
+		dif := float64((border.Width + s.Border.Left.Width) / 2)
+		ctx.Arc(v+math.Abs(float64(s.Border.Left.Width)-dif), v-math.Abs(float64(border.Width)-dif), (v - dif), startAngleLeft, -math.Pi/2, false) // bottom arc left
+
+		lineEnd := ctx.Path[len(ctx.Path)-1][arcLength]
+		ctx.MoveTo(lineStart.X, lineStart.Y)
+		ctx.LineTo(lineEnd.X, lineEnd.Y) // cap the end of the arc (other side)
+
+		ctx.MoveTo(int(v), 0)
+		ctx.LineTo(int(v), int(border.Width)) // cap the top of the arc
+		ctx.Fill()
+
+		ctx.ClosePath()
+		ctx.BeginPath()
+		vs := v
+		ctx.MoveTo(int(v), 0) // cap the bottom of the arc
+		ctx.LineTo(int(v), int(s.Border.Left.Width))
+
+		h = math.Min(float64(s.Border.Radius.TopRight), (float64(s.Height+s.Border.Top.Width+s.Border.Bottom.Width))-float64(s.Border.Radius.BottomRight))
+		w = math.Min(float64(s.Border.Radius.TopRight), float64(width)-float64(v))
+		v = math.Min(w, h)
+
+		ctx.MoveTo(int(vs), 0)
+		ctx.LineTo(int(vs), int(border.Width))                 // cap the top of the arc
+		ctx.LineTo(int(float64(width)-(v)), int(border.Width)) // add a line between the curves
+		ctx.LineTo(int(float64(width)-(v)), 0)
+		ctx.LineTo(int(vs), 0)
+		ctx.Fill()
+		ctx.ClosePath()
+		ctx.BeginPath()
+
+		startAngleRight := ((math.Pi / 2) / float64(border.Width+s.Border.Right.Width) * float64(border.Width-2)) + (math.Pi + (math.Pi / 2))
+
+		ctx.Arc((float64(width) - (v)), v, v, math.Pi+(math.Pi/2), startAngleRight, false) // top arc right
+		arcLength = len(ctx.Path[len(ctx.Path)-1])
+		lineStart = ctx.Path[len(ctx.Path)-1][arcLength-1]
+		dif = float64((border.Width + s.Border.Right.Width) / 2)
+		ctx.Arc((float64(width) - (v - math.Abs(float64(s.Border.Right.Width)-dif))), v-math.Abs(float64(border.Width)-dif), v-dif, math.Pi+(math.Pi/2), startAngleRight, false) // bottom arc right
+		lineEnd = ctx.Path[len(ctx.Path)-1][len(ctx.Path[len(ctx.Path)-1])-1]
+
+		ctx.MoveTo(lineStart.X, lineStart.Y)
+		ctx.LineTo(lineEnd.X, lineEnd.Y) // cap the end of the arc (other side)
+
+		ctx.MoveTo(int(width)-int(v), 0)
+		ctx.LineTo(int(width)-int(v), int(border.Width)) // cap the top of the arc
+
+		ctx.Fill()
+		ctx.ClosePath()
 	case "right":
-		ctx.RoundedRect(int(s.X+s.Width-border.Width), int(s.Y), int(border.Width), int(s.Height), radius)
+
 	case "bottom":
-		ctx.RoundedRect(int(s.X), int(s.Y+s.Height-border.Width), int(s.Width), int(border.Width), radius)
+		ctx.BeginPath()
+		width := s.Width + s.Border.Left.Width + s.Border.Right.Width
+		height := s.Height + s.Border.Top.Width
+		// height = height / 2
+		h := math.Min(float64(s.Border.Radius.BottomLeft), (float64(s.Height+s.Border.Top.Width+s.Border.Bottom.Width))-float64(s.Border.Radius.TopLeft))
+		w := math.Min(float64(s.Border.Radius.BottomLeft), float64(width)-float64(s.Border.Radius.BottomRight))
+		v := math.Min(w, h)
+
+		startAngleLeft := ((math.Pi) / float64(border.Width+s.Border.Left.Width) * float64(border.Width)) + (math.Pi / 4)
+		ctx.Arc(v, float64(height+border.Width)-v, v, startAngleLeft, math.Pi/2, false) // top arc left
+		lineStart := ctx.Path[len(ctx.Path)-1][0]
+		arcLength := len(ctx.Path[len(ctx.Path)-1])
+		dif := float64((border.Width + s.Border.Left.Width) / 2)
+		ctx.Arc(v+math.Abs(float64(s.Border.Left.Width)-dif), float64(height+border.Width)-(v-math.Abs(float64(border.Width)-dif)), (v - dif), startAngleLeft, math.Pi/2, false) // bottom arc left
+
+		lineEnd := ctx.Path[len(ctx.Path)-1][arcLength]
+		ctx.MoveTo(lineStart.X, lineStart.Y)
+		ctx.LineTo(lineEnd.X, lineEnd.Y) // cap the end of the arc (other side)
+
+		ctx.MoveTo(int(v), int(height)+int(border.Width-1))
+		ctx.LineTo(int(v), int(height)) // cap the top of the arc
+		ctx.Fill()
+
+		ctx.ClosePath()
+		ctx.BeginPath()
+		vs := v
+		ctx.MoveTo(int(v), int(height)) // cap the bottom of the arc
+		ctx.LineTo(int(v), int(height+s.Border.Left.Width))
+
+		h = math.Min(float64(s.Border.Radius.BottomRight), (float64(s.Height+s.Border.Top.Width+s.Border.Bottom.Width))-float64(s.Border.Radius.TopRight))
+		w = math.Min(float64(s.Border.Radius.BottomRight), float64(width)-float64(v))
+		v = math.Min(w, h)
+
+		ctx.MoveTo(int(vs), int(height-1))
+		ctx.LineTo(int(vs), int(height+border.Width-1))                 // cap the top of the arc
+		ctx.LineTo(int(float64(width)-(v)), int(height+border.Width-1)) // add a line between the curves
+		ctx.LineTo(int(float64(width)-(v)), int(height-1))
+		ctx.LineTo(int(vs), int(height-1))
+		ctx.Fill()
+		ctx.ClosePath()
+		ctx.BeginPath()
+
+		startAngleRight := ((math.Pi / 2) / float64(border.Width+s.Border.Right.Width) * float64(border.Width-2))
+
+		ctx.Arc((float64(width) - (v)), float64(height+border.Width)-v, v, math.Pi-math.Pi/2, startAngleRight, false) // top arc right
+		// ctx.Arc((float64(width) - (v)), float64(height)+v, v, math.Pi+(math.Pi/2), startAngleRight, false) // top arc right
+		arcLength = len(ctx.Path[len(ctx.Path)-1])
+		lineStart = ctx.Path[len(ctx.Path)-1][arcLength-1]
+		dif = float64((border.Width + s.Border.Right.Width) / 2)
+		ctx.Arc((float64(width) - (v - math.Abs(float64(s.Border.Right.Width)-dif))), float64(height+border.Width)-(v-math.Abs(float64(border.Width)-dif)), v-dif, math.Pi-(math.Pi/2), startAngleRight, false) // bottom arc right
+		lineEnd = ctx.Path[len(ctx.Path)-1][len(ctx.Path[len(ctx.Path)-1])-1]
+
+		ctx.MoveTo(lineStart.X, lineStart.Y)
+		ctx.LineTo(lineEnd.X, lineEnd.Y) // cap the end of the arc (other side)
+
+		ctx.MoveTo(int(width)-int(v), int(height))
+		ctx.LineTo(int(width)-int(v), int(height+border.Width-1)) // cap the top of the arc
+
+		ctx.Fill()
+		// ctx.Stroke()
+		ctx.ClosePath()
 	case "left":
-		ctx.RoundedRect(int(s.X), int(s.Y), int(border.Width), int(s.Height), radius)
+		// ctx.RoundedRect(int(s.X), int(s.Y), int(border.Width), int(s.Height), radius)
 	}
-	ctx.Stroke()
+	// ctx.Stroke()
 }
 
 func drawDashedBorder(ctx *canvas.Canvas, side string, border element.BorderSide, s *element.State) {

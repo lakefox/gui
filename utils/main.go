@@ -36,10 +36,10 @@ type WidthHeight struct {
 func GetWH(n element.Node, state *map[string]element.State) WidthHeight {
 	s := *state
 	self := s[n.Properties.Id]
-	parent := element.State{}
+	var parent element.State
 
 	if n.Style == nil {
-		n.Style = map[string]string{}
+		n.Style = make(map[string]string)
 	}
 
 	fs := self.EM
@@ -47,21 +47,22 @@ func GetWH(n element.Node, state *map[string]element.State) WidthHeight {
 	var pwh WidthHeight
 	if n.Parent != nil {
 		parent = s[n.Parent.Properties.Id]
-		pwh = GetWH(*n.Parent, state)
+		// pwh = GetWH(*n.Parent, state)
+		pwh = WidthHeight{
+			Width:  parent.Width,
+			Height: parent.Height,
+		}
 	} else {
 		pwh = WidthHeight{}
-		if n.Style["width"] != "" {
-			str := strings.TrimSuffix(n.Style["width"], "px")
-			// Convert the string to float32
-			f, _ := strconv.ParseFloat(str, 32)
-			pwh.Width = float32(f)
+		if width, exists := n.Style["width"]; exists {
+			if f, err := strconv.ParseFloat(strings.TrimSuffix(width, "px"), 32); err == nil {
+				pwh.Width = float32(f)
+			}
 		}
-
-		if n.Style["height"] != "" {
-			str := strings.TrimSuffix(n.Style["height"], "px")
-			// Convert the string to float32
-			f, _ := strconv.ParseFloat(str, 32)
-			pwh.Height = float32(f)
+		if height, exists := n.Style["height"]; exists {
+			if f, err := strconv.ParseFloat(strings.TrimSuffix(height, "px"), 32); err == nil {
+				pwh.Height = float32(f)
+			}
 		}
 	}
 
@@ -74,23 +75,17 @@ func GetWH(n element.Node, state *map[string]element.State) WidthHeight {
 	width := ConvertToPixels(wStyle, fs, pwh.Width)
 	height := ConvertToPixels(n.Style["height"], fs, pwh.Height)
 
-	if n.Style["min-width"] != "" {
-		minWidth := ConvertToPixels(n.Style["min-width"], fs, pwh.Width)
-		width = Max(width, minWidth)
+	if minWidth, exists := n.Style["min-width"]; exists {
+		width = Max(width, ConvertToPixels(minWidth, fs, pwh.Width))
 	}
-
-	if n.Style["max-width"] != "" {
-		maxWidth := ConvertToPixels(n.Style["max-width"], fs, pwh.Width)
-		width = Min(width, maxWidth)
+	if maxWidth, exists := n.Style["max-width"]; exists {
+		width = Min(width, ConvertToPixels(maxWidth, fs, pwh.Width))
 	}
-	if n.Style["min-height"] != "" {
-		minHeight := ConvertToPixels(n.Style["min-height"], fs, pwh.Height)
-		height = Max(height, minHeight)
+	if minHeight, exists := n.Style["min-height"]; exists {
+		height = Max(height, ConvertToPixels(minHeight, fs, pwh.Height))
 	}
-
-	if n.Style["max-height"] != "" {
-		maxHeight := ConvertToPixels(n.Style["max-height"], fs, pwh.Height)
-		height = Min(height, maxHeight)
+	if maxHeight, exists := n.Style["max-height"]; exists {
+		height = Min(height, ConvertToPixels(maxHeight, fs, pwh.Height))
 	}
 
 	wh := WidthHeight{
@@ -101,15 +96,14 @@ func GetWH(n element.Node, state *map[string]element.State) WidthHeight {
 	if n.Parent != nil {
 		wh.Width += self.Padding.Left + self.Padding.Right
 		wh.Height += self.Padding.Top + self.Padding.Bottom
-		// fmt.Println(n.Properties.Id, wh, p)
 	}
 
 	if wStyle == "100%" {
-		wh.Width = wh.Width - ((self.Margin.Right + self.Margin.Left + (self.Border.Left.Width + self.Border.Right.Width)) + (parent.Padding.Left + parent.Padding.Right) + (self.Padding.Left + self.Padding.Right))
+		wh.Width -= (self.Margin.Right + self.Margin.Left + self.Border.Left.Width + self.Border.Right.Width + parent.Padding.Left + parent.Padding.Right + self.Padding.Left + self.Padding.Right)
 	}
 
 	if n.Style["height"] == "100%" {
-		wh.Height -= (self.Margin.Top + self.Margin.Bottom) + (parent.Padding.Top + parent.Padding.Bottom)
+		wh.Height -= (self.Margin.Top + self.Margin.Bottom + parent.Padding.Top + parent.Padding.Bottom)
 	}
 
 	return wh
@@ -121,72 +115,69 @@ func GetMP(n element.Node, wh WidthHeight, state *map[string]element.State, t st
 	fs := self.EM
 	m := element.MarginPadding{}
 
-	if n.Style[t] != "" {
-		left, right, top, bottom := convertMarginToIndividualProperties(n.Style[t])
-		if n.Style[t+"-left"] == "" {
-			n.Style[t+"-left"] = left
+	// Cache style properties
+	style := n.Style
+	leftKey, rightKey, topKey, bottomKey := t+"-left", t+"-right", t+"-top", t+"-bottom"
+
+	if style[t] != "" {
+		left, right, top, bottom := convertMarginToIndividualProperties(style[t])
+		if style[leftKey] == "" {
+			style[leftKey] = left
 		}
-		if n.Style[t+"-right"] == "" {
-			n.Style[t+"-right"] = right
+		if style[rightKey] == "" {
+			style[rightKey] = right
 		}
-		if n.Style[t+"-top"] == "" {
-			n.Style[t+"-top"] = top
+		if style[topKey] == "" {
+			style[topKey] = top
 		}
-		if n.Style[t+"-bottom"] == "" {
-			n.Style[t+"-bottom"] = bottom
+		if style[bottomKey] == "" {
+			style[bottomKey] = bottom
 		}
 	}
-	if n.Style[t+"-left"] != "" || n.Style[t+"-right"] != "" {
-		l := ConvertToPixels(n.Style[t+"-left"], fs, wh.Width)
-		r := ConvertToPixels(n.Style[t+"-right"], fs, wh.Width)
-		m.Left = l
-		m.Right = r
+
+	// Convert left and right properties
+	if style[leftKey] != "" || style[rightKey] != "" {
+		m.Left = ConvertToPixels(style[leftKey], fs, wh.Width)
+		m.Right = ConvertToPixels(style[rightKey], fs, wh.Width)
 	}
-	if n.Style[t+"-top"] != "" || n.Style[t+"-bottom"] != "" {
-		top := ConvertToPixels(n.Style[t+"-top"], fs, wh.Height)
-		b := ConvertToPixels(n.Style[t+"-bottom"], fs, wh.Height)
-		m.Top = top
-		m.Bottom = b
+
+	// Convert top and bottom properties
+	if style[topKey] != "" || style[bottomKey] != "" {
+		m.Top = ConvertToPixels(style[topKey], fs, wh.Height)
+		m.Bottom = ConvertToPixels(style[bottomKey], fs, wh.Height)
 	}
+
 	if t == "margin" {
 		siblingMargin := float32(0)
 
-		// Margin Collapse (stupid fucking thing)
-		// - also not complete, see https://www.joshwcomeau.com/css/rules-of-margin-collapse/ for more details on implementation
-		// - this is a rough draft
-
-		if n.Parent != nil {
-			if ParentStyleProp(n.Parent, "display", func(prop string) bool {
-				return prop == "flex"
-			}) {
-				sibIndex := -1
-				for i, v := range n.Parent.Children {
-					if v.Properties.Id == n.Properties.Id {
-						sibIndex = i - 1
-						break
-					}
-				}
-				if sibIndex > -1 {
-					sib := s[n.Parent.Children[sibIndex].Properties.Id]
-					siblingMargin = sib.Margin.Bottom
+		// Margin Collapse
+		if n.Parent != nil && ParentStyleProp(n.Parent, "display", func(prop string) bool {
+			return prop == "flex"
+		}) {
+			sibIndex := -1
+			for i, v := range n.Parent.Children {
+				if v.Properties.Id == n.Properties.Id {
+					sibIndex = i - 1
+					break
 				}
 			}
-
+			if sibIndex > -1 {
+				sib := s[n.Parent.Children[sibIndex].Properties.Id]
+				siblingMargin = sib.Margin.Bottom
+			}
 		}
 
+		// Handle top margin collapse
 		if m.Top != 0 {
 			if m.Top < 0 {
-				m.Top = siblingMargin + m.Top
+				m.Top += siblingMargin
 			} else {
-				if m.Top > siblingMargin {
-					m.Top = m.Top - siblingMargin
-				} else {
-					m.Top = 0
-				}
+				m.Top = Max(m.Top-siblingMargin, 0)
 			}
 		}
 
-		if n.Style["margin"] == "auto" && n.Style["margin-left"] == "" && n.Style["margin-right"] == "" {
+		// Handle auto margins
+		if style["margin"] == "auto" && style[leftKey] == "" && style[rightKey] == "" {
 			pwh := GetWH(*n.Parent, state)
 			m.Left = Max((pwh.Width-wh.Width)/2, 0)
 			m.Right = m.Left

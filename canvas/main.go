@@ -20,11 +20,10 @@ type Canvas struct {
 	Context                  *image.RGBA
 	StrokeStyle              color.RGBA
 	FillStyle                color.RGBA
-	path                     []image.Point
+	Path                     [][]image.Point
 	Font                     *truetype.Font
 	LineWidth                float64
 	direction                string
-	fillStyle                color.RGBA
 	filter                   string
 	fontKerning              string
 	fontStretch              string
@@ -42,11 +41,15 @@ type Canvas struct {
 	shadowColor              color.RGBA
 	shadowOffsetX            float64
 	shadowOffsetY            float64
-	strokeStyle              color.RGBA
 	textAlign                string
 	textBaseline             string
 	textRendering            string
 	wordSpacing              float64
+}
+
+type Point struct {
+	X float64
+	Y float64
 }
 
 // NewCanvas creates a new canvas with the specified width and height
@@ -80,52 +83,127 @@ func (c *Canvas) SetFont(fontPath string) error {
 
 // MoveTo starts a new sub-path at the given (x, y) coordinates
 func (c *Canvas) MoveTo(x, y int) {
-	c.path = append(c.path, image.Point{x, y})
+	c.Path[len(c.Path)-1] = append(c.Path[len(c.Path)-1], image.Point{x, y})
 }
 
 // LineTo adds a line to the current path
 func (c *Canvas) LineTo(x, y int) {
-	if len(c.path) > 0 {
-		lastPoint := c.path[len(c.path)-1]
-		c.path = append(c.path, image.Point{x, y})
-		drawLine(c.Context, lastPoint, image.Point{x, y}, c.StrokeStyle, c.LineWidth)
+	if len(c.Path[len(c.Path)-1]) > 0 {
+		p1 := c.Path[len(c.Path)-1][len(c.Path[len(c.Path)-1])-1]
+		p2 := image.Point{x, y}
+
+		points := generatePoints(p1, p2)
+		c.Path[len(c.Path)-1] = append(c.Path[len(c.Path)-1], points...)
 	}
+}
+
+func generatePoints(p1, p2 image.Point) []image.Point {
+	var points []image.Point
+
+	dx := p2.X - p1.X
+	dy := p2.Y - p1.Y
+
+	steps := int(math.Max(math.Abs(float64(dx)), math.Abs(float64(dy))))
+
+	xIncrement := float64(dx) / float64(steps)
+	yIncrement := float64(dy) / float64(steps)
+
+	x := float64(p1.X)
+	y := float64(p1.Y)
+
+	for i := 0; i <= steps; i++ {
+		points = append(points, image.Point{int(math.Round(x)), int(math.Round(y))})
+		x += xIncrement
+		y += yIncrement
+	}
+
+	return points
 }
 
 // BeginPath starts a new path
 func (c *Canvas) BeginPath() {
-	c.path = nil
+	// c.path = [][]image.Point{}
+	c.Path = append(c.Path, []image.Point{})
 }
 
 // Stroke draws the current path
 func (c *Canvas) Stroke() {
-	for i := 1; i < len(c.path); i++ {
-		drawLine(c.Context, c.path[i-1], c.path[i], c.StrokeStyle, c.LineWidth)
+	color := c.StrokeStyle
+	for i := 1; i < len(c.Path[len(c.Path)-1]); i++ {
+		// color.R = (c.StrokeStyle.R / uint8(len(c.path))) * uint8(i)
+		// color.G = (c.StrokeStyle.G / uint8(len(c.path))) * uint8(i)
+		// color.B = (c.StrokeStyle.B / uint8(len(c.path))) * uint8(i)
+		drawLine(c.Context, c.Path[len(c.Path)-1][i-1], c.Path[len(c.Path)-1][i], color, c.LineWidth)
 	}
 	c.BeginPath()
 }
 
 // Fill fills the current path
 func (c *Canvas) Fill() {
-	if len(c.path) > 0 {
-		fillPolygon(c.Context, c.path, c.FillStyle)
+	if len(c.Path) > 0 {
+		fillPolygon(c.Context, c.Path[len(c.Path)-1], c.FillStyle)
 	}
 	c.BeginPath()
 }
 
-// Arc adds an arc to the current path
-func (c *Canvas) Arc(x, y, radius, startAngle, endAngle float64) {
-	steps := 100
-	for i := 0; i <= steps; i++ {
-		angle := startAngle + (endAngle-startAngle)*float64(i)/float64(steps)
-		px := x + radius*math.Cos(angle)
-		py := y + radius*math.Sin(angle)
-		if i == 0 {
-			c.MoveTo(int(px), int(py))
+func (c *Canvas) Arc(x, y, radius, startAngle, endAngle float64, clockwise bool) {
+	for ri := 0; ri <= int(c.LineWidth); ri++ {
+		r := radius - float64(ri)
+		var angleStep float64
+		if clockwise {
+			angleStep = (endAngle - startAngle) / float64(EstimateArcPixels(startAngle, endAngle, r))
 		} else {
-			c.LineTo(int(px), int(py))
+			angleStep = (startAngle - endAngle) / float64(EstimateArcPixels(startAngle, endAngle, r))
+		}
+
+		var lastX, lastY int
+		for angle := 0.0; math.Abs(angle) < math.Abs(endAngle-startAngle); angle += angleStep {
+			var currentAngle float64
+			if clockwise {
+				currentAngle = startAngle + angle
+			} else {
+				currentAngle = startAngle - angle
+			}
+			p := CalculatePoint(x, y, r, currentAngle)
+			ix := int(p.X)
+			iy := int(p.Y)
+			if ix != lastX || iy != lastY {
+				c.Path[len(c.Path)-1] = append(c.Path[len(c.Path)-1], image.Point{X: ix, Y: iy})
+				lastX = ix
+				lastY = iy
+			}
 		}
 	}
+}
+
+func EstimateArcPixels(startAngle, stopAngle, radius float64) int {
+	// Calculate the central angle in radians
+	centralAngle := math.Abs(stopAngle - startAngle)
+
+	// Ensure the central angle is within the range [0, 2π]
+	if centralAngle < 0 {
+		centralAngle += 2 * math.Pi
+	}
+
+	// Calculate the arc length
+	arcLength := radius * centralAngle
+
+	// Assuming each pixel approximately covers 1 unit length
+	// Adjust the pixel density factor as needed for different resolutions
+	pixelDensityFactor := 0.3 // This can be adjusted based on resolution
+
+	// Estimate the number of pixels along the arc length
+	numPixels := int(math.Round(arcLength / pixelDensityFactor))
+
+	return numPixels
+}
+
+func CalculatePoint(cx, cy, radius, angle float64) Point {
+	// Calculate x, y coordinates
+	x := cx + radius*math.Cos(angle)
+	y := cy + radius*math.Sin(angle)
+
+	return Point{X: x, Y: y}
 }
 
 // Rect adds a rectangle to the path
@@ -163,7 +241,7 @@ func (c *Canvas) FillText(text string, x, y int, size float64) error {
 		Dst:  c.Context,
 		Src:  &image.Uniform{c.FillStyle},
 		Face: face,
-		Dot:  fixed.Point26_6{fixed.I(x), fixed.I(y)},
+		Dot:  fixed.Point26_6{X: fixed.I(x), Y: fixed.I(y)},
 	}
 	drawer.DrawString(text)
 	return nil
@@ -179,20 +257,20 @@ func (c *Canvas) RoundedRect(x, y, width, height, radius int) {
 	c.BeginPath()
 	c.MoveTo(x+radius, y)
 	c.LineTo(x+width-radius, y)
-	c.Arc(float64(x+width-radius), float64(y+radius), float64(radius), 1.5*math.Pi, 2*math.Pi)
+	c.Arc(float64(x+width-radius), float64(y+radius), float64(radius), 1.5*math.Pi, 2*math.Pi, true)
 	c.LineTo(x+width, y+height-radius)
-	c.Arc(float64(x+width-radius), float64(y+height-radius), float64(radius), 0, 0.5*math.Pi)
+	c.Arc(float64(x+width-radius), float64(y+height-radius), float64(radius), 0, 0.5*math.Pi, true)
 	c.LineTo(x+radius, y+height)
-	c.Arc(float64(x+radius), float64(y+height-radius), float64(radius), 0.5*math.Pi, math.Pi)
+	c.Arc(float64(x+radius), float64(y+height-radius), float64(radius), 0.5*math.Pi, math.Pi, true)
 	c.LineTo(x, y+radius)
-	c.Arc(float64(x+radius), float64(y+radius), float64(radius), math.Pi, 1.5*math.Pi)
+	c.Arc(float64(x+radius), float64(y+radius), float64(radius), math.Pi, 1.5*math.Pi, true)
 	c.ClosePath()
 }
 
 // ClosePath closes the current path
 func (c *Canvas) ClosePath() {
-	if len(c.path) > 0 {
-		c.path = append(c.path, c.path[0])
+	if len(c.Path) > 0 {
+		c.Path = append(c.Path, c.Path[0])
 	}
 }
 
@@ -298,13 +376,71 @@ func (c *Canvas) SetWordSpacing(spacing float64) {
 }
 
 // ArcTo adds an arc to the path with control points and radius
-func (c *Canvas) ArcTo(x1, y1, x2, y2, radius float64) {
-	// ArcTo implementation
+func (c *Canvas) ArcTo(x1, y1, x2, y2, r float64, counterclockwise bool) {
+	// Calculate the midpoint
+	mx := (x1 + x2) / 2
+	my := (y1 + y2) / 2
+
+	// Calculate the distance between the points
+	d := math.Sqrt(math.Pow(x2-x1, 2) + math.Pow(y2-y1, 2))
+
+	// Check if the given radius is sufficient
+	if d > 2*r {
+		return
+	} else {
+		// Calculate the distance from the midpoint to the circle center
+		h := math.Sqrt(math.Pow(r, 2) - math.Pow(d/2, 2))
+
+		// Calculate the direction vector perpendicular to AB
+		vx := -(y2 - y1)
+		vy := x2 - x1
+
+		// Normalize the direction vector
+		length := math.Sqrt(vx*vx + vy*vy)
+		nx := vx / length
+		ny := vy / length
+
+		// Calculate the two possible centers
+		center1 := Point{X: mx + h*nx, Y: my + h*ny}
+		center2 := Point{X: mx - h*nx, Y: my - h*ny}
+
+		// Calculate the angles for the points A and B relative to the first center
+		angleA1 := math.Atan2(y1-center1.Y, x1-center1.X)
+		angleB1 := math.Atan2(y2-center1.Y, x2-center1.X)
+
+		// Calculate the angles for the points A and B relative to the second center
+		angleA2 := math.Atan2(y1-center2.Y, x1-center2.X)
+		angleB2 := math.Atan2(y2-center2.Y, x2-center2.X)
+
+		if counterclockwise {
+			c.Arc(center1.X, center1.Y, r, angleA1, angleB1, true)
+		} else {
+			c.Arc(center2.X, center2.Y, r, angleA2, angleB2, true)
+
+		}
+
+	}
+
+}
+func degToRad(degrees float64) float64 {
+	return degrees * (math.Pi / 180.0)
+}
+func radToDeg(radians float64) float64 {
+	return radians * (180.0 / math.Pi)
 }
 
 // BezierCurveTo adds a cubic Bezier curve to the path
 func (c *Canvas) BezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y float64) {
-	// BezierCurveTo implementation
+	// Calculate Bezier curve points and add them to the path
+	steps := 100
+	p0 := c.Path[len(c.Path)-1][len(c.Path[len(c.Path)-1])-1]
+	for i := 0; i <= steps; i++ {
+		t := float64(i) / float64(steps)
+		mt := 1 - t
+		xPos := math.Pow(mt, 3)*float64(p0.X) + 3*math.Pow(mt, 2)*t*cp1x + 3*mt*math.Pow(t, 2)*cp2x + math.Pow(t, 3)*x
+		yPos := math.Pow(mt, 3)*float64(p0.Y) + 3*math.Pow(mt, 2)*t*cp1y + 3*mt*math.Pow(t, 2)*cp2y + math.Pow(t, 3)*y
+		c.LineTo(int(xPos), int(yPos))
+	}
 }
 
 // Clip sets the clipping region to the current path
@@ -396,8 +532,8 @@ func (c *Canvas) MeasureText(text string) (float64, float64) {
 	}
 	face := truetype.NewFace(c.Font, &truetype.Options{Size: 12})
 	drawer := &font.Drawer{
-		Dst:  c.Context,
-		Src:  &image.Uniform{c.FillStyle},
+		// Dst:  c.Context,
+		// Src:  &image.Uniform{c.FillStyle},
 		Face: face,
 	}
 	bounds, _ := font.BoundString(drawer.Face, text)
@@ -434,20 +570,6 @@ func (c *Canvas) Restore() {
 // Rotate rotates the canvas around the given angle
 func (c *Canvas) Rotate(angle float64) {
 	// Rotate implementation
-}
-
-// RoundRect adds a rounded rectangle to the path
-func (c *Canvas) RoundRect(x, y, w, h, radius float64) {
-	c.MoveTo(int(x+radius), int(y))
-	c.LineTo(int(x+w-radius), int(y))
-	c.Arc(x+w-radius, y+radius, radius, 1.5*math.Pi, 2*math.Pi)
-	c.LineTo(int(x+w), int(y+h-radius))
-	c.Arc(x+w-radius, y+h-radius, radius, 0, 0.5*math.Pi)
-	c.LineTo(int(x+radius), int(y+h))
-	c.Arc(x+radius, y+h-radius, radius, 0.5*math.Pi, math.Pi)
-	c.LineTo(int(x), int(y+radius))
-	c.Arc(x+radius, y+radius, radius, math.Pi, 1.5*math.Pi)
-	c.ClosePath()
 }
 
 // Scale scales the canvas by the given factors
@@ -535,77 +657,31 @@ func fillPolygon(img *image.RGBA, points []image.Point, col color.RGBA) {
 	if len(points) < 3 {
 		return
 	}
+	// fmt.Println("##################")
+	w := img.Bounds().Dx()
+	h := img.Bounds().Dy()
+	grid := make(map[int][]int)
 
-	type Edge struct {
-		yMin     int
-		yMax     int
-		xAtYMin  float64
-		invSlope float64
+	for i := 0; i < len(points); i++ {
+		y := points[i].Y
+		x := points[i].X
+		if y > 0 && y < h && x > 0 && x < w {
+			grid[y] = append(grid[y], x)
+		}
 	}
 
-	var edges []Edge
-	n := len(points)
-
-	// Build the edge table
-	for i := 0; i < n; i++ {
-		p1 := points[i]
-		p2 := points[(i+1)%n]
-
-		if p1.Y == p2.Y {
-			continue // Skip horizontal edges
-		}
-
-		if p1.Y > p2.Y {
-			p1, p2 = p2, p1
-		}
-
-		invSlope := float64(p2.X-p1.X) / float64(p2.Y-p1.Y)
-		edges = append(edges, Edge{p1.Y, p2.Y, float64(p1.X), invSlope})
-	}
-
-	// Sort edges by yMin, then xAtYMin
-	sort.Slice(edges, func(i, j int) bool {
-		if edges[i].yMin == edges[j].yMin {
-			return edges[i].xAtYMin < edges[j].xAtYMin
-		}
-		return edges[i].yMin < edges[j].yMin
-	})
-
-	// Scanline fill
-	activeEdges := []Edge{}
-	y := edges[0].yMin
-	for i := 0; i < len(edges) || len(activeEdges) > 0; y++ {
-		// Add edges to active edge list
-		for i < len(edges) && edges[i].yMin == y {
-			activeEdges = append(activeEdges, edges[i])
-			i++
-		}
-
-		// Remove edges from active edge list where yMax == y
-		newActiveEdges := activeEdges[:0]
-		for _, edge := range activeEdges {
-			if edge.yMax != y {
-				newActiveEdges = append(newActiveEdges, edge)
+	for y, row := range grid {
+		sort.Ints(row)
+		for i, x := range row {
+			// fmt.Println(i, i%2 == 0, len(row))
+			if i+1 < len(row) {
+				// fmt.Println("here", x, row)
+				end := row[i+1]
+				for s := x; s <= end; s++ {
+					// fmt.Println(s, y)
+					img.Set(s, y, col)
+				}
 			}
-		}
-		activeEdges = newActiveEdges
-
-		// Sort active edges by xAtYMin
-		sort.Slice(activeEdges, func(i, j int) bool {
-			return activeEdges[i].xAtYMin < activeEdges[j].xAtYMin
-		})
-
-		// Fill pixels between pairs of intersections
-		for j := 0; j < len(activeEdges); j += 2 {
-			xStart := int(math.Ceil(activeEdges[j].xAtYMin))
-			xEnd := int(math.Floor(activeEdges[j+1].xAtYMin))
-
-			for x := xStart; x <= xEnd; x++ {
-				img.Set(x, y, col)
-			}
-
-			activeEdges[j].xAtYMin += activeEdges[j].invSlope
-			activeEdges[j+1].xAtYMin += activeEdges[j+1].invSlope
 		}
 	}
 }
