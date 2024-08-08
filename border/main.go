@@ -283,6 +283,7 @@ func drawSolidBorder(ctx *canvas.Canvas, side string, border element.BorderSide,
 		w := math.Min(float64(s.Border.Radius.BottomLeft), float64(width)-float64(s.Border.Radius.BottomRight))
 		v := math.Min(w, h)
 
+		// startAngleLeft := ((math.Pi) / float64(border.Width+s.Border.Left.Width) * float64(s.Border.Left.Width)) + (math.Pi / 4)
 		startAngleLeft := ((math.Pi) / float64(border.Width+s.Border.Left.Width) * float64(border.Width)) + (math.Pi / 4)
 		ctx.Arc(v, float64(height+border.Width)-v, v, startAngleLeft, math.Pi/2, false) // top arc left
 		lineStart := ctx.Path[len(ctx.Path)-1][0]
@@ -317,7 +318,8 @@ func drawSolidBorder(ctx *canvas.Canvas, side string, border element.BorderSide,
 		ctx.ClosePath()
 		ctx.BeginPath()
 
-		startAngleRight := ((math.Pi / 2) / float64(border.Width+s.Border.Right.Width) * float64(border.Width-2))
+		// startAngleRight := ((math.Pi / 2) / float64(70) * float64(50))
+		startAngleRight := ((math.Pi / 2) / float64(border.Width+s.Border.Right.Width) * float64(s.Border.Right.Width))
 
 		ctx.Arc((float64(width) - (v)), float64(height+border.Width)-v, v, math.Pi-math.Pi/2, startAngleRight, false) // top arc right
 		// ctx.Arc((float64(width) - (v)), float64(height)+v, v, math.Pi+(math.Pi/2), startAngleRight, false) // top arc right
