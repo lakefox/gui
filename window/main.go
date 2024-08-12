@@ -191,52 +191,6 @@ func computeImageHash(img *image.RGBA) uint64 {
 }
 
 func DrawRoundedRect(x, y, width, height float32, topLeftRadius, topRightRadius, bottomLeftRadius, bottomRightRadius float32, color rl.Color) {
-	if topLeftRadius > width-bottomLeftRadius {
-		topLeftRadius = width - bottomLeftRadius
-	}
-	if topLeftRadius > height-bottomLeftRadius {
-		topLeftRadius = height - bottomLeftRadius
-	}
-
-	if topRightRadius > width-bottomRightRadius {
-		topRightRadius = width - bottomRightRadius
-	}
-	if topRightRadius > height-bottomRightRadius {
-		topRightRadius = height - bottomRightRadius
-	}
-
-	if bottomLeftRadius > width-topLeftRadius {
-		bottomLeftRadius = width - topLeftRadius
-	}
-	if bottomLeftRadius > height-topLeftRadius {
-		bottomLeftRadius = height - topLeftRadius
-	}
-
-	if bottomRightRadius > width-topRightRadius {
-		bottomRightRadius = width - topRightRadius
-	}
-	if bottomRightRadius > height-topRightRadius {
-		bottomRightRadius = height - topRightRadius
-	}
-
-	// if topLeftRadius+topRightRadius > width {
-	// 	topLeftRadius = width / 2
-	// 	topRightRadius = width / 2
-	// }
-	if bottomLeftRadius+bottomRightRadius > width {
-		bottomLeftRadius = width / 2
-		bottomRightRadius = width / 2
-	}
-
-	if topLeftRadius+bottomLeftRadius > height {
-		topLeftRadius = height / 2
-		bottomLeftRadius = height / 2
-	}
-	if topRightRadius+bottomRightRadius > height {
-		topRightRadius = height / 2
-		bottomRightRadius = height / 2
-	}
-
 	// Draw the main rectangle excluding corners
 	rl.DrawRectangle(int32(x+topLeftRadius), int32(y), int32(width-topLeftRadius-topRightRadius), int32(height), color)
 	rl.DrawRectangle(int32(x), int32(y+topLeftRadius), int32(topLeftRadius), int32(height-topLeftRadius-bottomLeftRadius), color)

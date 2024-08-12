@@ -1,6 +1,7 @@
 package canvas
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"image/draw"
@@ -45,6 +46,7 @@ type Canvas struct {
 	textBaseline             string
 	textRendering            string
 	wordSpacing              float64
+	transforms               []map[string]float64
 }
 
 type Point struct {
@@ -128,20 +130,54 @@ func (c *Canvas) BeginPath() {
 
 // Stroke draws the current path
 func (c *Canvas) Stroke() {
+	c.runTransforms(len(c.Path) - 1)
 	color := c.StrokeStyle
-	for i := 1; i < len(c.Path[len(c.Path)-1]); i++ {
+	// for i := 1; i < len(c.Path[len(c.Path)-1]); i++ {
+	points := c.Path[len(c.Path)-1]
+	for i := 0; i < len(points); i++ {
 		// color.R = (c.StrokeStyle.R / uint8(len(c.path))) * uint8(i)
 		// color.G = (c.StrokeStyle.G / uint8(len(c.path))) * uint8(i)
 		// color.B = (c.StrokeStyle.B / uint8(len(c.path))) * uint8(i)
-		drawLine(c.Context, c.Path[len(c.Path)-1][i-1], c.Path[len(c.Path)-1][i], color, c.LineWidth)
+		xy := points[i]
+		c.Context.Set(xy.X, xy.Y, color)
+		// drawLine(c.Context, c.Path[len(c.Path)-1][i-1], c.Path[len(c.Path)-1][i], color, c.LineWidth)
 	}
-	c.BeginPath()
+	// c.BeginPath()
 }
 
 // Fill fills the current path
 func (c *Canvas) Fill() {
+	// Idea is to stroke the shape then flood fill it but we need to find a start point
+	// So go to the middle key in grid and find the middle value.
+	// Are there issue with this method, yes
+	c.Stroke()
+	points := c.Path[len(c.Path)-1]
+	img := c.Context
+	w := img.Bounds().Dx()
+	h := img.Bounds().Dy()
+	grid := make(map[int][]int)
+
+	for i := 0; i < len(points); i++ {
+		y := points[i].Y
+		x := points[i].X
+		if y > 0 && y < h && x > 0 && x < w {
+			grid[y] = append(grid[y], x)
+		}
+	}
+	keys := make([]int, 0, len(grid))
+	for key := range grid {
+		keys = append(keys, key)
+	}
+
+	// Sort the keys
+	sort.Ints(keys)
+
+	// Find the middle key
+	centerY := int(len(keys) / 2)
+	centerX := int(((grid[centerY][len(grid[centerY])-1] - grid[centerY][0]) / 2) + grid[centerY][0])
+
 	if len(c.Path) > 0 {
-		fillPolygon(c.Context, c.Path[len(c.Path)-1], c.FillStyle)
+		floodFill(img, image.Point{X: centerX, Y: centerY}, c.FillStyle)
 	}
 	c.BeginPath()
 }
@@ -196,6 +232,52 @@ func EstimateArcPixels(startAngle, stopAngle, radius float64) int {
 	numPixels := int(math.Round(arcLength / pixelDensityFactor))
 
 	return numPixels
+}
+
+// EstimateBezierPoints estimates the required number of points for a cubic Bezier curve
+func EstimateCubicBezierPoints(p0, p1, p2, p3 image.Point) int {
+	// Helper function to calculate distance between two points
+	distance := func(a, b image.Point) float64 {
+		dx := float64(b.X - a.X)
+		dy := float64(b.Y - a.Y)
+		return math.Sqrt(dx*dx + dy*dy)
+	}
+
+	// Estimate the length of the cubic Bezier curve
+	// Sum up the distances between successive control points
+	approxCurveLength := distance(p0, p1) + distance(p1, p2) + distance(p2, p3)
+
+	// Adjust the pixel density factor as needed for different resolutions
+	// The higher the pixelDensityFactor, the fewer points will be used
+	pixelDensityFactor := 0.3 // Default value if the input is invalid
+
+	// Estimate the number of points along the curve length
+	numPoints := int(math.Round(approxCurveLength / pixelDensityFactor))
+
+	return numPoints
+}
+
+// EstimateQuadraticBezierPoints estimates the required number of points for a quadratic Bezier curve
+func EstimateQuadraticBezierPoints(p0, p1, p2 image.Point) int {
+	// Helper function to calculate distance between two points
+	distance := func(a, b image.Point) float64 {
+		dx := float64(b.X - a.X)
+		dy := float64(b.Y - a.Y)
+		return math.Sqrt(dx*dx + dy*dy)
+	}
+
+	// Estimate the length of the quadratic Bezier curve
+	// Sum up the distances between successive control points
+	approxCurveLength := distance(p0, p1) + distance(p1, p2)
+
+	// Adjust the pixel density factor as needed for different resolutions
+	// The higher the pixelDensityFactor, the fewer points will be used
+	pixelDensityFactor := 0.3 // Default value if the input is invalid
+
+	// Estimate the number of points along the curve length
+	numPoints := int(math.Round(approxCurveLength / pixelDensityFactor))
+
+	return numPoints
 }
 
 func CalculatePoint(cx, cy, radius, angle float64) Point {
@@ -443,6 +525,32 @@ func (c *Canvas) BezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y float64) {
 	}
 }
 
+// QuadraticBezier returns a slice of points on a quadratic Bezier curve
+func QuadraticBezier(p0, p1, p2 image.Point) []image.Point {
+	steps := EstimateQuadraticBezierPoints(p0, p1, p2)
+	points := make([]image.Point, 0, steps+1)
+	for i := 0; i <= steps; i++ {
+		t := float64(i) / float64(steps)
+		x := math.Pow(1-t, 2)*float64(p0.X) + 2*(1-t)*t*float64(p1.X) + math.Pow(t, 2)*float64(p2.X)
+		y := math.Pow(1-t, 2)*float64(p0.Y) + 2*(1-t)*t*float64(p1.Y) + math.Pow(t, 2)*float64(p2.Y)
+		points = append(points, image.Point{X: int(x), Y: int(y)})
+	}
+	return points
+}
+
+// CubicBezier returns a slice of points on a cubic Bezier curve
+func CubicBezier(p0, p1, p2, p3 image.Point) []image.Point {
+	steps := EstimateCubicBezierPoints(p0, p1, p2, p3)
+	points := make([]image.Point, 0, steps+1)
+	for i := 0; i <= steps; i++ {
+		t := float64(i) / float64(steps)
+		x := math.Pow(1-t, 3)*float64(p0.X) + 3*math.Pow(1-t, 2)*t*float64(p1.X) + 3*(1-t)*math.Pow(t, 2)*float64(p2.X) + math.Pow(t, 3)*float64(p3.X)
+		y := math.Pow(1-t, 3)*float64(p0.Y) + 3*math.Pow(1-t, 2)*t*float64(p1.Y) + 3*(1-t)*math.Pow(t, 2)*float64(p2.Y) + math.Pow(t, 3)*float64(p3.Y)
+		points = append(points, image.Point{X: int(x), Y: int(y)})
+	}
+	return points
+}
+
 // Clip sets the clipping region to the current path
 func (c *Canvas) Clip() {
 	// Clip implementation
@@ -555,11 +663,13 @@ func (c *Canvas) QuadraticCurveTo(cpx, cpy, x, y float64) {
 // Reset resets the canvas state
 func (c *Canvas) Reset() {
 	// Reset implementation
+	c.transforms = []map[string]float64{}
 }
 
 // ResetTransform resets the transformation matrix
 func (c *Canvas) ResetTransform() {
 	// ResetTransform implementation
+	c.transforms = []map[string]float64{}
 }
 
 // Restore restores the most recently saved canvas state
@@ -570,6 +680,10 @@ func (c *Canvas) Restore() {
 // Rotate rotates the canvas around the given angle
 func (c *Canvas) Rotate(angle float64) {
 	// Rotate implementation
+	c.transforms = append(c.transforms, map[string]float64{
+		"type":    0, // 0 == rotate
+		"radians": angle,
+	})
 }
 
 // Scale scales the canvas by the given factors
@@ -595,6 +709,31 @@ func (c *Canvas) Transform(a, b, c1, d, e, f float64) {
 // Translate translates the canvas by the given distances
 func (c *Canvas) Translate(x, y float64) {
 	// Translate implementation
+	c.transforms = append(c.transforms, map[string]float64{
+		"type": 1, // 1 == translate
+		"x":    x,
+		"y":    y,
+	})
+}
+
+func (c *Canvas) runTransforms(path int) {
+	contextPoint := image.Point{X: 0, Y: 0}
+	for _, t := range c.transforms {
+		switch t["type"] {
+		case 0:
+			// Rotate
+			fmt.Println(contextPoint)
+			c.Path[path] = rotatePoints(c.Path[path], contextPoint, t["radians"])
+		case 1:
+			// Translate
+			for i := 0; i < len(c.Path[path]); i++ {
+				c.Path[path][i].X += int(t["x"])
+				c.Path[path][i].Y += int(t["y"])
+			}
+			contextPoint.X += int(t["x"])
+			contextPoint.Y += int(t["y"])
+		}
+	}
 }
 
 // SavePNG saves the canvas to a PNG file
@@ -653,35 +792,72 @@ func drawLine(img *image.RGBA, p1, p2 image.Point, col color.RGBA, lineWidth flo
 	}
 }
 
-func fillPolygon(img *image.RGBA, points []image.Point, col color.RGBA) {
-	if len(points) < 3 {
+// Function to check if a point is within the bounds of the image
+func inBounds(img *image.RGBA, p image.Point) bool {
+	return p.X >= 0 && p.X < img.Bounds().Dx() && p.Y >= 0 && p.Y < img.Bounds().Dy()
+}
+
+// Flood fill algorithm to fill a polygon from a starting point
+func floodFill(img *image.RGBA, start image.Point, fillColor color.RGBA) {
+	// Get the original color at the starting point
+	targetColor := img.At(start.X, start.Y).(color.RGBA)
+
+	// If the target color is the same as the fill color, do nothing
+	if targetColor == fillColor {
 		return
 	}
-	// fmt.Println("##################")
-	w := img.Bounds().Dx()
-	h := img.Bounds().Dy()
-	grid := make(map[int][]int)
 
-	for i := 0; i < len(points); i++ {
-		y := points[i].Y
-		x := points[i].X
-		if y > 0 && y < h && x > 0 && x < w {
-			grid[y] = append(grid[y], x)
+	// Stack-based flood fill (to avoid stack overflow with recursive approach)
+	stack := []image.Point{start}
+
+	for len(stack) > 0 {
+		// Pop the last point from the stack
+		p := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+
+		// Check if the point is within the image bounds
+		if !inBounds(img, p) {
+			continue
+		}
+
+		// Get the color of the current point
+		currentColor := img.At(p.X, p.Y).(color.RGBA)
+
+		// If the color matches the target color, fill it with the new color
+		if currentColor == targetColor {
+			img.SetRGBA(p.X, p.Y, fillColor)
+
+			// Add neighboring points to the stack
+			stack = append(stack, image.Point{X: p.X + 1, Y: p.Y})
+			stack = append(stack, image.Point{X: p.X - 1, Y: p.Y})
+			stack = append(stack, image.Point{X: p.X, Y: p.Y + 1})
+			stack = append(stack, image.Point{X: p.X, Y: p.Y - 1})
+		}
+	}
+}
+
+func rotatePoints(points []image.Point, center image.Point, rad float64) []image.Point {
+	rotatedPoints := make([]image.Point, len(points))
+
+	// Precompute sine and cosine of the angle
+	cosTheta := math.Cos(rad)
+	sinTheta := math.Sin(rad)
+
+	for i, p := range points {
+		// Translate point to origin
+		translatedX := float64(p.X - center.X)
+		translatedY := float64(p.Y - center.Y)
+
+		// Apply rotation
+		rotatedX := translatedX*cosTheta - translatedY*sinTheta
+		rotatedY := translatedX*sinTheta + translatedY*cosTheta
+
+		// Translate back to original location
+		rotatedPoints[i] = image.Point{
+			X: int(math.Round(rotatedX + float64(center.X))),
+			Y: int(math.Round(rotatedY + float64(center.Y))),
 		}
 	}
 
-	for y, row := range grid {
-		sort.Ints(row)
-		for i, x := range row {
-			// fmt.Println(i, i%2 == 0, len(row))
-			if i+1 < len(row) {
-				// fmt.Println("here", x, row)
-				end := row[i+1]
-				for s := x; s <= end; s++ {
-					// fmt.Println(s, y)
-					img.Set(s, y, col)
-				}
-			}
-		}
-	}
+	return rotatedPoints
 }
