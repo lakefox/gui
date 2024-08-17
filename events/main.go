@@ -26,6 +26,7 @@ func GetEvents(el *element.Node, state *map[string]element.State, prevEvents *ma
 		WD: rl.GetMouseWheelMove(),
 		KP: rl.GetKeyPressed(),
 	}
+	// fmt.Println(data.WD)
 	// Mouse over
 	// fmt.Println(len(*prevEvents))
 	loop(el, state, data, prevEvents)
@@ -50,6 +51,8 @@ func RunEvents(events *map[string]element.EventList) bool {
 }
 
 func loop(el *element.Node, state *map[string]element.State, data RLData, eventTracker *map[string]element.EventList) *element.Node {
+	// loop through state to build events, then use multithreading to complete
+	// map
 	et := *eventTracker
 	eventList := []string{}
 	evt := et[el.Properties.Id].Event
@@ -57,14 +60,14 @@ func loop(el *element.Node, state *map[string]element.State, data RLData, eventT
 	s := *state
 	self := s[el.Properties.Id]
 
-	if evt.Target.Properties.Id == "" {
+	if evt.Target == nil {
 		et[el.Properties.Id] = element.EventList{
 			Event: element.Event{
 				X:          int(data.MP.X),
 				Y:          int(data.MP.Y),
 				MouseUp:    true,
 				MouseLeave: true,
-				Target:     *el,
+				Target:     el,
 			},
 			List: []string{},
 		}

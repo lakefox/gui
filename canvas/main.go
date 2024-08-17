@@ -1,15 +1,14 @@
 package canvas
 
 import (
-	"fmt"
 	"image"
 	"image/color"
 	"image/draw"
-	"image/png"
 	"io/ioutil"
 	"math"
-	"os"
+	"runtime"
 	"sort"
+	"sync"
 
 	"github.com/golang/freetype/truetype"
 	"golang.org/x/image/font"
@@ -21,7 +20,7 @@ type Canvas struct {
 	Context                  *image.RGBA
 	StrokeStyle              color.RGBA
 	FillStyle                color.RGBA
-	Path                     [][]image.Point
+	Path                     []image.Point
 	Font                     *truetype.Font
 	LineWidth                float64
 	direction                string
@@ -85,17 +84,17 @@ func (c *Canvas) SetFont(fontPath string) error {
 
 // MoveTo starts a new sub-path at the given (x, y) coordinates
 func (c *Canvas) MoveTo(x, y int) {
-	c.Path[len(c.Path)-1] = append(c.Path[len(c.Path)-1], image.Point{x, y})
+	c.Path = append(c.Path, image.Point{x, y})
 }
 
 // LineTo adds a line to the current path
 func (c *Canvas) LineTo(x, y int) {
-	if len(c.Path[len(c.Path)-1]) > 0 {
-		p1 := c.Path[len(c.Path)-1][len(c.Path[len(c.Path)-1])-1]
+	if len(c.Path) > 0 {
+		p1 := c.Path[len(c.Path)-1]
 		p2 := image.Point{x, y}
 
 		points := generatePoints(p1, p2)
-		c.Path[len(c.Path)-1] = append(c.Path[len(c.Path)-1], points...)
+		c.Path = append(c.Path, points...)
 	}
 }
 
@@ -125,22 +124,22 @@ func generatePoints(p1, p2 image.Point) []image.Point {
 // BeginPath starts a new path
 func (c *Canvas) BeginPath() {
 	// c.path = [][]image.Point{}
-	c.Path = append(c.Path, []image.Point{})
+	c.Path = []image.Point{}
 }
 
 // Stroke draws the current path
 func (c *Canvas) Stroke() {
-	c.runTransforms(len(c.Path) - 1)
+	c.runTransforms()
 	color := c.StrokeStyle
-	// for i := 1; i < len(c.Path[len(c.Path)-1]); i++ {
-	points := c.Path[len(c.Path)-1]
+	// for i := 1; i < len(c.Path); i++ {
+	points := c.Path
 	for i := 0; i < len(points); i++ {
 		// color.R = (c.StrokeStyle.R / uint8(len(c.path))) * uint8(i)
 		// color.G = (c.StrokeStyle.G / uint8(len(c.path))) * uint8(i)
 		// color.B = (c.StrokeStyle.B / uint8(len(c.path))) * uint8(i)
 		xy := points[i]
 		c.Context.Set(xy.X, xy.Y, color)
-		// drawLine(c.Context, c.Path[len(c.Path)-1][i-1], c.Path[len(c.Path)-1][i], color, c.LineWidth)
+		// drawLine(c.Context, c.Path[i-1], c.Path[i], color, c.LineWidth)
 	}
 	// c.BeginPath()
 }
@@ -151,34 +150,16 @@ func (c *Canvas) Fill() {
 	// So go to the middle key in grid and find the middle value.
 	// Are there issue with this method, yes
 	c.Stroke()
-	points := c.Path[len(c.Path)-1]
+	points := c.Path
 	img := c.Context
-	w := img.Bounds().Dx()
-	h := img.Bounds().Dy()
-	grid := make(map[int][]int)
 
-	for i := 0; i < len(points); i++ {
-		y := points[i].Y
-		x := points[i].X
-		if y > 0 && y < h && x > 0 && x < w {
-			grid[y] = append(grid[y], x)
-		}
-	}
-	keys := make([]int, 0, len(grid))
-	for key := range grid {
-		keys = append(keys, key)
-	}
+	// insidePoint := FindPointInsidePolygon(points)
 
-	// Sort the keys
-	sort.Ints(keys)
+	fillPolygon(img, points, c.FillStyle)
 
-	// Find the middle key
-	centerY := int(len(keys) / 2)
-	centerX := int(((grid[centerY][len(grid[centerY])-1] - grid[centerY][0]) / 2) + grid[centerY][0])
-
-	if len(c.Path) > 0 {
-		floodFill(img, image.Point{X: centerX, Y: centerY}, c.FillStyle)
-	}
+	// if len(c.Path) > 0 {
+	// 	floodFill(img, insidePoint, c.FillStyle)
+	// }
 	c.BeginPath()
 }
 
@@ -204,7 +185,7 @@ func (c *Canvas) Arc(x, y, radius, startAngle, endAngle float64, clockwise bool)
 			ix := int(p.X)
 			iy := int(p.Y)
 			if ix != lastX || iy != lastY {
-				c.Path[len(c.Path)-1] = append(c.Path[len(c.Path)-1], image.Point{X: ix, Y: iy})
+				c.Path = append(c.Path, image.Point{X: ix, Y: iy})
 				lastX = ix
 				lastY = iy
 			}
@@ -310,7 +291,7 @@ func (c *Canvas) StrokeRect(x, y, width, height int) {
 
 // ClearRect clears a rectangle
 func (c *Canvas) ClearRect(x, y, width, height int) {
-	draw.Draw(c.Context, image.Rect(x, y, x+width, y+height), &image.Uniform{color.RGBA{255, 255, 255, 255}}, image.Point{}, draw.Src)
+	draw.Draw(c.Context, image.Rect(x, y, x+width, y+height), &image.Uniform{color.RGBA{255, 255, 255, 0}}, image.Point{}, draw.Src)
 }
 
 // FillText draws filled text
@@ -515,7 +496,7 @@ func radToDeg(radians float64) float64 {
 func (c *Canvas) BezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y float64) {
 	// Calculate Bezier curve points and add them to the path
 	steps := 100
-	p0 := c.Path[len(c.Path)-1][len(c.Path[len(c.Path)-1])-1]
+	p0 := c.Path[len(c.Path)-1]
 	for i := 0; i <= steps; i++ {
 		t := float64(i) / float64(steps)
 		mt := 1 - t
@@ -716,19 +697,18 @@ func (c *Canvas) Translate(x, y float64) {
 	})
 }
 
-func (c *Canvas) runTransforms(path int) {
+func (c *Canvas) runTransforms() {
 	contextPoint := image.Point{X: 0, Y: 0}
 	for _, t := range c.transforms {
 		switch t["type"] {
 		case 0:
 			// Rotate
-			fmt.Println(contextPoint)
-			c.Path[path] = rotatePoints(c.Path[path], contextPoint, t["radians"])
+			c.Path = rotatePoints(c.Path, contextPoint, t["radians"])
 		case 1:
 			// Translate
-			for i := 0; i < len(c.Path[path]); i++ {
-				c.Path[path][i].X += int(t["x"])
-				c.Path[path][i].Y += int(t["y"])
+			for i := 0; i < len(c.Path); i++ {
+				c.Path[i].X += int(t["x"])
+				c.Path[i].Y += int(t["y"])
 			}
 			contextPoint.X += int(t["x"])
 			contextPoint.Y += int(t["y"])
@@ -736,15 +716,15 @@ func (c *Canvas) runTransforms(path int) {
 	}
 }
 
-// SavePNG saves the canvas to a PNG file
-func (c *Canvas) SavePNG(filename string) error {
-	file, err := os.Create(filename)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-	return png.Encode(file, c.Context)
-}
+// // SavePNG saves the canvas to a PNG file
+// func (c *Canvas) SavePNG(filename string) error {
+// 	file, err := os.Create(filename)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	defer file.Close()
+// 	return png.Encode(file, c.Context)
+// }
 
 // Helper functions
 func drawLine(img *image.RGBA, p1, p2 image.Point, col color.RGBA, lineWidth float64) {
@@ -860,4 +840,177 @@ func rotatePoints(points []image.Point, center image.Point, rad float64) []image
 	}
 
 	return rotatedPoints
+}
+
+// Function to check if a point is within the bounds of the polygon
+func isPointInPolygon(polygon []image.Point, p image.Point) bool {
+	n := len(polygon)
+	intersections := 0
+
+	for i := 0; i < n; i++ {
+		next := (i + 1) % n
+		vi := polygon[i]
+		vj := polygon[next]
+
+		if ((vi.Y > p.Y) != (vj.Y > p.Y)) &&
+			(p.X < (vj.X-vi.X)*(p.Y-vi.Y)/(vj.Y-vi.Y)+vi.X) {
+			intersections++
+		}
+	}
+
+	// A point is inside the polygon if the number of intersections is odd
+	return intersections%2 == 1
+}
+
+// FindPointInsidePolygon uses ray-casting to find a point inside the polygon
+func FindPointInsidePolygon(polygon []image.Point) image.Point {
+	// Calculate the centroid of the polygon as a starting point
+	var sumX, sumY int
+	for _, point := range polygon {
+		sumX += point.X
+		sumY += point.Y
+	}
+
+	n := len(polygon)
+	centroid := image.Point{
+		X: sumX / n,
+		Y: sumY / n,
+	}
+
+	// Start with the centroid and check if it's inside the polygon
+	if isPointInPolygon(polygon, centroid) {
+		return centroid
+	}
+
+	// If the centroid isn't inside, iterate toward a vertex
+	for _, vertex := range polygon {
+		// Average the centroid and vertex to get a new point
+		midPoint := image.Point{
+			X: (centroid.X + vertex.X) / 2,
+			Y: (centroid.Y + vertex.Y) / 2,
+		}
+
+		// If this point is inside, return it
+		if isPointInPolygon(polygon, midPoint) {
+			// fmt.Println(midPoint)
+			return midPoint
+		}
+	}
+	// As a fallback, return the first vertex (though this should rarely be needed)
+	return polygon[0]
+}
+
+func fillPolygon(img *image.RGBA, points []image.Point, col color.RGBA) {
+	if len(points) < 3 {
+		return
+	}
+
+	w := img.Bounds().Dx()
+	h := img.Bounds().Dy()
+	grid := make(map[int][]int)
+
+	for i := 0; i < len(points); i++ {
+		y := points[i].Y
+		x := points[i].X
+		if y >= 0 && y < h && x >= 0 && x < w {
+			grid[y] = append(grid[y], x)
+		}
+	}
+
+	keys := make([]int, 0, len(grid))
+	for k := range grid {
+		keys = append(keys, k)
+	}
+
+	sort.Ints(keys)
+
+	if len(keys) == 0 {
+		return
+	}
+
+	var wg sync.WaitGroup
+	cpus := runtime.NumCPU()
+	chunkSize := (len(keys) + cpus - 1) / cpus // Adjusted to ensure all keys are included
+
+	for i := 0; i < cpus; i++ {
+		start := i * chunkSize
+		end := start + chunkSize
+		if start > len(keys)-1 {
+			continue
+		}
+		if end > len(keys) {
+			end = len(keys) - 1
+		}
+
+		wg.Add(1)
+		go func(start, end int) {
+			defer wg.Done()
+			for _, y := range keys[start:end] {
+
+				row := grid[y]
+				if len(row) > 0 {
+					row = removeDuplicatesSorted(row)
+					pairs := [][]int{}
+					// pairs is start, index, end, index
+					pairs = append(pairs, []int{})
+					pairs[0] = []int{row[0], 0}
+					for i := 1; i < len(row); i++ {
+						pi := len(pairs) - 1
+						currPair := pairs[pi]
+						a := currPair[0]
+						ai := currPair[1]
+						b := row[i]
+						// fmt.Println((b - (i - ai)), a)
+						if (b - (i - ai)) != a {
+							if len(currPair) == 4 {
+								c := currPair[2]
+								ci := currPair[3]
+								if b-(i-ci) == c {
+									pairs[pi][2] = b
+									pairs[pi][3] = i
+								} else {
+									pairs = append(pairs, []int{b, i})
+								}
+							} else {
+								pairs[pi] = append(pairs[pi], b)
+								pairs[pi] = append(pairs[pi], i)
+							}
+						}
+					}
+					pi := len(pairs) - 1
+					if len(pairs[pi]) < 4 {
+						pairs[pi] = append(pairs[pi], row[len(row)-1])
+						pairs[pi] = append(pairs[pi], len(row)-1)
+					}
+					// fmt.Println(y, pairs)
+					for _, v := range pairs {
+						for x := v[0]; x <= v[2]; x++ {
+							img.Set(x, y, col)
+						}
+					}
+
+				}
+
+			}
+		}(start, end)
+	}
+
+	wg.Wait()
+}
+
+func removeDuplicatesSorted(intSlice []int) []int {
+	if len(intSlice) == 0 {
+		return intSlice
+	}
+
+	sort.Ints(intSlice)
+	result := []int{intSlice[0]}
+
+	for i := 1; i < len(intSlice); i++ {
+		if intSlice[i] != intSlice[i-1] {
+			result = append(result, intSlice[i])
+		}
+	}
+
+	return result
 }

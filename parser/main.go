@@ -54,22 +54,41 @@ func parseStyles(styleBlock string) map[string]string {
 func ParseStyleAttribute(styleValue string) map[string]string {
 	styleMap := make(map[string]string)
 
-	// Split the style attribute by ';'
-	styles := strings.Split(styleValue, ";")
-
-	for _, style := range styles {
-		// Split each key-value pair by ':'
-		parts := strings.SplitN(style, ":", 2)
-		if len(parts) == 2 {
-			key := strings.TrimSpace(parts[0])
-			value := strings.TrimSpace(parts[1])
-			if key != "" && value != "" {
-				styleMap[key] = value
+	start := 0
+	for i := 0; i < len(styleValue); i++ {
+		if styleValue[i] == ';' {
+			part := styleValue[start:i]
+			if len(part) > 0 {
+				key, value := parseKeyValue(part)
+				if key != "" && value != "" {
+					styleMap[key] = value
+				}
 			}
+			start = i + 1
+		}
+	}
+
+	// Handle the last part if there's no trailing semicolon
+	if start < len(styleValue) {
+		part := styleValue[start:]
+		key, value := parseKeyValue(part)
+		if key != "" && value != "" {
+			styleMap[key] = value
 		}
 	}
 
 	return styleMap
+}
+
+func parseKeyValue(style string) (string, string) {
+	for i := 0; i < len(style); i++ {
+		if style[i] == ':' {
+			key := strings.TrimSpace(style[:i])
+			value := strings.TrimSpace(style[i+1:])
+			return key, value
+		}
+	}
+	return "", ""
 }
 
 func removeComments(css string) string {

@@ -1,7 +1,6 @@
 package border
 
 import (
-	"fmt"
 	"gui/canvas"
 	"gui/color"
 	"gui/element"
@@ -228,145 +227,160 @@ func degToRad(degrees float64) float64 {
 }
 
 func drawSolidBorder(ctx *canvas.Canvas, side string, border element.BorderSide, s *element.State) {
-	// radius := int(s.Border.Radius.TopLeft) // Using one radius for simplicity, adjust as needed
-	// border.Color.A = 123
 	ctx.FillStyle = border.Color
 	ctx.StrokeStyle = border.Color
-	// ctx.LineWidth = float64(border.Width)
+
 	width := s.Width + s.Border.Left.Width + s.Border.Right.Width
 	height := s.Height + s.Border.Top.Width + s.Border.Bottom.Width
+	ctx.BeginPath()
 	switch side {
 	case "top":
-		ctx.BeginPath()
-		// h1 := math.Min(float64(s.Border.Radius.TopLeft), (float64(s.Height+s.Border.Top.Width+s.Border.Bottom.Width))-float64(s.Border.Radius.BottomLeft))
-		// w1 := math.Min(float64(s.Border.Radius.TopLeft), float64(width)-float64(s.Border.Radius.TopRight))
-		// v1 := math.Min(w1, h1)
+		// fmt.Println(1)
 		v1 := math.Max(float64(s.Border.Radius.TopLeft), 1)
-		// fmt.Println(s.Border.Radius.TopLeft)
-		// h2 := math.Min(float64(s.Border.Radius.TopRight), (float64(s.Height+s.Border.Top.Width+s.Border.Bottom.Width))-float64(s.Border.Radius.BottomRight))
-		// w2 := math.Min(float64(s.Border.Radius.TopRight), float64(width)-float64(v1))
-		// v2 := math.Min(w2, h2)
 		v2 := math.Max(float64(s.Border.Radius.TopRight), 1)
 		genSolidBorder(ctx, width, v1, v2, border, s.Border.Left, s.Border.Right)
-
-		ctx.Stroke()
-		ctx.Reset()
-		ctx.ClosePath()
 	case "right":
-		ctx.BeginPath()
-		// Top Right
-		h1 := math.Min(float64(s.Border.Radius.BottomLeft), (float64(s.Height+s.Border.Bottom.Width+s.Border.Top.Width))-float64(s.Border.Radius.TopLeft))
-		w1 := math.Min(float64(s.Border.Radius.BottomLeft), float64(width)-float64(s.Border.Radius.BottomRight))
-		v1 := math.Min(w1, h1)
-		v1 = math.Max(v1, 1)
-		h2 := math.Min(float64(s.Border.Radius.BottomRight), (float64(s.Height+s.Border.Bottom.Width+s.Border.Bottom.Width))-float64(s.Border.Radius.TopRight))
-		w2 := math.Min(float64(s.Border.Radius.BottomRight), float64(width)-float64(v1))
-		v2 := math.Min(w2, h2)
-		v2 = math.Max(v2, 1)
-		fmt.Println(v1, v2)
-		genSolidBorder(ctx, width, v2, v1, border, s.Border.Right, s.Border.Left)
+		// fmt.Println(2)
+		v1 := math.Max(float64(s.Border.Radius.TopRight), 1)
+		v2 := math.Max(float64(s.Border.Radius.BottomRight), 1)
+		genSolidBorder(ctx, height, v1, v2, border, s.Border.Top, s.Border.Bottom)
 
-		ctx.Translate(float64(width), float64(height))
-		ctx.Rotate(math.Pi)
-		// ctx.Translate(-250, -10)
-		// ctx.Fill()
-		ctx.Stroke()
-		ctx.Reset()
-		ctx.ClosePath()
+		ctx.Translate(float64(width), 0)
+		ctx.Rotate(math.Pi / 2)
 	case "bottom":
-		ctx.BeginPath()
-
-		h1 := math.Min(float64(s.Border.Radius.BottomLeft), (float64(s.Height+s.Border.Bottom.Width+s.Border.Top.Width))-float64(s.Border.Radius.TopLeft))
-		w1 := math.Min(float64(s.Border.Radius.BottomLeft), float64(width)-float64(s.Border.Radius.BottomRight))
-		v1 := math.Min(w1, h1)
-		v1 = math.Max(v1, 1)
-		h2 := math.Min(float64(s.Border.Radius.BottomRight), (float64(s.Height+s.Border.Bottom.Width+s.Border.Bottom.Width))-float64(s.Border.Radius.TopRight))
-		w2 := math.Min(float64(s.Border.Radius.BottomRight), float64(width)-float64(v1))
-		v2 := math.Min(w2, h2)
-		v2 = math.Max(v2, 1)
-		fmt.Println(v1, v2)
+		// fmt.Println(3)
+		v1 := math.Max(float64(s.Border.Radius.BottomLeft), 1)
+		v2 := math.Max(float64(s.Border.Radius.BottomRight), 1)
 		genSolidBorder(ctx, width, v2, v1, border, s.Border.Right, s.Border.Left)
 
 		ctx.Translate(float64(width), float64(height))
 		ctx.Rotate(math.Pi)
-		// ctx.Translate(-250, -10)
-		// ctx.Fill()
-		ctx.Stroke()
-		ctx.Reset()
-		ctx.ClosePath()
 	case "left":
-		// ctx.RoundedRect(int(s.X), int(s.Y), int(border.Width), int(s.Height), radius)
+		// fmt.Println(4)
+		v1 := math.Max(float64(s.Border.Radius.TopLeft), 1)
+		v2 := math.Max(float64(s.Border.Radius.BottomLeft), 1)
+		genSolidBorder(ctx, height, v2, v1, border, s.Border.Top, s.Border.Bottom)
+
+		ctx.Translate(0, float64(height))
+		ctx.Rotate(-math.Pi / 2)
 	}
+	ctx.Fill()
 	// ctx.Stroke()
+	ctx.Reset()
+	ctx.ClosePath()
 }
 
 func genSolidBorder(ctx *canvas.Canvas, width float32, v1, v2 float64, border, side1, side2 element.BorderSide) {
-
-	startAngleLeft := FindBorderStopAngle(image.Point{X: 0, Y: 0}, image.Point{X: int(side1.Width), Y: int(border.Width)}, image.Point{X: int(v1), Y: int(v1)}, v1)
+	s1w, s2w := float32(side1.Width), float32(side2.Width)
+	if s1w < 1 {
+		s1w = 1
+	}
+	if s2w < 1 {
+		s2w = 1
+	}
+	startAngleLeft := FindBorderStopAngle(image.Point{X: 0, Y: 0}, image.Point{X: int(s1w), Y: int(border.Width)}, image.Point{X: int(v1), Y: int(v1)}, v1)
 
 	ctx.Arc(v1, v1, v1, -math.Pi/2, startAngleLeft[0]-math.Pi, false) // top arc left
-	lineStart := ctx.Path[len(ctx.Path)-1][len(ctx.Path[len(ctx.Path)-1])-1]
+	lineStart := ctx.Path[len(ctx.Path)-1]
 
 	anglePercent := ((startAngleLeft[0] - math.Pi) - (-math.Pi / 2)) / ((-math.Pi) - (-math.Pi / 2))
-	midBorderWidth := math.Max(math.Abs(float64(border.Width)-float64(side1.Width)), math.Min(float64(border.Width), float64(side1.Width)))
+	midBorderWidth := math.Max(math.Abs(float64(border.Width)-float64(s1w)), math.Min(float64(border.Width), float64(s1w)))
 
 	bottomBorderEnd := FindPointOnLine(image.Point{X: 0, Y: 0}, lineStart, midBorderWidth)
 
-	controlPoint := FindControlPoint(image.Point{X: int(v1), Y: int(border.Width)}, bottomBorderEnd, image.Point{X: int(side1.Width), Y: int(v1)}, anglePercent)
-	endPoints := canvas.QuadraticBezier(image.Point{X: int(v1), Y: int(border.Width)}, controlPoint, image.Point{X: int(side1.Width), Y: int(v1)})
-	lineEnd, index, _ := FindClosestPoint(endPoints, bottomBorderEnd)
-	ctx.Path[len(ctx.Path)-1] = append(ctx.Path[len(ctx.Path)-1], endPoints[:index]...)
+	var lineEnd, parallelLineStart, parallelLineEnd image.Point
+	if v1 <= float64(border.Width) {
+		lineEnd = image.Point{X: int(s1w), Y: int(border.Width)}
+		parallelLineStart = lineEnd
+
+	} else {
+		controlPoint1 := FindQuadraticControlPoint(image.Point{X: int(v1), Y: int(border.Width)}, bottomBorderEnd, image.Point{X: int(s1w), Y: int(v1)}, anglePercent)
+
+		endPoints := canvas.QuadraticBezier(image.Point{X: int(v1), Y: int(border.Width)}, controlPoint1, image.Point{X: int(s1w), Y: int(v1)})
+
+		var index int
+		lineEnd, index, _ = FindClosestPoint(endPoints, bottomBorderEnd)
+		parallelLineStart = endPoints[0]
+		ctx.Path = append(ctx.Path, endPoints[:index]...)
+	}
 
 	ctx.MoveTo(lineStart.X, lineStart.Y)
 	ctx.LineTo(lineEnd.X, lineEnd.Y) // cap the end of the arc (other side)
 
-	// These are the paralle lines
-	ctx.MoveTo(int(v1), int(border.Width)-1)                  // cap the top of the arc
-	ctx.LineTo(int(float64(width)-(v2)), int(border.Width)-1) // add a line between the curves
+	// These are the paralle lines pt 1
 	ctx.MoveTo(int(float64(width)-(v2)), 0)
 	ctx.LineTo(int(v1), 0)
 
 	// Move to start the second corner
 	ctx.MoveTo(int(float64(width)-(v2)), 0)
 
-	startAngleRight := FindBorderStopAngle(image.Point{X: int(width), Y: 0}, image.Point{X: int(width - side2.Width), Y: int(border.Width)}, image.Point{X: int(float64(width) - v2), Y: int(v2)}, v2)
+	startAngleRight := FindBorderStopAngle(image.Point{X: int(width), Y: 0}, image.Point{X: int(width - s2w), Y: int(border.Width)}, image.Point{X: int(float64(width) - v2), Y: int(v2)}, v2)
 	ctx.Arc(float64(width)-v2, v2, v2, -math.Pi/2, startAngleRight[0]-math.Pi, false) // top arc Right
-	lineStart = ctx.Path[len(ctx.Path)-1][len(ctx.Path[len(ctx.Path)-1])-1]
+	lineStart = ctx.Path[len(ctx.Path)-1]
 	anglePercent = math.Abs(((startAngleRight[0] - math.Pi) - (-math.Pi / 2)) / ((-math.Pi) - (-math.Pi / 2)))
-	midBorderWidth = math.Max(math.Abs(float64(border.Width)-float64(side2.Width)), math.Min(float64(border.Width), float64(side2.Width)))
+	midBorderWidth = math.Max(math.Abs(float64(border.Width)-float64(s2w)), math.Min(float64(border.Width), float64(s2w)))
 
 	bottomBorderEnd = FindPointOnLine(image.Point{X: int(width), Y: 0}, lineStart, midBorderWidth)
 
-	controlPoint = FindControlPoint(image.Point{X: int(float64(width) - v2), Y: int(border.Width)}, bottomBorderEnd, image.Point{X: int(width - side2.Width), Y: int(v2)}, anglePercent)
-	endPoints = canvas.QuadraticBezier(image.Point{X: int(float64(width) - v2), Y: int(border.Width)}, controlPoint, image.Point{X: int(width - side2.Width), Y: int(v2)})
+	if v2 <= float64(border.Width) {
+		lineEnd = image.Point{X: int(width - s2w), Y: int(border.Width)}
+		parallelLineEnd = lineEnd
+	} else {
+		controlPoint := FindQuadraticControlPoint(image.Point{X: int(float64(width) - v2), Y: int(border.Width)}, bottomBorderEnd, image.Point{X: int(width - s2w), Y: int(v2)}, anglePercent)
+		endPoints := canvas.QuadraticBezier(image.Point{X: int(float64(width) - v2), Y: int(border.Width)}, controlPoint, image.Point{X: int(width - s2w), Y: int(v2)})
+		var index int
+		lineEnd, index, _ = FindClosestPoint(endPoints, bottomBorderEnd)
+		parallelLineEnd = endPoints[0]
+		ctx.Path = append(ctx.Path, endPoints[:index]...)
+	}
 
-	lineEnd, index, _ = FindClosestPoint(endPoints, bottomBorderEnd)
-	ctx.Path[len(ctx.Path)-1] = append(ctx.Path[len(ctx.Path)-1], endPoints[:index]...)
+	// These are the paralle lines pt 2
+	ctx.MoveTo(parallelLineStart.X, parallelLineStart.Y)
+	ctx.LineTo(parallelLineEnd.X, parallelLineEnd.Y)
 
 	ctx.MoveTo(lineStart.X, lineStart.Y)
 	ctx.LineTo(lineEnd.X, lineEnd.Y) // cap the end of the arc (other side)
 }
 
 func drawDashedBorder(ctx *canvas.Canvas, side string, border element.BorderSide, s *element.State) {
-	// dashLength := 10
-	// gapLength := 5
-	// drawDashLine := func(x1, y1, x2, y2 int) {
-	// 	for i := 0; i < int(border.Width); i++ {
-	// 		for j := x1; j < x2; j += dashLength + gapLength {
-	// 			drawLineHelper(img, j, y1+i, j+dashLength, y2+i, border.Color)
-	// 		}
-	// 	}
-	// }
-	// switch side {
-	// case "top":
-	// 	drawDashLine(rect.Min.X, rect.Min.Y, rect.Max.X, rect.Min.Y)
-	// case "right":
-	// 	drawDashLine(rect.Max.X-int(border.Width), rect.Min.Y, rect.Max.X-int(border.Width), rect.Max.Y)
-	// case "bottom":
-	// 	drawDashLine(rect.Min.X, rect.Max.Y-int(border.Width), rect.Max.X, rect.Max.Y-int(border.Width))
-	// case "left":
-	// 	drawDashLine(rect.Min.X, rect.Min.Y, rect.Min.X, rect.Max.Y)
-	// }
+	ctx.FillStyle = border.Color
+	ctx.StrokeStyle = border.Color
+
+	width := s.Width + s.Border.Left.Width + s.Border.Right.Width
+	height := s.Height + s.Border.Top.Width + s.Border.Bottom.Width
+	ctx.BeginPath()
+	switch side {
+	case "top":
+		v1 := math.Max(float64(s.Border.Radius.TopLeft), 1)
+		v2 := math.Max(float64(s.Border.Radius.TopRight), 1)
+		genSolidBorder(ctx, width, v1, v2, border, s.Border.Left, s.Border.Right)
+	case "right":
+		v1 := math.Max(float64(s.Border.Radius.TopRight), 1)
+		v2 := math.Max(float64(s.Border.Radius.BottomRight), 1)
+		genSolidBorder(ctx, height, v1, v2, border, s.Border.Top, s.Border.Bottom)
+
+		ctx.Translate(float64(width), 0)
+		ctx.Rotate(math.Pi / 2)
+	case "bottom":
+		v1 := math.Max(float64(s.Border.Radius.BottomLeft), 1)
+		v2 := math.Max(float64(s.Border.Radius.BottomRight), 1)
+		genSolidBorder(ctx, width, v2, v1, border, s.Border.Right, s.Border.Left)
+
+		ctx.Translate(float64(width), float64(height))
+		ctx.Rotate(math.Pi)
+	case "left":
+		// Top Right
+		v1 := math.Max(float64(s.Border.Radius.TopLeft), 1)
+		v2 := math.Max(float64(s.Border.Radius.BottomLeft), 1)
+		genSolidBorder(ctx, height, v2, v1, border, s.Border.Top, s.Border.Bottom)
+
+		ctx.Translate(0, float64(height))
+		ctx.Rotate(-math.Pi / 2)
+	}
+	ctx.Fill()
+	// ctx.Stroke()
+	ctx.Reset()
+	ctx.ClosePath()
 }
 
 func drawDottedBorder(ctx *canvas.Canvas, side string, border element.BorderSide, s *element.State) {
@@ -588,7 +602,7 @@ func FindPointGivenAngleDistance(start image.Point, angle float64, distance floa
 	}
 }
 
-func FindControlPoint(P0, P2, P3 image.Point, t1 float64) image.Point {
+func FindQuadraticControlPoint(P0, P2, P3 image.Point, t1 float64) image.Point {
 	// Calculate (1-t1)^2, 2(1-t1)t1, and t1^2
 	oneMinusT1 := 1 - t1
 	oneMinusT1Squared := oneMinusT1 * oneMinusT1
@@ -603,6 +617,30 @@ func FindControlPoint(P0, P2, P3 image.Point, t1 float64) image.Point {
 	return P1
 }
 
+func FindCubicControlPoints(P0, P3, PA, PB image.Point, tA, tB float64) (P1, P2 image.Point) {
+	// Coefficients for the equations
+	A1 := 3 * tA * (1 - tA) * (1 - tA)
+	A2 := 3 * tB * (1 - tB) * (1 - tB)
+	B1 := 3 * (1 - tA) * tA * tA
+	B2 := 3 * (1 - tB) * tB * tB
+
+	// Solve for P1 and P2 using the given equations for PA and PB
+	P1X := (float64(PA.X) - (1-tA)*(1-tA)*(1-tA)*float64(P0.X) - tA*tA*tA*float64(P3.X) -
+		B1/B2*(float64(PB.X)-(1-tB)*(1-tB)*(1-tB)*float64(P0.X)-tB*tB*tB*float64(P3.X))) /
+		(A1 - B1*B1/B2)
+	P1Y := (float64(PA.Y) - (1-tA)*(1-tA)*(1-tA)*float64(P0.Y) - tA*tA*tA*float64(P3.Y) -
+		B1/B2*(float64(PB.Y)-(1-tB)*(1-tB)*(1-tB)*float64(P0.Y)-tB*tB*tB*float64(P3.Y))) /
+		(A1 - B1*B1/B2)
+
+	P2X := (float64(PB.X) - (1-tB)*(1-tB)*(1-tB)*float64(P0.X) - tB*tB*tB*float64(P3.X) - A2*P1X) / B2
+	P2Y := (float64(PB.Y) - (1-tB)*(1-tB)*(1-tB)*float64(P0.Y) - tB*tB*tB*float64(P3.Y) - A2*P1Y) / B2
+
+	P1 = image.Point{X: int(P1X), Y: int(P1Y)}
+	P2 = image.Point{X: int(P2X), Y: int(P2Y)}
+
+	return P1, P2
+}
+
 func FindBorderStopAngle(origin, crossPoint, circleCenter image.Point, radius float64) []float64 {
 	// Calculate the difference between the points
 	dx := float64(origin.X - crossPoint.X)
@@ -612,6 +650,10 @@ func FindBorderStopAngle(origin, crossPoint, circleCenter image.Point, radius fl
 	angle := math.Atan2(dy, dx)
 
 	points := LineCircleIntersection(origin, angle, circleCenter, radius)
+
+	if len(points) < 2 {
+		return []float64{0, 0}
+	}
 
 	// Convert the angle from radians to degrees if needed
 

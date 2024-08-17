@@ -236,46 +236,57 @@ func convertMarginToIndividualProperties(margin string) (string, string, string,
 
 // ConvertToPixels converts a CSS measurement to pixels.
 func ConvertToPixels(value string, em, max float32) float32 {
-	unitFactors := map[string]float32{
-		"px": 1,
-		"em": em,
-		"pt": 1.33,
-		"pc": 16.89,
-		"%":  max / 100,
-		"vw": max / 100,
-		"vh": max / 100,
-		"cm": 37.79527559,
-		"in": 96,
+	// Quick check for predefined units
+	switch value {
+	case "thick":
+		return 5
+	case "medium":
+		return 3
+	case "thin":
+		return 1
 	}
 
-	units := map[string]float32{
-		"thick":  5,
-		"medium": 3,
-		"thin":   1,
+	// Handle calculation expression
+	if len(value) > 5 && value[:5] == "calc(" {
+		return evaluateCalcExpression(value[5:len(value)-1], em, max)
 	}
 
-	if strings.HasPrefix(value, "calc(") {
-		// Handle calculation expression
-		calcResult := evaluateCalcExpression(value[5:len(value)-1], em, max)
-		return calcResult
-	} else {
-		for k, v := range units {
-			if value == k {
-				return v
+	// Optimize map lookups with a fixed set of unit conversions
+	unitFactors := [][2]string{
+		{"px", "1"},
+		{"em", "em"},
+		{"pt", "1.33"},
+		{"pc", "16.89"},
+		{"%", "max/100"},
+		{"vw", "max/100"},
+		{"vh", "max/100"},
+		{"cm", "37.79527559"},
+		{"in", "96"},
+	}
+
+	for _, unit := range unitFactors {
+		if strings.HasSuffix(value, unit[0]) {
+			cutStr := value[:len(value)-len(unit[0])]
+			numericValue, err := strconv.ParseFloat(cutStr, 64)
+			if err != nil {
+				return 0 // Handle error or return default value
+			}
+
+			// Handle special cases for "%" and "vw/vh" units
+			switch unit[1] {
+			case "em":
+				return float32(numericValue) * em
+			case "max/100":
+				return float32(numericValue) * (max / 100)
+			default:
+				factor, _ := strconv.ParseFloat(unit[1], 64)
+				return float32(numericValue) * float32(factor)
 			}
 		}
-		// Extract numeric value and unit
-		for k, v := range unitFactors {
-			if strings.HasSuffix(value, k) {
-				cutStr, _ := strings.CutSuffix(value, k)
-				numericValue, _ := strconv.ParseFloat(cutStr, 64)
-				return float32(numericValue) * v
-			}
-		}
-
-		return 0
 	}
 
+	// Default return if no match
+	return 0
 }
 
 // evaluateCalcExpression recursively evaluates 'calc()' expressions

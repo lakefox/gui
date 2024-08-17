@@ -7,6 +7,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	adapter "gui/adapters"
 	"gui/cstyle"
 	"gui/cstyle/plugins/flex"
 	"gui/cstyle/plugins/inline"
@@ -18,7 +19,6 @@ import (
 	"gui/font"
 	"gui/scripts"
 	"gui/scripts/a"
-	"gui/window"
 	"time"
 
 	"gui/element"
@@ -33,7 +33,6 @@ import (
 
 	imgFont "golang.org/x/image/font"
 
-	rl "github.com/gen2brain/raylib-go/raylib"
 	"golang.org/x/net/html"
 )
 
@@ -45,7 +44,7 @@ var mastercss string
 type Window struct {
 	CSS      cstyle.CSS
 	Document element.Node
-	Adapter  func()
+	Adapter  *adapter.Adapter
 	Scripts  scripts.Scripts
 }
 
@@ -148,16 +147,13 @@ func flatten(n *element.Node) []*element.Node {
 	return nodes
 }
 
-func View(data *Window, width, height int32) {
+func View(data *Window, width, height int) {
 	debug := false
 	data.Document.Style["width"] = strconv.Itoa(int(width)) + "px"
 	data.Document.Style["height"] = strconv.Itoa(int(height)) + "px"
 
-	wm := window.NewWindowManager()
+	data.Adapter.Init(width, height)
 	// wm.FPSCounterOn = true
-
-	wm.OpenWindow(width, height)
-	defer wm.CloseWindow()
 
 	evts := map[string]element.EventList{}
 
@@ -174,8 +170,6 @@ func View(data *Window, width, height int32) {
 	var hash []byte
 	var rd []element.State
 
-	lastChange := time.Now()
-
 	// Load init font
 	if data.CSS.Fonts == nil {
 		data.CSS.Fonts = map[string]imgFont.Face{}
@@ -186,22 +180,47 @@ func View(data *Window, width, height int32) {
 		data.CSS.Fonts[fid] = f
 	}
 
+	newWidth, newHeight := width, height
+
+	data.Adapter.AddEventListener("windowresize", func(e element.Event) {
+		wh := e.Data.(map[string]int)
+		newWidth = wh["width"]
+		newHeight = wh["height"]
+	})
+
+	data.Adapter.AddEventListener("close", func(e element.Event) {
+		shouldStop = true
+	})
+
+	data.Adapter.AddEventListener("keydown", func(e element.Event) {
+		fmt.Println("Down: ", e.Data.(int))
+	})
+	data.Adapter.AddEventListener("keyup", func(e element.Event) {
+		fmt.Println("Up: ", e.Data.(int))
+	})
+
+	// data.Adapter.AddEventListener("mousemove", func(e element.Event) {
+	// 	pos := e.Data.([]int)
+	// 	fmt.Println("Mouse: ", pos)
+	// })
+
+	data.Adapter.AddEventListener("scroll", func(e element.Event) {
+		fmt.Println("Scroll: ", e.Data.(int))
+	})
+
 	// Main game loop
-	for !wm.WindowShouldClose() && !shouldStop {
+	for !shouldStop {
 		// fmt.Println("######################")
-		rl.BeginDrawing()
+
 		if !shouldStop && debug {
 			shouldStop = true
 		}
 		// Check if the window size has changed
-		newWidth := int32(rl.GetScreenWidth())
-		newHeight := int32(rl.GetScreenHeight())
 
 		resize := false
 
 		if newWidth != width || newHeight != height {
 			resize = true
-			rl.ClearBackground(rl.RayWhite)
 			// Window has been resized, handle the event
 			width = newWidth
 			height = newHeight
@@ -216,77 +235,83 @@ func View(data *Window, width, height int32) {
 		newHash, _ := hashStruct(&data.Document.Children[0])
 		eventStore = events.GetEvents(data.Document.Children[0], &state, eventStore)
 		if !bytes.Equal(hash, newHash) || resize {
-			if wm.FPS != 30 {
-				wm.SetFPS(30)
-			}
 			hash = newHash
-			lastChange = time.Now()
-			newDoc := CopyNode(data.CSS, data.Document.Children[0], &data.Document)
+			lastChange := time.Now()
+			fmt.Println("########################")
+			lastChange1 := time.Now()
 
+			// newDoc := data.Document.Children[0]                                     // speed up
+			// change to add styles
+			newDoc := CopyNode(data.CSS, data.Document.Children[0], &data.Document) // speed up
+			fmt.Println("Copy Node: ", time.Since(lastChange1))
+			lastChange1 = time.Now()
 			newDoc = data.CSS.Transform(newDoc)
+			fmt.Println("Transform: ", time.Since(lastChange1))
+			lastChange1 = time.Now()
 
 			state["ROOT"] = element.State{
 				Width:  float32(width),
 				Height: float32(height),
 			}
 
-			data.CSS.ComputeNodeStyle(newDoc, &state)
-			rd = data.Render(newDoc, &state)
-			wm.LoadTextures(rd)
-			// fmt.Println(len(rd))
+			data.CSS.ComputeNodeStyle(newDoc, &state) // speed up
+			fmt.Println("Compute Node Style: ", time.Since(lastChange1))
+			lastChange1 = time.Now()
 
-			// AddHTML(&newDoc)
-			// fmt.Println(newDoc.QuerySelector("body").InnerHTML)
+			rd = data.Render(newDoc, &state)
+			fmt.Println("Render: ", time.Since(lastChange1))
+			lastChange1 = time.Now()
+
+			data.Adapter.Load(rd) // speed up
+			fmt.Println("Load: ", time.Since(lastChange1))
+			lastChange1 = time.Now()
 
 			AddHTML(&data.Document)
+			fmt.Println("Add HTML: ", time.Since(lastChange1))
 
 			data.Scripts.Run(&data.Document)
-			fmt.Println(time.Since(lastChange))
+			fmt.Println("#", time.Since(lastChange))
 		}
-		wm.Draw(rd)
+		data.Adapter.Render(rd)
 
 		// could use a return value that indicates whether or not a event has ran to ramp/deramp fps based on activity
 
 		events.RunEvents(eventStore)
-		// ran := events.RunEvents(eventStore)
 
-		if time.Since(lastChange) > 5*time.Second {
-			if wm.FPS != 5 {
-				wm.SetFPS(5)
-			}
-		}
-
-		rl.EndDrawing()
 	}
 }
 
 func CopyNode(c cstyle.CSS, node *element.Node, parent *element.Node) *element.Node {
-	n := element.Node{
-		TagName:   node.TagName,
-		InnerText: node.InnerText,
-		Style:     node.Style,
-		Id:        node.Id,
-		ClassList: node.ClassList,
-		Href:      node.Href,
-		Src:       node.Src,
-		Title:     node.Title,
-		Attribute: node.Attribute,
-		Value:     node.Value,
-		ScrollY:   node.ScrollY,
-		InnerHTML: node.InnerHTML,
-		OuterHTML: node.OuterHTML,
-		Parent:    parent,
-		Properties: element.Properties{
-			Id:        node.Properties.Id,
-			Focusable: node.Properties.Focusable,
-			Focused:   node.Properties.Focused,
-			Editable:  node.Properties.Editable,
-			Hover:     node.Properties.Hover,
-			Selected:  node.Properties.Selected,
-		},
-	}
-
+	// n := element.Node{
+	// 	TagName:   node.TagName,
+	// 	InnerText: node.InnerText,
+	// 	Style:     node.Style,
+	// 	Id:        node.Id,
+	// 	ClassList: node.ClassList,
+	// 	Href:      node.Href,
+	// 	Src:       node.Src,
+	// 	Title:     node.Title,
+	// 	Attribute: node.Attribute,
+	// 	Value:     node.Value,
+	// 	ScrollY:   node.ScrollY,
+	// 	InnerHTML: node.InnerHTML,
+	// 	OuterHTML: node.OuterHTML,
+	// 	Parent:    parent,
+	// 	Properties: element.Properties{
+	// 		Id:        node.Properties.Id,
+	// 		Focusable: node.Properties.Focusable,
+	// 		Focused:   node.Properties.Focused,
+	// 		Editable:  node.Properties.Editable,
+	// 		Hover:     node.Properties.Hover,
+	// 		Selected:  node.Properties.Selected,
+	// 	},
+	// }
+	n := *node
+	n.Parent = parent
+	lastChange1 := time.Now()
+	// for get styles, pre load all of the selectors into a map or slice then use a map to point to the index in the slice then search that way
 	n.Style = c.GetStyles(&n)
+	fmt.Println("Styles: ", time.Since(lastChange1))
 
 	if len(node.Children) > 0 {
 		n.Children = make([]*element.Node, 0, len(node.Children))

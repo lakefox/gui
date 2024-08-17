@@ -8,10 +8,12 @@ import (
 	"gui/font"
 	"gui/parser"
 	"gui/utils"
+	"image"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	imgFont "golang.org/x/image/font"
 )
@@ -141,6 +143,8 @@ func (c *CSS) GetStyles(n *element.Node) map[string]string {
 	}
 
 	// Apply styles from style sheets
+	lastChange1 := time.Now()
+
 	for _, styleSheet := range c.StyleSheets {
 		for selector, rules := range styleSheet {
 			originalSelector := selector
@@ -149,7 +153,7 @@ func (c *CSS) GetStyles(n *element.Node) map[string]string {
 				selector = strings.Replace(selector, ":hover", "", -1)
 			}
 
-			if element.TestSelector(selector, n) {
+			if element.TestSelector(selector, n) { // Bottle neck
 				for k, v := range rules {
 					styles[k] = v
 				}
@@ -158,6 +162,7 @@ func (c *CSS) GetStyles(n *element.Node) map[string]string {
 			selector = originalSelector // Restore original selector
 		}
 	}
+	fmt.Println("TestSelector: ", time.Since(lastChange1))
 
 	// Parse inline styles
 	inlineStyles := parser.ParseStyleAttribute(n.GetAttribute("style"))
@@ -220,7 +225,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 
 	self.Background = color.Parse(style, "background")
 	self.Border, _ = border.Parse(style, self, parent)
-	border.Draw(&self)
+	// border.Draw(&self)
 
 	fs := utils.ConvertToPixels(style["font-size"], parent.EM, parent.Width)
 	self.EM = fs
@@ -240,6 +245,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 	}
 
 	(*state)[n.Properties.Id] = self
+
 	wh := utils.GetWH(*n, state)
 	width, height := wh.Width, wh.Height
 
@@ -319,12 +325,15 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 	self.Y = y
 	self.Width = width
 	self.Height = height
+
 	(*state)[n.Properties.Id] = self
 	if !utils.ChildrenHaveText(n) && len(n.InnerText) > 0 {
 		n.InnerText = strings.TrimSpace(n.InnerText)
+		// lastChange1 := time.Now()
 		self = genTextNode(n, state, c)
-	}
+		// fmt.Println("Text: ", time.Since(lastChange1))
 
+	}
 	(*state)[n.Properties.Id] = self
 	(*state)[n.Parent.Properties.Id] = parent
 
@@ -381,22 +390,21 @@ func genTextNode(n *element.Node, state *map[string]element.State, css *CSS) ele
 		italic = true
 	}
 
-	if text.Font == nil {
-		if css.Fonts == nil {
-			css.Fonts = map[string]imgFont.Face{}
-		}
-		fid := n.Style["font-family"] + fmt.Sprint(self.EM, bold, italic)
-		if css.Fonts[fid] == nil {
-			f, _ := font.LoadFont(n.Style["font-family"], int(self.EM), bold, italic)
-			css.Fonts[fid] = f
-		}
-		fnt := css.Fonts[fid]
-		text.Font = &fnt
+	if css.Fonts == nil {
+		css.Fonts = map[string]imgFont.Face{}
 	}
+	fid := n.Style["font-family"] + fmt.Sprint(self.EM, bold, italic)
+	if css.Fonts[fid] == nil {
+		f, _ := font.LoadFont(n.Style["font-family"], int(self.EM), bold, italic)
+		css.Fonts[fid] = f
+	}
+	fnt := css.Fonts[fid]
+	text.Font = &fnt
 
 	letterSpacing := utils.ConvertToPixels(n.Style["letter-spacing"], self.EM, parent.Width)
 	wordSpacing := utils.ConvertToPixels(n.Style["word-spacing"], self.EM, parent.Width)
 	lineHeight := utils.ConvertToPixels(n.Style["line-height"], self.EM, parent.Width)
+
 	if lineHeight == 0 {
 		lineHeight = self.EM + 3
 	}
@@ -446,16 +454,18 @@ func genTextNode(n *element.Node, state *map[string]element.State, css *CSS) ele
 		text.WordSpacing = font.MeasureSpace(&text)
 	}
 
-	img, width := font.Render(&text)
-	self.Texture = img
+	// img, width := font.Render(&text)
+	img := image.RGBA{}
+	self.Texture = &img
+	// self.Texture = img
 
 	if n.Style["height"] == "" && n.Style["min-height"] == "" {
 		self.Height = float32(text.LineHeight)
 	}
 
-	if n.Style["width"] == "" && n.Style["min-width"] == "" {
-		self.Width = float32(width)
-	}
+	// if n.Style["width"] == "" && n.Style["min-width"] == "" {
+	// 	self.Width = float32(width)
+	// }
 
 	return self
 }

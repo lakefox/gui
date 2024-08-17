@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"gui"
+	"gui/adapters/raylib"
 	"gui/element"
 	// "github.com/pkg/profile"
 )
@@ -15,15 +16,16 @@ func main() {
 	// defaults read ~/Library/Preferences/.GlobalPreferences.plist
 
 	window := gui.Open("./src/index.html")
-	// window.AddAdapter(raylib)
+	window.Adapter = raylib.Init()
 	document := window.Document
 
 	tgt(document.QuerySelector("body"))
 
-	gui.View(&window, 850, 400)
+	// document.QuerySelector("#editor").AddEventListener("scroll", func(e element.Event) {
+	// 	fmt.Println(e.Target.ScrollY, e.Target.TagName)
+	// })
 
-	// input, output := gui.Render(&window, 850, 400)
-	// go adapter.View(input, output)
+	gui.View(&window, 850, 400)
 }
 func tgt(e *element.Node) {
 	// events need to be transfered to broke out elements

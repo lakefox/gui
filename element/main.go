@@ -363,7 +363,9 @@ type Event struct {
 	KeyDown     bool
 	KeyPress    bool
 	Input       bool
-	Target      Node
+	Target      *Node
+	Name        string
+	Data        interface{}
 }
 
 type EventList struct {

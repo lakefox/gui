@@ -1,7 +1,6 @@
 package selector
 
 import (
-	"slices"
 	"strings"
 
 	"golang.org/x/net/html"
@@ -59,11 +58,20 @@ func SplitSelector(s string) []string {
 }
 
 func Contains(selector []string, node []string) bool {
-	has := true
+	selectorSet := make(map[string]struct{}, len(node))
+	for _, s := range node {
+		selectorSet[s] = struct{}{}
+	}
+
 	for _, s := range selector {
-		if !slices.Contains(node, s) {
-			has = false
+		if _, exists := selectorSet[s]; !exists {
+			return false
 		}
 	}
-	return has
+	return true
 }
+
+// precompile selectors so you don't have to split selector on every style sheet and every selector everytime, put in a map
+// if the selector is the same as another merge them.
+// if the selector has a parent or child selector then make a css prop "Selector": "full selector". should be blank if not
+// can run the actual test in that case, just see if a part of the selector matches, can be cleaned up later
