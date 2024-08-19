@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"gui/canvas"
 	"gui/selector"
-	"image"
 	ic "image/color"
 	"math"
 	"strconv"
@@ -51,13 +50,12 @@ type State struct {
 	Width      float32
 	Height     float32
 	Border     Border
-	Texture    *image.RGBA
+	Textures   []string
 	EM         float32
 	Background ic.RGBA
-	Color      ic.RGBA
-	Margin     MarginPadding
-	Padding    MarginPadding
-	Canvas     *canvas.Canvas
+	// Color      ic.RGBA
+	Margin  MarginPadding
+	Padding MarginPadding
 }
 
 // !FLAG: Plan to get rid of this

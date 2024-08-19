@@ -6,6 +6,7 @@ import (
 	"gui/color"
 	"gui/element"
 	"gui/font"
+	"gui/library"
 	"gui/parser"
 	"gui/utils"
 	"image"
@@ -13,7 +14,6 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 
 	imgFont "golang.org/x/image/font"
 )
@@ -143,7 +143,7 @@ func (c *CSS) GetStyles(n *element.Node) map[string]string {
 	}
 
 	// Apply styles from style sheets
-	lastChange1 := time.Now()
+	// lastChange1 := time.Now()
 
 	for _, styleSheet := range c.StyleSheets {
 		for selector, rules := range styleSheet {
@@ -162,7 +162,7 @@ func (c *CSS) GetStyles(n *element.Node) map[string]string {
 			selector = originalSelector // Restore original selector
 		}
 	}
-	fmt.Println("TestSelector: ", time.Since(lastChange1))
+	// fmt.Println("TestSelector: ", time.Since(lastChange1))
 
 	// Parse inline styles
 	inlineStyles := parser.ParseStyleAttribute(n.GetAttribute("style"))
@@ -209,7 +209,7 @@ func CheckNode(n *element.Node, state *map[string]element.State) {
 	// fmt.Printf("Border: %v\n\n\n", self.Border)
 }
 
-func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State) *element.Node {
+func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State, shelf *library.Shelf) *element.Node {
 	// Head is not renderable
 	if utils.IsParent(*n, "head") {
 		return n
@@ -219,13 +219,14 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 	s := *state
 	self := s[n.Properties.Id]
 	parent := s[n.Parent.Properties.Id]
+	// self.Textures = []string{}
 
 	// Cache the style map
 	style := n.Style
 
 	self.Background = color.Parse(style, "background")
 	self.Border, _ = border.Parse(style, self, parent)
-	// border.Draw(&self)
+	border.Draw(&self, shelf)
 
 	fs := utils.ConvertToPixels(style["font-size"], parent.EM, parent.Width)
 	self.EM = fs
@@ -330,7 +331,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 	if !utils.ChildrenHaveText(n) && len(n.InnerText) > 0 {
 		n.InnerText = strings.TrimSpace(n.InnerText)
 		// lastChange1 := time.Now()
-		self = genTextNode(n, state, c)
+		self = genTextNode(n, state, c, shelf)
 		// fmt.Println("Text: ", time.Since(lastChange1))
 
 	}
@@ -341,7 +342,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 	for i := 0; i < len(n.Children); i++ {
 		v := n.Children[i]
 		v.Parent = n
-		n.Children[i] = c.ComputeNodeStyle(v, state)
+		n.Children[i] = c.ComputeNodeStyle(v, state, shelf)
 		cState := (*state)[n.Children[i].Properties.Id]
 		if style["height"] == "" && style["min-height"] == "" {
 			if v.Style["position"] != "absolute" && cState.Y+cState.Height > childYOffset {
@@ -373,10 +374,12 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State)
 	return n
 }
 
-func genTextNode(n *element.Node, state *map[string]element.State, css *CSS) element.State {
+func genTextNode(n *element.Node, state *map[string]element.State, css *CSS, shelf *library.Shelf) element.State {
 	s := *state
 	self := s[n.Properties.Id]
 	parent := s[n.Parent.Properties.Id]
+
+	self.Textures = []string{}
 
 	text := element.Text{}
 
@@ -432,7 +435,7 @@ func genTextNode(n *element.Node, state *map[string]element.State, css *CSS) ele
 
 	col := color.Parse(n.Style, "font")
 
-	self.Color = col
+	// self.Color = col
 
 	text.Color = col
 	text.DecorationColor = color.Parse(n.Style, "decoration")
@@ -453,19 +456,37 @@ func genTextNode(n *element.Node, state *map[string]element.State, css *CSS) ele
 	if n.Style["word-spacing"] == "" {
 		text.WordSpacing = font.MeasureSpace(&text)
 	}
+	key := text.Text + utils.RGBAtoString(text.Color) + utils.RGBAtoString(text.DecorationColor) + text.Align + text.WordBreak + strconv.Itoa(text.WordSpacing) + strconv.Itoa(text.LetterSpacing) + text.WhiteSpace + strconv.Itoa(text.DecorationThickness) + strconv.Itoa(text.EM)
+	key += strconv.FormatBool(text.Overlined) + strconv.FormatBool(text.Underlined) + strconv.FormatBool(text.LineThrough)
 
-	// img, width := font.Render(&text)
-	img := image.RGBA{}
-	self.Texture = &img
-	// self.Texture = img
+	exists := shelf.Check(key)
+	var width int
+	if exists {
+		lookup := make(map[string]struct{}, len(self.Textures))
+		for _, v := range self.Textures {
+			lookup[v] = struct{}{}
+		}
+
+		if _, found := lookup[key]; !found {
+			self.Textures = append(self.Textures, key)
+		}
+		width = font.MeasureText(&text, text.Text)
+	} else {
+		var data *image.RGBA
+		data, width = font.Render(&text)
+		// img := image.RGBA{}
+		// self.Texture = &img
+		self.Textures = append(self.Textures, shelf.New(key, data))
+		// self.Texture = img
+	}
 
 	if n.Style["height"] == "" && n.Style["min-height"] == "" {
 		self.Height = float32(text.LineHeight)
 	}
 
-	// if n.Style["width"] == "" && n.Style["min-width"] == "" {
-	// 	self.Width = float32(width)
-	// }
+	if n.Style["width"] == "" && n.Style["min-width"] == "" {
+		self.Width = float32(width)
+	}
 
 	return self
 }

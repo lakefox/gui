@@ -4,10 +4,6 @@ import (
 	adapter "gui/adapters"
 	"gui/element"
 	"gui/fps"
-	"hash/fnv"
-	"image"
-	ic "image/color"
-	"math"
 	"slices"
 	"sort"
 
@@ -16,47 +12,44 @@ import (
 
 func Init() *adapter.Adapter {
 	a := adapter.Adapter{}
-	wm := NewWindowManager()
+	wm := NewWindowManager(&a)
 	a.Init = func(width, height int) {
 		wm.OpenWindow(int32(width), int32(height))
+		a.Library.UnloadCallback = func(key string) {
+			t, exists := wm.Textures[key]
+			if exists {
+				rl.UnloadTexture(*t)
+				delete(wm.Textures, key)
+			}
+		}
 	}
 	a.Load = wm.LoadTextures
 	a.Render = func(state []element.State) {
 		if rl.WindowShouldClose() {
 			a.DispatchEvent(element.Event{Name: "close"})
 		}
-		wm.Draw(state, &a)
+		wm.Draw(state)
 	}
 	return &a
 }
 
 // WindowManager manages the window and rectangles
 type WindowManager struct {
-	FPSCounterOn   bool
-	FPS            int32
-	FPSCounter     fps.FPSCounter
-	Textures       map[int]Texture
-	CanvasTextures map[int]CanvasTexture
-	Width          int32
-	Height         int32
-	CurrentEvents  map[int]bool
-	MousePosition  []int
-	MouseState     bool
-	ContextState   bool
-}
-
-type Texture struct {
-	Hash  uint64
-	Image rl.Texture2D
-}
-
-type CanvasTexture struct {
-	Hash  uint64
-	Image rl.Texture2D
+	FPSCounterOn  bool
+	FPS           int32
+	FPSCounter    fps.FPSCounter
+	Textures      map[string]*rl.Texture2D
+	Width         int32
+	Height        int32
+	CurrentEvents map[int]bool
+	MousePosition []int
+	MouseState    bool
+	ContextState  bool
+	Adapter       *adapter.Adapter
 }
 
 // NewWindowManager creates a new WindowManager instance
-func NewWindowManager() *WindowManager {
+func NewWindowManager(a *adapter.Adapter) *WindowManager {
 	fpsCounter := fps.NewFPSCounter()
 
 	mp := rl.GetMousePosition()
@@ -64,6 +57,7 @@ func NewWindowManager() *WindowManager {
 		FPSCounter:    *fpsCounter,
 		CurrentEvents: make(map[int]bool, 256),
 		MousePosition: []int{int(mp.X), int(mp.Y)},
+		Adapter:       a,
 	}
 }
 
@@ -84,67 +78,33 @@ func (wm *WindowManager) SetFPS(fps int) {
 
 func (wm *WindowManager) LoadTextures(nodes []element.State) {
 	if wm.Textures == nil {
-		wm.Textures = make(map[int]Texture)
-	}
-	if wm.CanvasTextures == nil {
-		wm.CanvasTextures = make(map[int]CanvasTexture)
+		wm.Textures = make(map[string]*rl.Texture2D)
 	}
 
-	for i, node := range nodes {
-		if node.Texture != nil {
-			hash := computeImageHash(node.Texture)
-			currentTexture, exists := wm.Textures[i]
-			if !exists || currentTexture.Hash != hash {
-				if exists {
-					rl.UnloadTexture(currentTexture.Image)
-				}
-				texture := rl.LoadTextureFromImage(rl.NewImageFromImage(node.Texture))
-				wm.Textures[i] = Texture{
-					Hash:  hash,
-					Image: texture,
+	for _, node := range nodes {
+		if len(node.Textures) > 0 {
+			for _, key := range node.Textures {
+				_, exists := wm.Textures[key]
+				texture, inLibrary := wm.Adapter.Library.Get(key)
+				if !exists && inLibrary {
+					textureLoaded := rl.LoadTextureFromImage(rl.NewImageFromImage(texture))
+					wm.Textures[key] = &textureLoaded
 				}
 			}
-		}
 
-		if node.Canvas != nil && node.Canvas.Context != nil {
-			hash := computeImageHash(node.Canvas.Context)
-			currentCanvasTexture, exists := wm.CanvasTextures[i]
-			if !exists || currentCanvasTexture.Hash != hash {
-				if exists {
-					rl.UnloadTexture(currentCanvasTexture.Image)
-				}
-				texture := rl.LoadTextureFromImage(rl.NewImageFromImage(node.Canvas.Context))
-				wm.CanvasTextures[i] = CanvasTexture{
-					Hash:  hash,
-					Image: texture,
-				}
-			}
 		}
 	}
 }
 
 // Draw draws all nodes on the window
-func (wm *WindowManager) Draw(nodes []element.State, a *adapter.Adapter) {
+func (wm *WindowManager) Draw(nodes []element.State) {
 	indexes := []float32{0}
-	// !TODO: Only Draw whats in fov
 	rl.BeginDrawing()
-	cw := rl.GetScreenWidth()
-	ch := rl.GetScreenHeight()
-	if cw != int(wm.Width) || ch != int(wm.Height) {
-		e := element.Event{
-			Name: "windowresize",
-			Data: map[string]int{"width": cw, "height": ch},
-		}
-		wm.Width = int32(cw)
-		wm.Height = int32(ch)
-		a.DispatchEvent(e)
-	}
-	wm.GetEvents(a)
+	wm.GetEvents()
 	for a := 0; a < len(indexes); a++ {
-		for i, node := range nodes {
+		for _, node := range nodes {
 
 			if node.Z == indexes[a] {
-				p := node.Padding
 
 				DrawRoundedRect(node.X,
 					node.Y,
@@ -154,13 +114,13 @@ func (wm *WindowManager) Draw(nodes []element.State, a *adapter.Adapter) {
 
 				// Draw the border based on the style for each side
 
-				if node.Canvas != nil {
-					rl.DrawTexture(wm.CanvasTextures[i].Image, int32(node.X), int32(node.Y), rl.White)
-				}
-
-				if node.Texture != nil {
-					r, g, b, a := node.Color.RGBA()
-					rl.DrawTexture(wm.Textures[i].Image, int32(node.X+p.Left+node.Border.Left.Width), int32(node.Y+p.Top+node.Border.Top.Width), ic.RGBA{uint8(r), uint8(g), uint8(b), uint8(a)})
+				if node.Textures != nil {
+					for _, v := range node.Textures {
+						texture, exists := wm.Textures[v]
+						if exists {
+							rl.DrawTexture(*texture, int32(node.X), int32(node.Y), rl.White)
+						}
+					}
 				}
 			} else {
 				if !slices.Contains(indexes, node.Z) {
@@ -178,31 +138,6 @@ func (wm *WindowManager) Draw(nodes []element.State, a *adapter.Adapter) {
 		wm.FPSCounter.Draw(10, 10, 10, rl.DarkGray)
 	}
 	rl.EndDrawing()
-}
-
-// computeImageHash calculates a hash of the image data
-func computeImageHash(img *image.RGBA) uint64 {
-	percentage := 10.0
-	if percentage <= 0 || percentage > 100 {
-		percentage = 100 // Ensure valid percentage range
-	}
-
-	totalPixels := len(img.Pix) / 4 // Each pixel consists of 4 bytes (RGBA)
-
-	if totalPixels == 0 {
-		return 0
-	} else {
-		hasher := fnv.New64a()
-		step := int(math.Max(1, float64(totalPixels)/(float64(totalPixels)*(percentage/100))))
-
-		// Process a subset of the image data based on the percentage
-		for i := 0; i < len(img.Pix); i += step * 4 {
-			hasher.Write(img.Pix[i : i+4])
-		}
-
-		return hasher.Sum64()
-	}
-
 }
 
 func DrawRoundedRect(x, y, width, height float32, topLeftRadius, topRightRadius, bottomLeftRadius, bottomRightRadius float32, color rl.Color) {
@@ -225,7 +160,20 @@ func DrawRoundedRect(x, y, width, height float32, topLeftRadius, topRightRadius,
 	rl.DrawRectangle(int32(x+bottomLeftRadius), int32(y+height-bottomLeftRadius), int32(width-bottomLeftRadius-bottomRightRadius), int32(bottomLeftRadius), color) // Bottom
 }
 
-func (wm *WindowManager) GetEvents(a *adapter.Adapter) {
+func (wm *WindowManager) GetEvents() {
+	cw := rl.GetScreenWidth()
+	ch := rl.GetScreenHeight()
+	if cw != int(wm.Width) || ch != int(wm.Height) {
+		e := element.Event{
+			Name: "windowresize",
+			Data: map[string]int{"width": cw, "height": ch},
+		}
+		wm.Width = int32(cw)
+		wm.Height = int32(ch)
+		wm.Adapter.DispatchEvent(e)
+	}
+
+	// Other keys
 	for i := 8; i <= 255; i++ {
 		// for i := 32; i < 126; i++ {
 		isDown := rl.IsKeyDown(int32(i))
@@ -237,14 +185,14 @@ func (wm *WindowManager) GetEvents(a *adapter.Adapter) {
 				}
 
 				wm.CurrentEvents[i] = true
-				a.DispatchEvent(keydown)
+				wm.Adapter.DispatchEvent(keydown)
 			} else {
 				keyup := element.Event{
 					Name: "keyup",
 					Data: i,
 				}
 				wm.CurrentEvents[i] = false
-				a.DispatchEvent(keyup)
+				wm.Adapter.DispatchEvent(keyup)
 			}
 		}
 	}
@@ -252,7 +200,7 @@ func (wm *WindowManager) GetEvents(a *adapter.Adapter) {
 
 	mp := rl.GetMousePosition()
 	if wm.MousePosition[0] != int(mp.X) || wm.MousePosition[1] != int(mp.Y) {
-		a.DispatchEvent(element.Event{
+		wm.Adapter.DispatchEvent(element.Event{
 			Name: "mousemove",
 			Data: []int{int(mp.X), int(mp.Y)},
 		})
@@ -262,12 +210,12 @@ func (wm *WindowManager) GetEvents(a *adapter.Adapter) {
 	md := rl.IsMouseButtonDown(rl.MouseLeftButton)
 	if md != wm.MouseState {
 		if md {
-			a.DispatchEvent(element.Event{
+			wm.Adapter.DispatchEvent(element.Event{
 				Name: "mousedown",
 			})
 			wm.MouseState = true
 		} else {
-			a.DispatchEvent(element.Event{
+			wm.Adapter.DispatchEvent(element.Event{
 				Name: "mouseup",
 			})
 			wm.MouseState = false
@@ -277,12 +225,12 @@ func (wm *WindowManager) GetEvents(a *adapter.Adapter) {
 	cs := rl.IsMouseButtonPressed(rl.MouseRightButton)
 	if cs != wm.ContextState {
 		if cs {
-			a.DispatchEvent(element.Event{
+			wm.Adapter.DispatchEvent(element.Event{
 				Name: "contextmenudown",
 			})
 			wm.ContextState = true
 		} else {
-			a.DispatchEvent(element.Event{
+			wm.Adapter.DispatchEvent(element.Event{
 				Name: "contextmenuup",
 			})
 			wm.ContextState = false
@@ -292,7 +240,7 @@ func (wm *WindowManager) GetEvents(a *adapter.Adapter) {
 	wd := rl.GetMouseWheelMove()
 
 	if wd != 0 {
-		a.DispatchEvent(element.Event{
+		wm.Adapter.DispatchEvent(element.Event{
 			Name: "scroll",
 			Data: int(wd),
 		})

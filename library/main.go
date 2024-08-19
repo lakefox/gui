@@ -1,8 +1,49 @@
 package library
 
-func New() {
-	// Purpose is to cache and !!!!be the source!!! of all textures, name the textures in a way if the extact same thing is needed, it could be grabed
-	// all textures/contexts should be a pointer to the library
-	// borders should be not draw on the canvas but uploaded here
-	// use a wait group style thing to track when a reference should be cleaned
+import (
+	"image"
+)
+
+type Shelf struct {
+	Textures       map[string]*image.RGBA
+	References     map[string]bool
+	UnloadCallback func(string)
+}
+
+func (s *Shelf) New(key string, img *image.RGBA) string {
+	if s.Textures == nil {
+		s.Textures = map[string]*image.RGBA{}
+	}
+	if s.References == nil {
+		s.References = map[string]bool{}
+	}
+
+	s.Textures[key] = img
+	s.References[key] = true
+	return key
+}
+
+func (s *Shelf) Get(key string) (*image.RGBA, bool) {
+	a, exists := s.Textures[key]
+
+	return a, exists
+}
+
+func (s *Shelf) Check(key string) bool {
+	_, exists := s.Textures[key]
+	if exists {
+		s.References[key] = true
+	}
+	return exists
+}
+
+func (s *Shelf) Close() {
+	for k, v := range s.References {
+		if !v {
+			s.UnloadCallback(k)
+			delete(s.References, k)
+			delete(s.Textures, k)
+		}
+		s.References[k] = false
+	}
 }

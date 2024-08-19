@@ -17,8 +17,10 @@ import (
 	"gui/cstyle/transformers/text"
 	"gui/cstyle/transformers/ul"
 	"gui/font"
+	"gui/library"
 	"gui/scripts"
 	"gui/scripts/a"
+	"image"
 	"time"
 
 	"gui/element"
@@ -148,10 +150,17 @@ func flatten(n *element.Node) []*element.Node {
 }
 
 func View(data *Window, width, height int) {
+
+	shelf := library.Shelf{
+		Textures:   map[string]*image.RGBA{},
+		References: map[string]bool{},
+	}
+
 	debug := false
 	data.Document.Style["width"] = strconv.Itoa(int(width)) + "px"
 	data.Document.Style["height"] = strconv.Itoa(int(height)) + "px"
 
+	data.Adapter.Library = &shelf
 	data.Adapter.Init(width, height)
 	// wm.FPSCounterOn = true
 
@@ -210,7 +219,6 @@ func View(data *Window, width, height int) {
 
 	// Main game loop
 	for !shouldStop {
-		// fmt.Println("######################")
 
 		if !shouldStop && debug {
 			shouldStop = true
@@ -235,6 +243,7 @@ func View(data *Window, width, height int) {
 		newHash, _ := hashStruct(&data.Document.Children[0])
 		eventStore = events.GetEvents(data.Document.Children[0], &state, eventStore)
 		if !bytes.Equal(hash, newHash) || resize {
+
 			hash = newHash
 			lastChange := time.Now()
 			fmt.Println("########################")
@@ -254,7 +263,7 @@ func View(data *Window, width, height int) {
 				Height: float32(height),
 			}
 
-			data.CSS.ComputeNodeStyle(newDoc, &state) // speed up
+			data.CSS.ComputeNodeStyle(newDoc, &state, &shelf) // speed up
 			fmt.Println("Compute Node Style: ", time.Since(lastChange1))
 			lastChange1 = time.Now()
 
@@ -271,13 +280,13 @@ func View(data *Window, width, height int) {
 
 			data.Scripts.Run(&data.Document)
 			fmt.Println("#", time.Since(lastChange))
+			shelf.Close()
 		}
 		data.Adapter.Render(rd)
 
 		// could use a return value that indicates whether or not a event has ran to ramp/deramp fps based on activity
 
 		events.RunEvents(eventStore)
-
 	}
 }
 
@@ -308,10 +317,10 @@ func CopyNode(c cstyle.CSS, node *element.Node, parent *element.Node) *element.N
 	// }
 	n := *node
 	n.Parent = parent
-	lastChange1 := time.Now()
+	// lastChange1 := time.Now()
 	// for get styles, pre load all of the selectors into a map or slice then use a map to point to the index in the slice then search that way
 	n.Style = c.GetStyles(&n)
-	fmt.Println("Styles: ", time.Since(lastChange1))
+	// fmt.Println("Styles: ", time.Since(lastChange1))
 
 	if len(node.Children) > 0 {
 		n.Children = make([]*element.Node, 0, len(node.Children))

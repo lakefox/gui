@@ -4,10 +4,12 @@ import (
 	"gui/canvas"
 	"gui/color"
 	"gui/element"
+	"gui/library"
 	"gui/utils"
 	"image"
 	ic "image/color"
 	"math"
+	"strconv"
 	"strings"
 )
 
@@ -162,29 +164,49 @@ func Parse(cssProperties map[string]string, self, parent element.State) (element
 	}, nil
 }
 
-func Draw(n *element.State) {
+func Draw(n *element.State, shelf *library.Shelf) {
 	// lastChange := time.Now()
 	if n.Border.Top.Width > 0 ||
 		n.Border.Right.Width > 0 ||
 		n.Border.Bottom.Width > 0 ||
 		n.Border.Left.Width > 0 {
-		ctx := canvas.NewCanvas(int(n.X+
-			n.Width+n.Border.Left.Width+n.Border.Right.Width),
-			int(n.Y+n.Height+n.Border.Top.Width+n.Border.Bottom.Width))
-		ctx.StrokeStyle = ic.RGBA{0, 0, 0, 255}
-		if n.Border.Top.Width > 0 {
-			drawBorderSide(ctx, "top", n.Border.Top, n)
+
+		// Format: widthheightborderdatatopleftbottomright
+		// borderdata: widthstylecolorradius
+		// 50020020solid#fff520solid#fff520solid#fff520solid#fff520solid#fff
+		key := strconv.Itoa(int(n.Width)) + strconv.Itoa(int(n.Height)) + (strconv.Itoa(int(n.Border.Top.Width)) + n.Border.Top.Style + utils.RGBAtoString(n.Border.Top.Color) + strconv.Itoa(int(n.Border.Radius.TopLeft))) + (strconv.Itoa(int(n.Border.Left.Width)) + n.Border.Left.Style + utils.RGBAtoString(n.Border.Left.Color) + strconv.Itoa(int(n.Border.Radius.BottomLeft))) + (strconv.Itoa(int(n.Border.Bottom.Width)) + n.Border.Bottom.Style + utils.RGBAtoString(n.Border.Bottom.Color) + strconv.Itoa(int(n.Border.Radius.BottomRight))) + (strconv.Itoa(int(n.Border.Right.Width)) + n.Border.Right.Style + utils.RGBAtoString(n.Border.Right.Color) + strconv.Itoa(int(n.Border.Radius.TopRight)))
+		exists := shelf.Check(key)
+
+		if exists {
+			// Convert slice to a map for faster lookup
+			lookup := make(map[string]struct{}, len(n.Textures))
+			for _, v := range n.Textures {
+				lookup[v] = struct{}{}
+			}
+
+			if _, found := lookup[key]; !found {
+				n.Textures = append(n.Textures, key)
+			}
+		} else {
+			ctx := canvas.NewCanvas(int(n.X+
+				n.Width+n.Border.Left.Width+n.Border.Right.Width),
+				int(n.Y+n.Height+n.Border.Top.Width+n.Border.Bottom.Width))
+			ctx.StrokeStyle = ic.RGBA{0, 0, 0, 255}
+			if n.Border.Top.Width > 0 {
+				drawBorderSide(ctx, "top", n.Border.Top, n)
+			}
+			if n.Border.Right.Width > 0 {
+				drawBorderSide(ctx, "right", n.Border.Right, n)
+			}
+			if n.Border.Bottom.Width > 0 {
+				drawBorderSide(ctx, "bottom", n.Border.Bottom, n)
+			}
+			if n.Border.Left.Width > 0 {
+				drawBorderSide(ctx, "left", n.Border.Left, n)
+			}
+			n.Textures = append(n.Textures, shelf.New(key, ctx.Context))
 		}
-		if n.Border.Right.Width > 0 {
-			drawBorderSide(ctx, "right", n.Border.Right, n)
-		}
-		if n.Border.Bottom.Width > 0 {
-			drawBorderSide(ctx, "bottom", n.Border.Bottom, n)
-		}
-		if n.Border.Left.Width > 0 {
-			drawBorderSide(ctx, "left", n.Border.Left, n)
-		}
-		n.Canvas = ctx
+
 	}
 
 	// fmt.Println(time.Since(lastChange))

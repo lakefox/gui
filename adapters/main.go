@@ -2,13 +2,15 @@ package adapter
 
 import (
 	"gui/element"
+	"gui/library"
 )
 
 type Adapter struct {
-	Init   func(width int, height int)
-	Render func(state []element.State)
-	Load   func(state []element.State)
-	events map[string][]func(element.Event)
+	Init    func(width int, height int)
+	Render  func(state []element.State)
+	Load    func(state []element.State)
+	events  map[string][]func(element.Event)
+	Library *library.Shelf
 }
 
 func (a *Adapter) AddEventListener(name string, callback func(element.Event)) {
