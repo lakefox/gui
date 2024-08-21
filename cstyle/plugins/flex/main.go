@@ -21,6 +21,7 @@ func Init() cstyle.Plugin {
 					matches = false
 				}
 			}
+
 			return matches
 		},
 		Level: 3,

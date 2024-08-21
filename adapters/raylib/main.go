@@ -103,9 +103,7 @@ func (wm *WindowManager) Draw(nodes []element.State) {
 	wm.GetEvents()
 	for a := 0; a < len(indexes); a++ {
 		for _, node := range nodes {
-
 			if node.Z == indexes[a] {
-
 				DrawRoundedRect(node.X,
 					node.Y,
 					node.Width+node.Border.Left.Width+node.Border.Right.Width,

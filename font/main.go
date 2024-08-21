@@ -236,8 +236,6 @@ func getFontsRecursively(dir string, fontPaths *[]string) {
 }
 
 func Render(t *element.Text) (*image.RGBA, int) {
-	// fmt.Println(lines)
-
 	if t.LineHeight == 0 {
 		t.LineHeight = t.EM + 3
 	}

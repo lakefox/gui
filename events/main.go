@@ -6,32 +6,31 @@ import (
 	"gui/utils"
 
 	"slices"
-
-	rl "github.com/gen2brain/raylib-go/raylib"
 )
 
-type RLData struct {
-	MP rl.Vector2
-	LB bool
-	RB bool
-	WD float32
-	KP int32
+type EventData struct {
+	Position []int
+	Click    bool
+	Context  bool
+	Scroll   int
+	Key      int
+	KeyState bool
 }
 
-func GetEvents(el *element.Node, state *map[string]element.State, prevEvents *map[string]element.EventList) *map[string]element.EventList {
-	data := RLData{
-		MP: rl.GetMousePosition(),
-		LB: rl.IsMouseButtonDown(rl.MouseLeftButton),
-		RB: rl.IsMouseButtonPressed(rl.MouseRightButton),
-		WD: rl.GetMouseWheelMove(),
-		KP: rl.GetKeyPressed(),
-	}
-	// fmt.Println(data.WD)
-	// Mouse over
-	// fmt.Println(len(*prevEvents))
-	loop(el, state, data, prevEvents)
-	return prevEvents
-}
+// func GetEvents(el *element.Node, state *map[string]element.State, prevEvents *map[string]element.EventList) *map[string]element.EventList {
+// 	data := RLData{
+// 		MP: rl.GetMousePosition(),
+// 		LB: rl.IsMouseButtonDown(rl.MouseLeftButton),
+// 		RB: rl.IsMouseButtonPressed(rl.MouseRightButton),
+// 		WD: rl.GetMouseWheelMove(),
+// 		KP: rl.GetKeyPressed(),
+// 	}
+// 	// fmt.Println(data.WD)
+// 	// Mouse over
+// 	// fmt.Println(len(*prevEvents))
+// 	loop(el, state, data, prevEvents)
+// 	return prevEvents
+// }
 
 func RunEvents(events *map[string]element.EventList) bool {
 	eventRan := false
@@ -50,7 +49,7 @@ func RunEvents(events *map[string]element.EventList) bool {
 	return eventRan
 }
 
-func loop(el *element.Node, state *map[string]element.State, data RLData, eventTracker *map[string]element.EventList) *element.Node {
+func GetEvents(el *element.Node, state *map[string]element.State, data EventData, eventTracker *map[string]element.EventList) {
 	// loop through state to build events, then use multithreading to complete
 	// map
 	et := *eventTracker
@@ -63,8 +62,8 @@ func loop(el *element.Node, state *map[string]element.State, data RLData, eventT
 	if evt.Target == nil {
 		et[el.Properties.Id] = element.EventList{
 			Event: element.Event{
-				X:          int(data.MP.X),
-				Y:          int(data.MP.Y),
+				X:          data.Position[0],
+				Y:          data.Position[1],
 				MouseUp:    true,
 				MouseLeave: true,
 				Target:     el,
@@ -77,15 +76,15 @@ func loop(el *element.Node, state *map[string]element.State, data RLData, eventT
 
 	var isMouseOver bool
 
-	if self.X < data.MP.X && self.X+self.Width > data.MP.X {
-		if self.Y < data.MP.Y && self.Y+self.Height > data.MP.Y {
+	if self.X < float32(data.Position[0]) && self.X+self.Width > float32(data.Position[0]) {
+		if self.Y < float32(data.Position[1]) && self.Y+self.Height > float32(data.Position[1]) {
 			// Mouse is over element
 			isMouseOver = true
 			if !slices.Contains(el.ClassList.Classes, ":hover") {
 				el.ClassList.Add(":hover")
 			}
 
-			if data.LB && !evt.MouseDown {
+			if data.Click && !evt.MouseDown {
 				evt.MouseDown = true
 				evt.MouseUp = false
 				if el.OnMouseDown != nil {
@@ -94,7 +93,7 @@ func loop(el *element.Node, state *map[string]element.State, data RLData, eventT
 				eventList = append(eventList, "mousedown")
 			}
 
-			if !data.LB && !evt.MouseUp {
+			if !data.Click && !evt.MouseUp {
 				evt.MouseUp = true
 				evt.MouseDown = false
 				evt.Click = false
@@ -104,7 +103,7 @@ func loop(el *element.Node, state *map[string]element.State, data RLData, eventT
 				eventList = append(eventList, "mouseup")
 			}
 
-			if data.LB && !evt.Click {
+			if data.Click && !evt.Click {
 				evt.Click = true
 				if el.OnClick != nil {
 					el.OnClick(evt)
@@ -112,7 +111,7 @@ func loop(el *element.Node, state *map[string]element.State, data RLData, eventT
 				eventList = append(eventList, "click")
 			}
 
-			if data.RB {
+			if data.Context {
 				evt.ContextMenu = true
 				if el.OnContextMenu != nil {
 					el.OnContextMenu(evt)
@@ -120,10 +119,10 @@ func loop(el *element.Node, state *map[string]element.State, data RLData, eventT
 				eventList = append(eventList, "contextmenu")
 			}
 
-			if data.WD != 0 {
+			if data.Scroll != 0 {
 				// fmt.Println(data.WD)
 				// for now just emit a event, will have to add el.scrollX
-				evt.Target.ScrollY = utils.Max(evt.Target.ScrollY+(-data.WD), 0)
+				evt.Target.ScrollY = int(utils.Max(float32(evt.Target.ScrollY+(-data.Scroll)), 0.0))
 
 				if el.OnScroll != nil {
 					el.OnScroll(evt)
@@ -145,9 +144,9 @@ func loop(el *element.Node, state *map[string]element.State, data RLData, eventT
 				eventList = append(eventList, "mouseover")
 			}
 
-			if evt.X != int(data.MP.X) && evt.Y != int(data.MP.Y) {
-				evt.X = int(data.MP.X)
-				evt.Y = int(data.MP.Y)
+			if evt.X != int(data.Position[0]) && evt.Y != int(data.Position[1]) {
+				evt.X = int(data.Position[0])
+				evt.Y = int(data.Position[1])
 				if el.OnMouseMove != nil {
 					el.OnMouseMove(evt)
 				}
@@ -157,10 +156,10 @@ func loop(el *element.Node, state *map[string]element.State, data RLData, eventT
 			// Get the keycode of the pressed key
 			// issue: need to only add the text data and events to focused elements and only
 			// 		  one at a time
-			if data.KP != 0 {
+			if data.Key != 0 {
 				if el.Properties.Editable {
 					el.Value = el.InnerText
-					ProcessKeyEvent(el, int(data.KP))
+					ProcessKeyEvent(el, int(data.Key))
 					fmt.Println(el.Properties.Id, el.Value)
 
 					el.InnerText = el.Value
@@ -201,43 +200,43 @@ func loop(el *element.Node, state *map[string]element.State, data RLData, eventT
 	}
 
 	eventTracker = &et
-	for i, v := range el.Children {
-		el.Children[i] = loop(v, state, data, eventTracker)
+	for _, v := range el.Children {
+		GetEvents(v, state, data, eventTracker)
 	}
-	return el
 }
 
 // ProcessKeyEvent processes key events for text entry.
 func ProcessKeyEvent(n *element.Node, key int) {
 	// Handle key events for text entry
 	switch key {
-	case rl.KeyBackspace:
+	case 8:
 		// Backspace: remove the last character
 		if len(n.Value) > 0 {
 			n.Value = n.Value[:len(n.Value)-1]
+			n.InnerText = n.InnerText[:len(n.InnerText)-1]
 		}
 
-	case rl.KeyA:
+	case 65:
 		// Select All: set the entire text as selected
-		if rl.IsKeyDown(rl.KeyLeftControl) || rl.IsKeyDown(rl.KeyRightControl) {
+		if key == 17 || key == 345 {
 			n.Properties.Selected = []float32{0, float32(len(n.Value))}
 		} else {
 			// Otherwise, append 'A' to the text
 			n.Value += "A"
 		}
 
-	case rl.KeyC:
+	case 67:
 		// Copy: copy the selected text (in this case, print it)
-		if rl.IsKeyDown(rl.KeyLeftControl) || rl.IsKeyDown(rl.KeyRightControl) {
+		if key == 17 || key == 345 {
 			fmt.Println("Copy:", n.Value)
 		} else {
 			// Otherwise, append 'C' to the text
 			n.Value += "C"
 		}
 
-	case rl.KeyV:
+	case 86:
 		// Paste: paste the copied text (in this case, set it to "Pasted")
-		if rl.IsKeyDown(rl.KeyLeftControl) || rl.IsKeyDown(rl.KeyRightControl) {
+		if key == 17 || key == 345 {
 			n.Value = "Pasted"
 		} else {
 			// Otherwise, append 'V' to the text

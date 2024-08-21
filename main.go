@@ -201,20 +201,48 @@ func View(data *Window, width, height int) {
 		shouldStop = true
 	})
 
+	currentEvent := events.EventData{}
+
 	data.Adapter.AddEventListener("keydown", func(e element.Event) {
-		fmt.Println("Down: ", e.Data.(int))
+		currentEvent.Key = e.Data.(int)
+		currentEvent.KeyState = true
+		events.GetEvents(data.Document.Children[0], &state, currentEvent, eventStore)
 	})
 	data.Adapter.AddEventListener("keyup", func(e element.Event) {
-		fmt.Println("Up: ", e.Data.(int))
+		currentEvent.Key = e.Data.(int)
+		currentEvent.KeyState = false
+		events.GetEvents(data.Document.Children[0], &state, currentEvent, eventStore)
 	})
 
-	// data.Adapter.AddEventListener("mousemove", func(e element.Event) {
-	// 	pos := e.Data.([]int)
-	// 	fmt.Println("Mouse: ", pos)
-	// })
+	data.Adapter.AddEventListener("mousemove", func(e element.Event) {
+		pos := e.Data.([]int)
+		currentEvent.Position = pos
+		events.GetEvents(data.Document.Children[0], &state, currentEvent, eventStore)
+	})
 
 	data.Adapter.AddEventListener("scroll", func(e element.Event) {
-		fmt.Println("Scroll: ", e.Data.(int))
+		currentEvent.Scroll = e.Data.(int)
+		events.GetEvents(data.Document.Children[0], &state, currentEvent, eventStore)
+	})
+
+	data.Adapter.AddEventListener("mousedown", func(e element.Event) {
+		currentEvent.Click = true
+		events.GetEvents(data.Document.Children[0], &state, currentEvent, eventStore)
+	})
+
+	data.Adapter.AddEventListener("mouseup", func(e element.Event) {
+		currentEvent.Click = false
+		events.GetEvents(data.Document.Children[0], &state, currentEvent, eventStore)
+	})
+
+	data.Adapter.AddEventListener("contextmenudown", func(e element.Event) {
+		currentEvent.Context = true
+		events.GetEvents(data.Document.Children[0], &state, currentEvent, eventStore)
+	})
+
+	data.Adapter.AddEventListener("contextmenuup", func(e element.Event) {
+		currentEvent.Context = true
+		events.GetEvents(data.Document.Children[0], &state, currentEvent, eventStore)
 	})
 
 	// Main game loop
@@ -224,7 +252,6 @@ func View(data *Window, width, height int) {
 			shouldStop = true
 		}
 		// Check if the window size has changed
-
 		resize := false
 
 		if newWidth != width || newHeight != height {
@@ -241,12 +268,12 @@ func View(data *Window, width, height int) {
 		}
 
 		newHash, _ := hashStruct(&data.Document.Children[0])
-		eventStore = events.GetEvents(data.Document.Children[0], &state, eventStore)
+
 		if !bytes.Equal(hash, newHash) || resize {
 
 			hash = newHash
-			lastChange := time.Now()
 			fmt.Println("########################")
+			lastChange := time.Now()
 			lastChange1 := time.Now()
 
 			// newDoc := data.Document.Children[0]                                     // speed up

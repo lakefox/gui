@@ -27,8 +27,9 @@ type Node struct {
 	Src       string
 	Title     string
 	Attribute map[string]string
+	ScrollX   int
+	ScrollY   int
 
-	ScrollY       float32
 	Value         string
 	OnClick       func(Event) `json:"-"`
 	OnContextMenu func(Event) `json:"-"`
@@ -238,6 +239,7 @@ func TestSelector(selectString string, n *Node) bool {
 
 	selectors = append(selectors, n.TagName)
 	part := selector.SplitSelector(strings.TrimSpace(parts[len(parts)-1]))
+	// fmt.Println(part)
 
 	has := selector.Contains(part, selectors)
 

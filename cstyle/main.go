@@ -8,6 +8,7 @@ import (
 	"gui/font"
 	"gui/library"
 	"gui/parser"
+	"gui/selector"
 	"gui/utils"
 	"image"
 	"os"
@@ -34,11 +35,12 @@ type Transformer struct {
 type CSS struct {
 	Width        float32
 	Height       float32
-	StyleSheets  []map[string]map[string]string
+	StyleSheets  []map[string]*map[string]string
 	Plugins      []Plugin
 	Transformers []Transformer
 	Document     *element.Node
 	Fonts        map[string]imgFont.Face
+	StyleMap     map[string][]*parser.StyleMap
 }
 
 func (c *CSS) Transform(n *element.Node) *element.Node {
@@ -50,10 +52,6 @@ func (c *CSS) Transform(n *element.Node) *element.Node {
 
 	for i := 0; i < len(n.Children); i++ {
 		tc := c.Transform(n.Children[i])
-		// Removing this causes text to break, what does this do??????
-		// its because we are using the dom methods to inject on text, not like ulol, prob need to get those working bc they effect user dom as well
-		// todo: dom fix, inline-block, text align vert (poss by tgting parent node instead), scroll
-		// n = tc.Parent
 		n.Children[i] = tc
 	}
 
@@ -63,13 +61,43 @@ func (c *CSS) Transform(n *element.Node) *element.Node {
 func (c *CSS) StyleSheet(path string) {
 	// Parse the CSS file
 	dat, _ := os.ReadFile(path)
-	styles := parser.ParseCSS(string(dat))
+	styles, styleMaps := parser.ParseCSS(string(dat))
 
+	if c.StyleMap == nil {
+		c.StyleMap = map[string][]*parser.StyleMap{}
+	}
+
+	for k, v := range styleMaps {
+		if c.StyleMap[k] == nil {
+			c.StyleMap[k] = []*parser.StyleMap{}
+		}
+		for smK := range v {
+			v[smK].SheetNumber = len(c.StyleSheets)
+		}
+		c.StyleMap[k] = append(c.StyleMap[k], v...)
+	}
+
+	// c.ProcessStyles(styles)
 	c.StyleSheets = append(c.StyleSheets, styles)
 }
 
 func (c *CSS) StyleTag(css string) {
-	styles := parser.ParseCSS(css)
+	styles, styleMaps := parser.ParseCSS(css)
+
+	if c.StyleMap == nil {
+		c.StyleMap = map[string][]*parser.StyleMap{}
+	}
+
+	for k, v := range styleMaps {
+		if c.StyleMap[k] == nil {
+			c.StyleMap[k] = []*parser.StyleMap{}
+		}
+		for smK := range v {
+			v[smK].SheetNumber = len(c.StyleSheets)
+		}
+		c.StyleMap[k] = append(c.StyleMap[k], v...)
+	}
+
 	c.StyleSheets = append(c.StyleSheets, styles)
 }
 
@@ -143,26 +171,69 @@ func (c *CSS) GetStyles(n *element.Node) map[string]string {
 	}
 
 	// Apply styles from style sheets
-	// lastChange1 := time.Now()
+	selectors := []string{}
+	if n.Properties.Focusable && n.Properties.Focused {
+		selectors = append(selectors, ":focus")
+	}
 
-	for _, styleSheet := range c.StyleSheets {
-		for selector, rules := range styleSheet {
-			originalSelector := selector
+	for _, class := range n.ClassList.Classes {
+		selectors = append(selectors, "."+class)
+	}
 
-			if hovered && strings.Contains(selector, ":hover") {
-				selector = strings.Replace(selector, ":hover", "", -1)
-			}
+	if n.Id != "" {
+		selectors = append(selectors, "#"+n.Id)
+	}
 
-			if element.TestSelector(selector, n) { // Bottle neck
-				for k, v := range rules {
-					styles[k] = v
+	selectors = append(selectors, n.TagName)
+	styleMaps := []*parser.StyleMap{}
+	for _, v := range selectors {
+		styleMaps = append(styleMaps, c.StyleMap[v]...)
+	}
+
+	sort.Slice(styleMaps, func(i, j int) bool {
+		return styleMaps[i].SheetNumber < styleMaps[j].SheetNumber
+	})
+
+	for _, styleMap := range styleMaps {
+		parts := styleMap.Selector
+		currentElement := n
+		for i, part := range parts {
+			if hovered {
+				for i, v := range part {
+					if v == ":hover" {
+						part = append(part[:i], part[i+1:]...)
+						break
+					}
 				}
 			}
+			has := selector.Contains(part, selectors)
+			if i == len(parts)-1 || !has {
+				if has {
+					for k, v := range *styleMap.Styles {
+						styles[k] = v
+					}
+				}
+				break
+			} else {
+				selectors = []string{}
+				currentElement = currentElement.Parent
+				if currentElement.Properties.Focusable && currentElement.Properties.Focused {
+					selectors = append(selectors, ":focus")
+				}
 
-			selector = originalSelector // Restore original selector
+				for _, class := range currentElement.ClassList.Classes {
+					selectors = append(selectors, "."+class)
+				}
+
+				if n.Id != "" {
+					selectors = append(selectors, "#"+currentElement.Id)
+				}
+
+				selectors = append(selectors, currentElement.TagName)
+
+			}
 		}
 	}
-	// fmt.Println("TestSelector: ", time.Since(lastChange1))
 
 	// Parse inline styles
 	inlineStyles := parser.ParseStyleAttribute(n.GetAttribute("style"))
@@ -470,7 +541,11 @@ func genTextNode(n *element.Node, state *map[string]element.State, css *CSS, she
 		if _, found := lookup[key]; !found {
 			self.Textures = append(self.Textures, key)
 		}
-		width = font.MeasureText(&text, text.Text)
+		if text.Last {
+			width = font.MeasureText(&text, text.Text)
+		} else {
+			width = font.MeasureText(&text, text.Text+" ")
+		}
 	} else {
 		var data *image.RGBA
 		data, width = font.Render(&text)

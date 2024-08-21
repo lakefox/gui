@@ -15,7 +15,7 @@ func main() {
 	// defer profile.Start(profile.MemProfile).Stop() // Memory
 	// defaults read ~/Library/Preferences/.GlobalPreferences.plist
 
-	window := gui.Open("./src/index.html")
+	window := gui.Open("./src/app.html")
 	window.Adapter = raylib.Init()
 	document := window.Document
 
@@ -32,7 +32,8 @@ func tgt(e *element.Node) {
 	e.AddEventListener("click", func(e element.Event) {
 		// fmt.Println(document.QuerySelector("body").InnerHTML)
 		fmt.Println(e.Target.TagName)
-		e.Target.Style["background"] = "red"
+		fmt.Println(e.Target.InnerHTML)
+		// e.Target.Style["background"] = "red"
 	})
 
 	for i := range e.Children {
