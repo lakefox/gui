@@ -2,6 +2,7 @@ package events
 
 import (
 	"fmt"
+	adapter "gui/adapters"
 	"gui/element"
 	"gui/utils"
 
@@ -49,7 +50,7 @@ func RunEvents(events *map[string]element.EventList) bool {
 	return eventRan
 }
 
-func GetEvents(el *element.Node, state *map[string]element.State, data EventData, eventTracker *map[string]element.EventList) {
+func GetEvents(el *element.Node, state *map[string]element.State, data EventData, eventTracker *map[string]element.EventList, a *adapter.Adapter) {
 	// loop through state to build events, then use multithreading to complete
 	// map
 	et := *eventTracker
@@ -142,6 +143,12 @@ func GetEvents(el *element.Node, state *map[string]element.State, data EventData
 				}
 				eventList = append(eventList, "mouseenter")
 				eventList = append(eventList, "mouseover")
+
+				// Let the adapter know the cursor has changed
+				a.DispatchEvent(element.Event{
+					Name: "cursor",
+					Data: self.Cursor,
+				})
 			}
 
 			if evt.X != int(data.Position[0]) && evt.Y != int(data.Position[1]) {
@@ -201,7 +208,7 @@ func GetEvents(el *element.Node, state *map[string]element.State, data EventData
 
 	eventTracker = &et
 	for _, v := range el.Children {
-		GetEvents(v, state, data, eventTracker)
+		GetEvents(v, state, data, eventTracker, a)
 	}
 }
 

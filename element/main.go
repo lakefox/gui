@@ -57,6 +57,7 @@ type State struct {
 	// Color      ic.RGBA
 	Margin  MarginPadding
 	Padding MarginPadding
+	Cursor  string
 }
 
 // !FLAG: Plan to get rid of this

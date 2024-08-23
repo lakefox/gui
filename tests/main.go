@@ -15,15 +15,14 @@ func main() {
 	// defer profile.Start(profile.MemProfile).Stop() // Memory
 	// defaults read ~/Library/Preferences/.GlobalPreferences.plist
 
-	window := gui.Open("./src/app.html")
-	window.Adapter = raylib.Init()
+	window := gui.Open("./src/index.html", raylib.Init())
 	document := window.Document
 
 	tgt(document.QuerySelector("body"))
 
-	// document.QuerySelector("#editor").AddEventListener("scroll", func(e element.Event) {
-	// 	fmt.Println(e.Target.ScrollY, e.Target.TagName)
-	// })
+	document.QuerySelector("body").AddEventListener("scroll", func(e element.Event) {
+		fmt.Println(e.Target.ScrollY, e.Target.TagName)
+	})
 
 	gui.View(&window, 850, 400)
 }

@@ -10,19 +10,17 @@ import (
 
 func Init() scripts.Script {
 	return scripts.Script{
-		Call: Call,
-	}
-}
+		Call: func(document *element.Node) {
+			links := document.QuerySelectorAll("a")
 
-func Call(document *element.Node) {
-	links := document.QuerySelectorAll("a")
-
-	for i := range *links {
-		v := *links
-		v[i].AddEventListener("click", func(e element.Event) {
-			fmt.Println("click", v[i].Href)
-			open(v[i].Href)
-		})
+			for i := range *links {
+				v := *links
+				v[i].AddEventListener("click", func(e element.Event) {
+					fmt.Println("click", v[i].Href)
+					open(v[i].Href)
+				})
+			}
+		},
 	}
 }
 

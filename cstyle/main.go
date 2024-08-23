@@ -330,6 +330,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State,
 	p := utils.GetMP(*n, wh, state, "padding")
 	self.Margin = m
 	self.Padding = p
+	self.Cursor = n.Style["cursor"]
 
 	var top, left, right, bottom bool
 
@@ -549,10 +550,7 @@ func genTextNode(n *element.Node, state *map[string]element.State, css *CSS, she
 	} else {
 		var data *image.RGBA
 		data, width = font.Render(&text)
-		// img := image.RGBA{}
-		// self.Texture = &img
 		self.Textures = append(self.Textures, shelf.New(key, data))
-		// self.Texture = img
 	}
 
 	if n.Style["height"] == "" && n.Style["min-height"] == "" {

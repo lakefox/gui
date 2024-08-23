@@ -3,7 +3,6 @@ package raylib
 import (
 	adapter "gui/adapters"
 	"gui/element"
-	"gui/fps"
 	"slices"
 	"sort"
 
@@ -12,6 +11,30 @@ import (
 
 func Init() *adapter.Adapter {
 	a := adapter.Adapter{}
+	a.AddEventListener("cursor", func(e element.Event) {
+		switch e.Data.(string) {
+		case "":
+			rl.SetMouseCursor(0)
+		case "text":
+			rl.SetMouseCursor(2)
+		case "crosshair":
+			rl.SetMouseCursor(3)
+		case "pointer":
+			rl.SetMouseCursor(4)
+		case "ew-resize":
+			rl.SetMouseCursor(5)
+		case "ns-resize":
+			rl.SetMouseCursor(6)
+		case "nwse-resize":
+			rl.SetMouseCursor(7)
+		case "nesw-resize":
+			rl.SetMouseCursor(8)
+		case "grab":
+			rl.SetMouseCursor(9)
+		case "not-allowed":
+			rl.SetMouseCursor(10)
+		}
+	})
 	wm := NewWindowManager(&a)
 	a.Init = func(width, height int) {
 		wm.OpenWindow(int32(width), int32(height))
@@ -37,7 +60,6 @@ func Init() *adapter.Adapter {
 type WindowManager struct {
 	FPSCounterOn  bool
 	FPS           int32
-	FPSCounter    fps.FPSCounter
 	Textures      map[string]*rl.Texture2D
 	Width         int32
 	Height        int32
@@ -50,11 +72,9 @@ type WindowManager struct {
 
 // NewWindowManager creates a new WindowManager instance
 func NewWindowManager(a *adapter.Adapter) *WindowManager {
-	fpsCounter := fps.NewFPSCounter()
 
 	mp := rl.GetMousePosition()
 	return &WindowManager{
-		FPSCounter:    *fpsCounter,
 		CurrentEvents: make(map[int]bool, 256),
 		MousePosition: []int{int(mp.X), int(mp.Y)},
 		Adapter:       a,
@@ -131,10 +151,6 @@ func (wm *WindowManager) Draw(nodes []element.State) {
 		}
 	}
 
-	if wm.FPSCounterOn {
-		wm.FPSCounter.Update()
-		wm.FPSCounter.Draw(10, 10, 10, rl.DarkGray)
-	}
 	rl.EndDrawing()
 }
 

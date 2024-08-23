@@ -151,7 +151,7 @@ func GetMP(n element.Node, wh WidthHeight, state *map[string]element.State, t st
 
 	if t == "margin" {
 		siblingMargin := float32(0)
-
+		firstChild := false
 		// Margin Collapse
 		if n.Parent != nil && ParentStyleProp(n.Parent, "display", func(prop string) bool {
 			return prop == "flex"
@@ -160,6 +160,7 @@ func GetMP(n element.Node, wh WidthHeight, state *map[string]element.State, t st
 			for i, v := range n.Parent.Children {
 				if v.Properties.Id == n.Properties.Id {
 					sibIndex = i - 1
+
 					break
 				}
 			}
@@ -170,11 +171,28 @@ func GetMP(n element.Node, wh WidthHeight, state *map[string]element.State, t st
 		}
 
 		// Handle top margin collapse
-		if m.Top != 0 {
-			if m.Top < 0 {
-				m.Top += siblingMargin
-			} else {
-				m.Top = Max(m.Top-siblingMargin, 0)
+		for i, v := range n.Parent.Children {
+			if v.Properties.Id == n.Properties.Id {
+				if i == 0 {
+					firstChild = true
+				}
+				break
+			}
+		}
+		if firstChild {
+			parent := s[n.Parent.Properties.Id]
+			if parent.Margin.Top < m.Top {
+				parent.Margin.Top = m.Top
+				(*state)[n.Parent.Properties.Id] = parent
+			}
+			m.Top = 0
+		} else {
+			if m.Top != 0 {
+				if m.Top < 0 {
+					m.Top += siblingMargin
+				} else {
+					m.Top = Max(m.Top-siblingMargin, 0)
+				}
 			}
 		}
 
@@ -405,12 +423,6 @@ func SetStructFieldValue(data interface{}, fieldName string, newValue interface{
 	field.Set(reflect.ValueOf(newValue))
 
 }
-
-// func Check(e error) {
-// 	if e != nil {
-// 		panic(e)
-// 	}
-// }
 
 func GetInnerText(n *html.Node) string {
 	var result strings.Builder

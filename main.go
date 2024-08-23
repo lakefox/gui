@@ -13,6 +13,7 @@ import (
 	"gui/cstyle/plugins/inline"
 	"gui/cstyle/plugins/textAlign"
 	flexprep "gui/cstyle/transformers/flex"
+	marginblock "gui/cstyle/transformers/margin-block"
 	"gui/cstyle/transformers/ol"
 	"gui/cstyle/transformers/text"
 	"gui/cstyle/transformers/ul"
@@ -50,8 +51,8 @@ type Window struct {
 	Scripts  scripts.Scripts
 }
 
-func Open(path string) Window {
-	window := New()
+func Open(path string, adapterFunction *adapter.Adapter) Window {
+	window := New(adapterFunction)
 
 	styleSheets, styleTags, htmlNodes := parseHTMLFromFile(path)
 
@@ -68,7 +69,7 @@ func Open(path string) Window {
 	return window
 }
 
-func New() Window {
+func New(adapterFunction *adapter.Adapter) Window {
 	css := cstyle.CSS{
 		Width:  800,
 		Height: 450,
@@ -84,6 +85,7 @@ func New() Window {
 	css.AddPlugin(flex.Init())
 
 	css.AddTransformer(flexprep.Init())
+	css.AddTransformer(marginblock.Init())
 	css.AddTransformer(ul.Init())
 	css.AddTransformer(ol.Init())
 	// css.AddTransformer(textInline.Init())
@@ -102,6 +104,7 @@ func New() Window {
 		CSS:      css,
 		Document: document,
 		Scripts:  s,
+		Adapter:  adapterFunction,
 	}
 }
 
@@ -206,43 +209,43 @@ func View(data *Window, width, height int) {
 	data.Adapter.AddEventListener("keydown", func(e element.Event) {
 		currentEvent.Key = e.Data.(int)
 		currentEvent.KeyState = true
-		events.GetEvents(data.Document.Children[0], &state, currentEvent, eventStore)
+		events.GetEvents(data.Document.Children[0], &state, currentEvent, eventStore, data.Adapter)
 	})
 	data.Adapter.AddEventListener("keyup", func(e element.Event) {
-		currentEvent.Key = e.Data.(int)
+		currentEvent.Key = 0
 		currentEvent.KeyState = false
-		events.GetEvents(data.Document.Children[0], &state, currentEvent, eventStore)
+		events.GetEvents(data.Document.Children[0], &state, currentEvent, eventStore, data.Adapter)
 	})
 
 	data.Adapter.AddEventListener("mousemove", func(e element.Event) {
 		pos := e.Data.([]int)
 		currentEvent.Position = pos
-		events.GetEvents(data.Document.Children[0], &state, currentEvent, eventStore)
+		events.GetEvents(data.Document.Children[0], &state, currentEvent, eventStore, data.Adapter)
 	})
 
 	data.Adapter.AddEventListener("scroll", func(e element.Event) {
 		currentEvent.Scroll = e.Data.(int)
-		events.GetEvents(data.Document.Children[0], &state, currentEvent, eventStore)
+		events.GetEvents(data.Document.Children[0], &state, currentEvent, eventStore, data.Adapter)
 	})
 
 	data.Adapter.AddEventListener("mousedown", func(e element.Event) {
 		currentEvent.Click = true
-		events.GetEvents(data.Document.Children[0], &state, currentEvent, eventStore)
+		events.GetEvents(data.Document.Children[0], &state, currentEvent, eventStore, data.Adapter)
 	})
 
 	data.Adapter.AddEventListener("mouseup", func(e element.Event) {
 		currentEvent.Click = false
-		events.GetEvents(data.Document.Children[0], &state, currentEvent, eventStore)
+		events.GetEvents(data.Document.Children[0], &state, currentEvent, eventStore, data.Adapter)
 	})
 
 	data.Adapter.AddEventListener("contextmenudown", func(e element.Event) {
 		currentEvent.Context = true
-		events.GetEvents(data.Document.Children[0], &state, currentEvent, eventStore)
+		events.GetEvents(data.Document.Children[0], &state, currentEvent, eventStore, data.Adapter)
 	})
 
 	data.Adapter.AddEventListener("contextmenuup", func(e element.Event) {
 		currentEvent.Context = true
-		events.GetEvents(data.Document.Children[0], &state, currentEvent, eventStore)
+		events.GetEvents(data.Document.Children[0], &state, currentEvent, eventStore, data.Adapter)
 	})
 
 	// Main game loop
@@ -272,18 +275,16 @@ func View(data *Window, width, height int) {
 		if !bytes.Equal(hash, newHash) || resize {
 
 			hash = newHash
-			fmt.Println("########################")
+			// fmt.Println("########################")
 			lastChange := time.Now()
-			lastChange1 := time.Now()
+			// lastChange1 := time.Now()
 
-			// newDoc := data.Document.Children[0]                                     // speed up
-			// change to add styles
-			newDoc := CopyNode(data.CSS, data.Document.Children[0], &data.Document) // speed up
-			fmt.Println("Copy Node: ", time.Since(lastChange1))
-			lastChange1 = time.Now()
+			newDoc := AddStyles(data.CSS, data.Document.Children[0], &data.Document)
+			// fmt.Println("Copy Node: ", time.Since(lastChange1))
+			// lastChange1 = time.Now()
 			newDoc = data.CSS.Transform(newDoc)
-			fmt.Println("Transform: ", time.Since(lastChange1))
-			lastChange1 = time.Now()
+			// fmt.Println("Transform: ", time.Since(lastChange1))
+			// lastChange1 = time.Now()
 
 			state["ROOT"] = element.State{
 				Width:  float32(width),
@@ -291,19 +292,19 @@ func View(data *Window, width, height int) {
 			}
 
 			data.CSS.ComputeNodeStyle(newDoc, &state, &shelf) // speed up
-			fmt.Println("Compute Node Style: ", time.Since(lastChange1))
-			lastChange1 = time.Now()
+			// fmt.Println("Compute Node Style: ", time.Since(lastChange1))
+			// lastChange1 = time.Now()
 
 			rd = data.Render(newDoc, &state)
-			fmt.Println("Render: ", time.Since(lastChange1))
-			lastChange1 = time.Now()
+			// fmt.Println("Render: ", time.Since(lastChange1))
+			// lastChange1 = time.Now()
 
 			data.Adapter.Load(rd) // speed up
-			fmt.Println("Load: ", time.Since(lastChange1))
-			lastChange1 = time.Now()
+			// fmt.Println("Load: ", time.Since(lastChange1))
+			// lastChange1 = time.Now()
 
 			AddHTML(&data.Document)
-			fmt.Println("Add HTML: ", time.Since(lastChange1))
+			// fmt.Println("Add HTML: ", time.Since(lastChange1))
 
 			data.Scripts.Run(&data.Document)
 			fmt.Println("#", time.Since(lastChange))
@@ -317,42 +318,16 @@ func View(data *Window, width, height int) {
 	}
 }
 
-func CopyNode(c cstyle.CSS, node *element.Node, parent *element.Node) *element.Node {
-	// n := element.Node{
-	// 	TagName:   node.TagName,
-	// 	InnerText: node.InnerText,
-	// 	Style:     node.Style,
-	// 	Id:        node.Id,
-	// 	ClassList: node.ClassList,
-	// 	Href:      node.Href,
-	// 	Src:       node.Src,
-	// 	Title:     node.Title,
-	// 	Attribute: node.Attribute,
-	// 	Value:     node.Value,
-	// 	ScrollY:   node.ScrollY,
-	// 	InnerHTML: node.InnerHTML,
-	// 	OuterHTML: node.OuterHTML,
-	// 	Parent:    parent,
-	// 	Properties: element.Properties{
-	// 		Id:        node.Properties.Id,
-	// 		Focusable: node.Properties.Focusable,
-	// 		Focused:   node.Properties.Focused,
-	// 		Editable:  node.Properties.Editable,
-	// 		Hover:     node.Properties.Hover,
-	// 		Selected:  node.Properties.Selected,
-	// 	},
-	// }
+func AddStyles(c cstyle.CSS, node *element.Node, parent *element.Node) *element.Node {
 	n := *node
 	n.Parent = parent
-	// lastChange1 := time.Now()
-	// for get styles, pre load all of the selectors into a map or slice then use a map to point to the index in the slice then search that way
+
 	n.Style = c.GetStyles(&n)
-	// fmt.Println("Styles: ", time.Since(lastChange1))
 
 	if len(node.Children) > 0 {
 		n.Children = make([]*element.Node, 0, len(node.Children))
 		for _, v := range node.Children {
-			n.Children = append(n.Children, CopyNode(c, v, &n))
+			n.Children = append(n.Children, AddStyles(c, v, &n))
 		}
 	}
 

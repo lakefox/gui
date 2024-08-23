@@ -46,7 +46,7 @@ func Init() cstyle.Plugin {
 							} else {
 								// Node did not break
 								if sib.Style["display"] != "inline" {
-									self.Y = sibling.Y + sibling.Height
+									self.Y = sibling.Y + sibling.Height + sibling.Border.Top.Width + sibling.Border.Bottom.Width + sibling.Margin.Top + sibling.Margin.Bottom
 								} else {
 									self.Y = sibling.Y
 									self.X = sibling.X + sibling.Width
