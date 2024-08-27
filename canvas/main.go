@@ -93,12 +93,12 @@ func (c *Canvas) LineTo(x, y int) {
 		p1 := c.Path[len(c.Path)-1]
 		p2 := image.Point{x, y}
 
-		points := generatePoints(p1, p2)
+		points := generatePoints(p1, p2, int(c.LineWidth))
 		c.Path = append(c.Path, points...)
 	}
 }
 
-func generatePoints(p1, p2 image.Point) []image.Point {
+func generatePoints(p1, p2 image.Point, lineWidth int) []image.Point {
 	var points []image.Point
 
 	dx := p2.X - p1.X
@@ -112,8 +112,22 @@ func generatePoints(p1, p2 image.Point) []image.Point {
 	x := float64(p1.X)
 	y := float64(p1.Y)
 
+	// Calculate perpendicular offsets based on the line width
+	halfWidth := float64(lineWidth) / 2.0
+	perpendicularX := -yIncrement * halfWidth / math.Sqrt(xIncrement*xIncrement+yIncrement*yIncrement)
+	perpendicularY := xIncrement * halfWidth / math.Sqrt(xIncrement*xIncrement+yIncrement*yIncrement)
+
 	for i := 0; i <= steps; i++ {
-		points = append(points, image.Point{int(math.Round(x)), int(math.Round(y))})
+		// centerPoint := image.Point{int(math.Round(x)), int(math.Round(y))}
+		// Generate points across the width of the line
+		for lw := -halfWidth; lw <= halfWidth; lw++ {
+			offsetX := perpendicularX * lw / halfWidth
+			offsetY := perpendicularY * lw / halfWidth
+			points = append(points, image.Point{
+				X: int(math.Round(x + offsetX)),
+				Y: int(math.Round(y + offsetY)),
+			})
+		}
 		x += xIncrement
 		y += yIncrement
 	}
@@ -123,7 +137,6 @@ func generatePoints(p1, p2 image.Point) []image.Point {
 
 // BeginPath starts a new path
 func (c *Canvas) BeginPath() {
-	// c.path = [][]image.Point{}
 	c.Path = []image.Point{}
 }
 
@@ -131,39 +144,31 @@ func (c *Canvas) BeginPath() {
 func (c *Canvas) Stroke() {
 	c.runTransforms()
 	color := c.StrokeStyle
-	// for i := 1; i < len(c.Path); i++ {
 	points := c.Path
 	for i := 0; i < len(points); i++ {
-		// color.R = (c.StrokeStyle.R / uint8(len(c.path))) * uint8(i)
-		// color.G = (c.StrokeStyle.G / uint8(len(c.path))) * uint8(i)
-		// color.B = (c.StrokeStyle.B / uint8(len(c.path))) * uint8(i)
 		xy := points[i]
 		c.Context.Set(xy.X, xy.Y, color)
-		// drawLine(c.Context, c.Path[i-1], c.Path[i], color, c.LineWidth)
 	}
-	// c.BeginPath()
 }
 
 // Fill fills the current path
 func (c *Canvas) Fill() {
-	// Idea is to stroke the shape then flood fill it but we need to find a start point
-	// So go to the middle key in grid and find the middle value.
-	// Are there issue with this method, yes
+	lw := c.LineWidth
+	c.LineWidth = 1
 	c.Stroke()
+	c.LineWidth = lw
 	points := c.Path
 	img := c.Context
 
-	// insidePoint := FindPointInsidePolygon(points)
-
 	fillPolygon(img, points, c.FillStyle)
-
-	// if len(c.Path) > 0 {
-	// 	floodFill(img, insidePoint, c.FillStyle)
-	// }
-	c.BeginPath()
 }
 
 func (c *Canvas) Arc(x, y, radius, startAngle, endAngle float64, clockwise bool) {
+	// Set a minimum radius to avoid the arc inverting or collapsing
+	if radius < 1 {
+		radius = 1
+	}
+
 	for ri := 0; ri <= int(c.LineWidth); ri++ {
 		r := radius - float64(ri)
 		var angleStep float64
@@ -172,6 +177,11 @@ func (c *Canvas) Arc(x, y, radius, startAngle, endAngle float64, clockwise bool)
 		} else {
 			angleStep = (startAngle - endAngle) / float64(EstimateArcPixels(startAngle, endAngle, r))
 		}
+
+		// // Set a minimum step to ensure enough points are calculated
+		// if math.Abs(angleStep) < 0.01 {
+		// 	angleStep = 0.01
+		// }
 
 		var lastX, lastY int
 		for angle := 0.0; math.Abs(angle) < math.Abs(endAngle-startAngle); angle += angleStep {
@@ -207,10 +217,14 @@ func EstimateArcPixels(startAngle, stopAngle, radius float64) int {
 
 	// Assuming each pixel approximately covers 1 unit length
 	// Adjust the pixel density factor as needed for different resolutions
-	pixelDensityFactor := 0.3 // This can be adjusted based on resolution
+	pixelDensityFactor := 0.1 // This can be adjusted based on resolution
 
 	// Estimate the number of pixels along the arc length
 	numPixels := int(math.Round(arcLength / pixelDensityFactor))
+
+	if numPixels < 5 {
+		numPixels = 5
+	}
 
 	return numPixels
 }
@@ -316,18 +330,82 @@ func (c *Canvas) StrokeText(text string, x, y int, size float64) error {
 }
 
 // RoundedRect adds a rounded rectangle to the path
-func (c *Canvas) RoundedRect(x, y, width, height, radius int) {
-	c.BeginPath()
-	c.MoveTo(x+radius, y)
-	c.LineTo(x+width-radius, y)
-	c.Arc(float64(x+width-radius), float64(y+radius), float64(radius), 1.5*math.Pi, 2*math.Pi, true)
-	c.LineTo(x+width, y+height-radius)
-	c.Arc(float64(x+width-radius), float64(y+height-radius), float64(radius), 0, 0.5*math.Pi, true)
-	c.LineTo(x+radius, y+height)
-	c.Arc(float64(x+radius), float64(y+height-radius), float64(radius), 0.5*math.Pi, math.Pi, true)
-	c.LineTo(x, y+radius)
-	c.Arc(float64(x+radius), float64(y+radius), float64(radius), math.Pi, 1.5*math.Pi, true)
-	c.ClosePath()
+func (c *Canvas) RoundedRect(x, y, width, height int, radii []int) {
+	halfLine := int(c.LineWidth / 2)
+
+	// Handle different numbers of radii
+	var topLeftRadius, topRightRadius, bottomRightRadius, bottomLeftRadius int
+
+	switch len(radii) {
+	case 1:
+		// All corners have the same radius
+		topLeftRadius = radii[0]
+		topRightRadius = radii[0]
+		bottomRightRadius = radii[0]
+		bottomLeftRadius = radii[0]
+	case 2:
+		// First value for top-left and bottom-right, second for top-right and bottom-left
+		topLeftRadius = radii[0]
+		bottomRightRadius = radii[0]
+		topRightRadius = radii[1]
+		bottomLeftRadius = radii[1]
+	case 4:
+		// Each corner has its own radius
+		topLeftRadius = radii[0]
+		topRightRadius = radii[1]
+		bottomRightRadius = radii[2]
+		bottomLeftRadius = radii[3]
+	default:
+		// If the input is invalid, default to 0 for all radii
+		topLeftRadius = 0
+		topRightRadius = 0
+		bottomRightRadius = 0
+		bottomLeftRadius = 0
+	}
+
+	if topLeftRadius == 0 && topRightRadius == 0 && bottomRightRadius == 0 && bottomLeftRadius == 0 {
+		// Draw a regular rectangle without arcs
+		c.MoveTo(x, y+halfLine)
+		c.LineTo(x+width, y+halfLine) // top
+
+		c.MoveTo(x+width-halfLine, y)
+		c.LineTo(x+width-halfLine, y+height) // right
+
+		c.MoveTo(x+width, y+height-halfLine)
+		c.LineTo(x, y+height-halfLine) // bottom
+
+		c.MoveTo(x+halfLine, y+height)
+		c.LineTo(x+halfLine, y) // left
+		return
+	}
+
+	// Draw top edge and top-right corner
+	c.MoveTo(x+topLeftRadius, y+halfLine)
+	c.LineTo(x+width-topRightRadius, y+halfLine) // top
+	if topRightRadius > 0 {
+		c.Arc(float64(x+width-topRightRadius), float64(y+topRightRadius), float64(topRightRadius), 1.5*math.Pi, 2*math.Pi, true)
+	}
+
+	// Draw right edge and bottom-right corner
+	c.MoveTo(x+width-halfLine, y+topRightRadius)
+	c.LineTo(x+width-halfLine, y+height-bottomRightRadius) // right
+	if bottomRightRadius > 0 {
+		c.Arc(float64(x+width-bottomRightRadius), float64(y+height-bottomRightRadius), float64(bottomRightRadius), 0, 0.5*math.Pi, true)
+	}
+
+	// Draw bottom edge and bottom-left corner
+	c.MoveTo(x+width-bottomRightRadius, y+height-halfLine)
+	c.LineTo(x+bottomLeftRadius, y+height-halfLine) // bottom
+	if bottomLeftRadius > 0 {
+		c.Arc(float64(x+bottomLeftRadius), float64(y+height-bottomLeftRadius), float64(bottomLeftRadius), 0.5*math.Pi, math.Pi, true)
+	}
+
+	// Draw left edge and top-left corner
+	c.MoveTo(x+halfLine, y+height-bottomLeftRadius)
+	c.LineTo(x+halfLine, y+topLeftRadius) // left
+	if topLeftRadius > 0 {
+		c.Arc(float64(x+topLeftRadius), float64(y+topLeftRadius), float64(topLeftRadius), math.Pi, 1.5*math.Pi, true)
+	}
 }
 
 // ClosePath closes the current path

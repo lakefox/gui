@@ -35,6 +35,11 @@ func Init() *adapter.Adapter {
 			rl.SetMouseCursor(10)
 		}
 	})
+	a.Options = adapter.Options{
+		RenderText:     true,
+		RenderElements: true,
+		RenderBorders:  true,
+	}
 	wm := NewWindowManager(&a)
 	a.Init = func(width, height int) {
 		wm.OpenWindow(int32(width), int32(height))
@@ -104,9 +109,14 @@ func (wm *WindowManager) LoadTextures(nodes []element.State) {
 	for _, node := range nodes {
 		if len(node.Textures) > 0 {
 			for _, key := range node.Textures {
-				_, exists := wm.Textures[key]
+				rt, exists := wm.Textures[key]
 				texture, inLibrary := wm.Adapter.Library.Get(key)
-				if !exists && inLibrary {
+				matches := true
+				if inLibrary && exists {
+					tb := texture.Bounds()
+					matches = (rt.Width == int32(tb.Dx()) && rt.Height == int32(tb.Dy()))
+				}
+				if (!exists && inLibrary) || !matches {
 					textureLoaded := rl.LoadTextureFromImage(rl.NewImageFromImage(texture))
 					wm.Textures[key] = &textureLoaded
 				}
@@ -124,11 +134,11 @@ func (wm *WindowManager) Draw(nodes []element.State) {
 	for a := 0; a < len(indexes); a++ {
 		for _, node := range nodes {
 			if node.Z == indexes[a] {
-				DrawRoundedRect(node.X,
-					node.Y,
-					node.Width+node.Border.Left.Width+node.Border.Right.Width,
-					node.Height+node.Border.Top.Width+node.Border.Bottom.Width,
-					node.Border.Radius.TopLeft, node.Border.Radius.TopRight, node.Border.Radius.BottomLeft, node.Border.Radius.BottomRight, node.Background)
+				// DrawRoundedRect(node.X,
+				// 	node.Y,
+				// 	node.Width+node.Border.Left.Width+node.Border.Right.Width,
+				// 	node.Height+node.Border.Top.Width+node.Border.Bottom.Width,
+				// 	node.Border.Radius.TopLeft, node.Border.Radius.TopRight, node.Border.Radius.BottomLeft, node.Border.Radius.BottomRight, node.Background)
 
 				// Draw the border based on the style for each side
 

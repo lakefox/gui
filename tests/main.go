@@ -18,11 +18,28 @@ func main() {
 	window := gui.Open("./src/index.html", raylib.Init())
 	document := window.Document
 
-	tgt(document.QuerySelector("body"))
+	body := document.QuerySelector("body")
+
+	tgt(body)
 
 	document.QuerySelector("body").AddEventListener("scroll", func(e element.Event) {
 		fmt.Println(e.Target.ScrollY, e.Target.TagName)
 	})
+
+	// canvas := document.CreateElement("canvas")
+	// canvas.Style["background"] = "#00f"
+	// ctx := canvas.GetContext(300, 300)
+
+	// ctx.BeginPath()
+	// // ctx.MoveTo(0, 0)
+	// // ctx.LineTo(100, 100)
+	// ctx.LineWidth = 10
+	// ctx.RoundedRect(10, 10, 100, 100, []int{50, 40})
+	// ctx.FillStyle = color.RGBA{255, 0, 0, 255}
+	// ctx.StrokeStyle = color.RGBA{255, 0, 0, 255}
+	// ctx.Stroke()
+	// ctx.ClosePath()
+	// body.AppendChild(&canvas)
 
 	gui.View(&window, 850, 400)
 }

@@ -1,5 +1,10 @@
 /* https://chromium.googlesource.com/chromium/blink/+/master/Source/core/css/html.css
  */
+
+* {
+    cursor: default;
+}
+
 html {
     display: block;
     width: 100%;

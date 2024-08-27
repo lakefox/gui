@@ -29,6 +29,7 @@ type Node struct {
 	Attribute map[string]string
 	ScrollX   int
 	ScrollY   int
+	Context   *canvas.Canvas
 
 	Value         string
 	OnClick       func(Event) `json:"-"`
@@ -340,8 +341,12 @@ func (n *Node) Blur() {
 	}
 }
 
-func (n *Node) GetContext(width, height int) canvas.Canvas {
-	return *canvas.NewCanvas(width, height)
+func (n *Node) GetContext(width, height int) *canvas.Canvas {
+	n.Style["width"] = strconv.Itoa(width) + "px"
+	n.Style["height"] = strconv.Itoa(height) + "px"
+	ctx := canvas.NewCanvas(width, height)
+	n.Context = ctx
+	return ctx
 }
 
 type Event struct {

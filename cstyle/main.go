@@ -2,7 +2,9 @@ package cstyle
 
 import (
 	"fmt"
+	adapter "gui/adapters"
 	"gui/border"
+	"gui/canvas"
 	"gui/color"
 	"gui/element"
 	"gui/font"
@@ -41,6 +43,7 @@ type CSS struct {
 	Document     *element.Node
 	Fonts        map[string]imgFont.Face
 	StyleMap     map[string][]*parser.StyleMap
+	Options      adapter.Options
 }
 
 func (c *CSS) Transform(n *element.Node) *element.Node {
@@ -402,11 +405,27 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State,
 	(*state)[n.Properties.Id] = self
 	if !utils.ChildrenHaveText(n) && len(n.InnerText) > 0 {
 		n.InnerText = strings.TrimSpace(n.InnerText)
-		// lastChange1 := time.Now()
 		self = genTextNode(n, state, c, shelf)
-		// fmt.Println("Text: ", time.Since(lastChange1))
 
 	}
+
+	// Load canvas into textures
+	if n.TagName == "canvas" {
+		if n.Context != nil {
+			found := false
+			key := n.Properties.Id + "canvas"
+			for _, v := range self.Textures {
+				if v == key {
+					found = true
+				}
+			}
+			can := shelf.Set(key, n.Context.Context)
+			if !found {
+				self.Textures = append(self.Textures, can)
+			}
+		}
+	}
+
 	(*state)[n.Properties.Id] = self
 	(*state)[n.Parent.Properties.Id] = parent
 
@@ -440,6 +459,50 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State,
 	for _, v := range plugins {
 		if v.Selector(n) {
 			v.Handler(n, state)
+		}
+	}
+
+	// Option: Have Grim render all elements
+	if c.Options.RenderElements {
+		wbw := int(self.Width + self.Border.Left.Width + self.Border.Right.Width)
+		hbw := int(self.Height + self.Border.Top.Width + self.Border.Bottom.Width)
+
+		key := strconv.Itoa(wbw) + strconv.Itoa(hbw) + utils.RGBAtoString(self.Background)
+
+		exists := shelf.Check(key)
+		bounds := shelf.Bounds(key)
+		// fmt.Println(n.Properties.Id, self.Width, self.Height, bounds)
+
+		if exists && bounds[0] == int(wbw) && bounds[1] == int(hbw) {
+			lookup := make(map[string]struct{}, len(self.Textures))
+			for _, v := range self.Textures {
+				lookup[v] = struct{}{}
+			}
+
+			if _, found := lookup[key]; !found {
+				self.Textures = append([]string{key}, self.Textures...)
+			}
+		} else if self.Background.A > 0 {
+			can := canvas.NewCanvas(wbw, hbw)
+			can.BeginPath()
+			can.FillStyle = self.Background
+			can.LineWidth = 10
+			can.RoundedRect(0, 0, wbw, hbw,
+				[]int{int(self.Border.Radius.TopLeft), int(self.Border.Radius.TopRight), int(self.Border.Radius.BottomRight), int(self.Border.Radius.BottomLeft)})
+			can.Fill()
+			can.ClosePath()
+
+			shelf.Set(key, can.Context)
+			lookup := make(map[string]struct{}, len(self.Textures))
+			for _, v := range self.Textures {
+				lookup[v] = struct{}{}
+			}
+
+			if _, found := lookup[key]; !found {
+				self.Textures = append([]string{key}, self.Textures...)
+			}
+
+			(*state)[n.Properties.Id] = self
 		}
 	}
 
@@ -550,7 +613,7 @@ func genTextNode(n *element.Node, state *map[string]element.State, css *CSS, she
 	} else {
 		var data *image.RGBA
 		data, width = font.Render(&text)
-		self.Textures = append(self.Textures, shelf.New(key, data))
+		self.Textures = append(self.Textures, shelf.Set(key, data))
 	}
 
 	if n.Style["height"] == "" && n.Style["min-height"] == "" {

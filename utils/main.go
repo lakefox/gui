@@ -619,5 +619,5 @@ func ParentStyleProp(n *element.Node, prop string, selector func(string) bool) b
 	return false
 }
 func RGBAtoString(c ic.RGBA) string {
-	return fmt.Sprintf("RGBA(%d, %d, %d, %d)", c.R, c.G, c.B, c.A)
+	return fmt.Sprintf("R%d%d%d%d", c.R, c.G, c.B, c.A)
 }

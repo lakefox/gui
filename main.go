@@ -182,6 +182,8 @@ func View(data *Window, width, height int) {
 	var hash []byte
 	var rd []element.State
 
+	data.CSS.Options = data.Adapter.Options
+
 	// Load init font
 	if data.CSS.Fonts == nil {
 		data.CSS.Fonts = map[string]imgFont.Face{}

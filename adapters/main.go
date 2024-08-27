@@ -11,6 +11,13 @@ type Adapter struct {
 	Load    func(state []element.State)
 	events  map[string][]func(element.Event)
 	Library *library.Shelf
+	Options Options
+}
+
+type Options struct {
+	RenderText     bool
+	RenderElements bool
+	RenderBorders  bool
 }
 
 func (a *Adapter) AddEventListener(name string, callback func(element.Event)) {

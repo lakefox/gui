@@ -10,7 +10,7 @@ type Shelf struct {
 	UnloadCallback func(string)
 }
 
-func (s *Shelf) New(key string, img *image.RGBA) string {
+func (s *Shelf) Set(key string, img *image.RGBA) string {
 	if s.Textures == nil {
 		s.Textures = map[string]*image.RGBA{}
 	}
@@ -36,6 +36,19 @@ func (s *Shelf) Check(key string) bool {
 		return true
 	}
 	return false
+}
+
+func (s *Shelf) Bounds(key string) []int {
+	if _, exists := s.Textures[key]; exists {
+		b := s.Textures[key].Bounds()
+		return []int{b.Dx(), b.Dy()}
+	} else {
+		return []int{0, 0}
+	}
+}
+
+func (s *Shelf) Delete(key string) {
+	delete(s.Textures, key)
 }
 
 func (s *Shelf) Close() {
