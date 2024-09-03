@@ -59,6 +59,15 @@ type State struct {
 	Margin  MarginPadding
 	Padding MarginPadding
 	Cursor  string
+	Crop    Crop
+	Hidden  bool
+}
+
+type Crop struct {
+	X      int
+	Y      int
+	Width  int
+	Height int
 }
 
 // !FLAG: Plan to get rid of this

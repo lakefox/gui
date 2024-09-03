@@ -14,6 +14,7 @@ html {
     font-family: serif;
     color: #000000;
     background-color: #ffffff;
+    overflow-y: auto;
 }
 head {
     display: none;

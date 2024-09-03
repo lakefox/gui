@@ -164,6 +164,9 @@ func (c *CSS) GetStyles(n *element.Node) map[string]string {
 		styles[k] = v
 	}
 
+	// !IDEA: Might be able to only reload page if element that is being hoverved over has a possible :hover class
+	// + might addeventlisteners here?????
+
 	// Check if node is hovered
 	hovered := false
 	for _, class := range n.ClassList.Classes {

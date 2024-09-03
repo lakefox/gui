@@ -9,6 +9,7 @@ import (
 	"fmt"
 	adapter "gui/adapters"
 	"gui/cstyle"
+	"gui/cstyle/plugins/crop"
 	"gui/cstyle/plugins/flex"
 	"gui/cstyle/plugins/inline"
 	"gui/cstyle/plugins/textAlign"
@@ -83,6 +84,7 @@ func New(adapterFunction *adapter.Adapter) Window {
 	css.AddPlugin(textAlign.Init())
 	// css.AddPlugin(inlineText.Init())
 	css.AddPlugin(flex.Init())
+	css.AddPlugin(crop.Init())
 
 	css.AddTransformer(flexprep.Init())
 	css.AddTransformer(marginblock.Init())
@@ -167,10 +169,6 @@ func View(data *Window, width, height int) {
 	data.Adapter.Init(width, height)
 	// wm.FPSCounterOn = true
 
-	evts := map[string]element.EventList{}
-
-	eventStore := &evts
-
 	state := map[string]element.State{}
 	state["ROOT"] = element.State{
 		Width:  float32(width),
@@ -180,6 +178,9 @@ func View(data *Window, width, height int) {
 	shouldStop := false
 
 	var hash []byte
+
+	// data.Document.Children[0] = AddStyles(data.CSS, data.Document.Children[0], &data.Document)
+
 	var rd []element.State
 
 	data.CSS.Options = data.Adapter.Options
@@ -196,6 +197,13 @@ func View(data *Window, width, height int) {
 
 	newWidth, newHeight := width, height
 
+	monitor := events.Monitor{
+		History:  &map[string]element.EventList{},
+		Adapter:  data.Adapter,
+		State:    &state,
+		Document: &data.Document,
+	}
+
 	data.Adapter.AddEventListener("windowresize", func(e element.Event) {
 		wh := e.Data.(map[string]int)
 		newWidth = wh["width"]
@@ -211,43 +219,45 @@ func View(data *Window, width, height int) {
 	data.Adapter.AddEventListener("keydown", func(e element.Event) {
 		currentEvent.Key = e.Data.(int)
 		currentEvent.KeyState = true
-		events.GetEvents(data.Document.Children[0], &state, currentEvent, eventStore, data.Adapter)
+		monitor.GetEvents(&currentEvent)
 	})
 	data.Adapter.AddEventListener("keyup", func(e element.Event) {
 		currentEvent.Key = 0
 		currentEvent.KeyState = false
-		events.GetEvents(data.Document.Children[0], &state, currentEvent, eventStore, data.Adapter)
+		monitor.GetEvents(&currentEvent)
 	})
 
 	data.Adapter.AddEventListener("mousemove", func(e element.Event) {
 		pos := e.Data.([]int)
 		currentEvent.Position = pos
-		events.GetEvents(data.Document.Children[0], &state, currentEvent, eventStore, data.Adapter)
+		monitor.GetEvents(&currentEvent)
 	})
 
 	data.Adapter.AddEventListener("scroll", func(e element.Event) {
 		currentEvent.Scroll = e.Data.(int)
-		events.GetEvents(data.Document.Children[0], &state, currentEvent, eventStore, data.Adapter)
+		// data.Document.Children[0].ScrollY = 120
+		monitor.GetEvents(&currentEvent)
+		currentEvent.Scroll = 0
 	})
 
 	data.Adapter.AddEventListener("mousedown", func(e element.Event) {
 		currentEvent.Click = true
-		events.GetEvents(data.Document.Children[0], &state, currentEvent, eventStore, data.Adapter)
+		monitor.GetEvents(&currentEvent)
 	})
 
 	data.Adapter.AddEventListener("mouseup", func(e element.Event) {
 		currentEvent.Click = false
-		events.GetEvents(data.Document.Children[0], &state, currentEvent, eventStore, data.Adapter)
+		monitor.GetEvents(&currentEvent)
 	})
 
 	data.Adapter.AddEventListener("contextmenudown", func(e element.Event) {
 		currentEvent.Context = true
-		events.GetEvents(data.Document.Children[0], &state, currentEvent, eventStore, data.Adapter)
+		monitor.GetEvents(&currentEvent)
 	})
 
 	data.Adapter.AddEventListener("contextmenuup", func(e element.Event) {
 		currentEvent.Context = true
-		events.GetEvents(data.Document.Children[0], &state, currentEvent, eventStore, data.Adapter)
+		monitor.GetEvents(&currentEvent)
 	})
 
 	// Main game loop
@@ -275,13 +285,13 @@ func View(data *Window, width, height int) {
 		newHash, _ := hashStruct(&data.Document.Children[0])
 
 		if !bytes.Equal(hash, newHash) || resize {
-
 			hash = newHash
 			// fmt.Println("########################")
 			lastChange := time.Now()
 			// lastChange1 := time.Now()
 
 			newDoc := AddStyles(data.CSS, data.Document.Children[0], &data.Document)
+
 			// fmt.Println("Copy Node: ", time.Since(lastChange1))
 			// lastChange1 = time.Now()
 			newDoc = data.CSS.Transform(newDoc)
@@ -313,10 +323,7 @@ func View(data *Window, width, height int) {
 			shelf.Close()
 		}
 		data.Adapter.Render(rd)
-
-		// could use a return value that indicates whether or not a event has ran to ramp/deramp fps based on activity
-
-		events.RunEvents(eventStore)
+		monitor.RunEvents()
 	}
 }
 

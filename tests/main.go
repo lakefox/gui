@@ -22,9 +22,9 @@ func main() {
 
 	tgt(body)
 
-	document.QuerySelector("body").AddEventListener("scroll", func(e element.Event) {
-		fmt.Println(e.Target.ScrollY, e.Target.TagName)
-	})
+	// document.QuerySelector("body").AddEventListener("scroll", func(e element.Event) {
+	// 	fmt.Println(e.Target.ScrollY, e.Target.TagName)
+	// })
 
 	// canvas := document.CreateElement("canvas")
 	// canvas.Style["background"] = "#00f"

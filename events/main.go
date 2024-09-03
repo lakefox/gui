@@ -18,24 +18,17 @@ type EventData struct {
 	KeyState bool
 }
 
-// func GetEvents(el *element.Node, state *map[string]element.State, prevEvents *map[string]element.EventList) *map[string]element.EventList {
-// 	data := RLData{
-// 		MP: rl.GetMousePosition(),
-// 		LB: rl.IsMouseButtonDown(rl.MouseLeftButton),
-// 		RB: rl.IsMouseButtonPressed(rl.MouseRightButton),
-// 		WD: rl.GetMouseWheelMove(),
-// 		KP: rl.GetKeyPressed(),
-// 	}
-// 	// fmt.Println(data.WD)
-// 	// Mouse over
-// 	// fmt.Println(len(*prevEvents))
-// 	loop(el, state, data, prevEvents)
-// 	return prevEvents
-// }
+type Monitor struct {
+	Document  *element.Node
+	State     *map[string]element.State
+	EventList *element.EventList
+	Adapter   *adapter.Adapter
+	History   *map[string]element.EventList
+}
 
-func RunEvents(events *map[string]element.EventList) bool {
+func (m *Monitor) RunEvents() bool {
 	eventRan := false
-	for _, evt := range *events {
+	for _, evt := range *m.History {
 		if len(evt.List) > 0 {
 			for _, v := range evt.List {
 				if len(evt.Event.Target.Properties.EventListeners[v]) > 0 {
@@ -50,29 +43,36 @@ func RunEvents(events *map[string]element.EventList) bool {
 	return eventRan
 }
 
-func GetEvents(el *element.Node, state *map[string]element.State, data EventData, eventTracker *map[string]element.EventList, a *adapter.Adapter) {
+func (m *Monitor) GetEvents(data *EventData) {
+	m.CalcEvents(m.Document, data)
+}
+
+func (m *Monitor) CalcEvents(el *element.Node, data *EventData) {
 	// loop through state to build events, then use multithreading to complete
 	// map
-	et := *eventTracker
-	eventList := []string{}
-	evt := et[el.Properties.Id].Event
+	for _, v := range el.Children {
+		m.CalcEvents(v, data)
+	}
 
-	s := *state
+	mHistory := *m.History
+	eventList := []string{}
+	evt := mHistory[el.Properties.Id].Event
+
+	s := *m.State
 	self := s[el.Properties.Id]
 
 	if evt.Target == nil {
-		et[el.Properties.Id] = element.EventList{
-			Event: element.Event{
-				X:          data.Position[0],
-				Y:          data.Position[1],
-				MouseUp:    true,
-				MouseLeave: true,
-				Target:     el,
-			},
-			List: []string{},
+		evt = element.Event{
+			X:          data.Position[0],
+			Y:          data.Position[1],
+			MouseUp:    true,
+			MouseLeave: true,
+			Target:     el,
 		}
-
-		evt = et[el.Properties.Id].Event
+		(*m.History)[el.Properties.Id] = element.EventList{
+			Event: evt,
+			List:  []string{},
+		}
 	}
 
 	var isMouseOver bool
@@ -122,12 +122,13 @@ func GetEvents(el *element.Node, state *map[string]element.State, data EventData
 
 			if data.Scroll != 0 {
 				// fmt.Println(data.WD)
-				// for now just emit a event, will have to add el.scrollX
-				evt.Target.ScrollY = int(utils.Max(float32(evt.Target.ScrollY+(-data.Scroll)), 0.0))
-
+				// !TODO: for now just emit a event, will have to add el.scrollX
+				el.ScrollY = int(utils.Max(float32(el.ScrollY+(-data.Scroll)), 0.0))
 				if el.OnScroll != nil {
 					el.OnScroll(evt)
 				}
+
+				// data.Scroll = 0
 				eventList = append(eventList, "scroll")
 			}
 
@@ -145,7 +146,7 @@ func GetEvents(el *element.Node, state *map[string]element.State, data EventData
 				eventList = append(eventList, "mouseover")
 
 				// Let the adapter know the cursor has changed
-				a.DispatchEvent(element.Event{
+				m.Adapter.DispatchEvent(element.Event{
 					Name: "cursor",
 					Data: self.Cursor,
 				})
@@ -167,7 +168,6 @@ func GetEvents(el *element.Node, state *map[string]element.State, data EventData
 				if el.Properties.Editable {
 					el.Value = el.InnerText
 					ProcessKeyEvent(el, int(data.Key))
-					fmt.Println(el.Properties.Id, el.Value)
 
 					el.InnerText = el.Value
 					eventList = append(eventList, "keypress")
@@ -201,14 +201,9 @@ func GetEvents(el *element.Node, state *map[string]element.State, data EventData
 		eventList = append(eventList, "mouseleave")
 	}
 
-	et[el.Properties.Id] = element.EventList{
+	(*m.History)[el.Properties.Id] = element.EventList{
 		Event: evt,
 		List:  eventList,
-	}
-
-	eventTracker = &et
-	for _, v := range el.Children {
-		GetEvents(v, state, data, eventTracker, a)
 	}
 }
 
