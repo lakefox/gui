@@ -66,7 +66,21 @@ func tryLoadSystemFont(fontName string, bold, italic bool) string {
 	}
 
 	for _, v := range allFonts {
-		if strings.Contains(v, "/"+font) {
+		if strings.Contains(v, font) {
+			return v
+		}
+	}
+
+	font = fontName
+	if bold {
+		font += "b"
+	}
+	if italic {
+		font += "i"
+	}
+
+	for _, v := range allFonts {
+		if strings.Contains(v, font) {
 			return v
 		}
 	}
