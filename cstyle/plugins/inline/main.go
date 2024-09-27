@@ -3,6 +3,7 @@ package inline
 import (
 	"gui/cstyle"
 	"gui/element"
+	"gui/library"
 	"math"
 )
 
@@ -20,8 +21,8 @@ func Init() cstyle.Plugin {
 			}
 			return matches
 		},
-		Level: 1,
-		Handler: func(n *element.Node, state *map[string]element.State) {
+		Level: 2,
+		Handler: func(n *element.Node, state *map[string]element.State, shelf *library.Shelf) {
 			s := *state
 			self := s[n.Properties.Id]
 			parent := s[n.Parent.Properties.Id]
@@ -38,8 +39,15 @@ func Init() cstyle.Plugin {
 					if v.Style["position"] != "absolute" {
 						if v.Properties.Id == n.Properties.Id {
 							sib := n.Parent.Children[i-1]
+							if sib.Style["position"] == "absolute" {
+								if i-2 >= 0 {
+									sib = n.Parent.Children[i-2]
+								} else {
+									continue
+								}
+							}
 							sibling := s[sib.Properties.Id]
-							if sibling.X+sibling.Width+self.Width > (parent.Width+parent.X+parent.Border.Left.Width)-parent.Padding.Left {
+							if sibling.X+sibling.Width+self.Width > (parent.Width+parent.X+parent.Border.Left.Width)-(parent.Padding.Right) {
 								// Break Node.Id
 								self.Y = sibling.Y + sibling.Height
 								self.X = copyOfX

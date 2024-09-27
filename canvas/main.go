@@ -615,6 +615,10 @@ func (c *Canvas) Clip() {
 	// Clip implementation
 }
 
+// !TODO: When making gradients do this:
+// + Since things like gradients are actually images, a pseudo element can be a gradient. also add url()
+// + https://css-tricks.com/almanac/selectors/a/after-and-before/
+
 // CreateConicGradient creates a conic gradient
 func (c *Canvas) CreateConicGradient(startAngle, x, y float64) {
 	// CreateConicGradient implementation

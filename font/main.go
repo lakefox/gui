@@ -29,6 +29,7 @@ func GetFontPath(fontName string, bold, italic bool) string {
 	for _, font := range fonts {
 		font = strings.TrimSpace(font)
 		fontPath := tryLoadSystemFont(font, bold, italic)
+
 		if fontPath != "" {
 			return fontPath
 		}
@@ -64,9 +65,14 @@ func tryLoadSystemFont(fontName string, bold, italic bool) string {
 	if italic {
 		font += " Italic"
 	}
+	slash := "/"
+
+	if runtime.GOOS == "windows" {
+		slash = "\\"
+	}
 
 	for _, v := range allFonts {
-		if strings.Contains(v, font) {
+		if strings.Contains(strings.ToLower(v), strings.ToLower(slash+font)) {
 			return v
 		}
 	}
@@ -80,7 +86,7 @@ func tryLoadSystemFont(fontName string, bold, italic bool) string {
 	}
 
 	for _, v := range allFonts {
-		if strings.Contains(v, font) {
+		if strings.Contains(strings.ToLower(v), strings.ToLower(slash+font)) {
 			return v
 		}
 	}

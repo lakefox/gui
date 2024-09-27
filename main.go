@@ -16,6 +16,7 @@ import (
 	flexprep "gui/cstyle/transformers/flex"
 	marginblock "gui/cstyle/transformers/margin-block"
 	"gui/cstyle/transformers/ol"
+	"gui/cstyle/transformers/scrollbar"
 	"gui/cstyle/transformers/text"
 	"gui/cstyle/transformers/ul"
 	"gui/font"
@@ -92,6 +93,7 @@ func New(adapterFunction *adapter.Adapter) Window {
 	css.AddTransformer(ol.Init())
 	// css.AddTransformer(textInline.Init())
 	css.AddTransformer(text.Init())
+	css.AddTransformer(scrollbar.Init())
 
 	el := element.Node{}
 	document := el.CreateElement("ROOT")
@@ -123,6 +125,7 @@ func (w *Window) Render(doc *element.Node, state *map[string]element.State) []el
 		store = append(store, s[v.Properties.Id])
 		keys = append(keys, v.Properties.Id)
 	}
+	// !ISSUE: Deletes injected elements
 
 	// Create a set of keys to keep
 	keysSet := make(map[string]struct{}, len(keys))
@@ -131,11 +134,11 @@ func (w *Window) Render(doc *element.Node, state *map[string]element.State) []el
 	}
 
 	// Iterate over the map and delete keys not in the set
-	for k := range s {
-		if _, found := keysSet[k]; !found {
-			delete(s, k)
-		}
-	}
+	// for k := range s {
+	// 	if _, found := keysSet[k]; !found {
+	// 		delete(s, k)
+	// 	}
+	// }
 
 	return store
 }
@@ -155,7 +158,6 @@ func flatten(n *element.Node) []*element.Node {
 }
 
 func View(data *Window, width, height int) {
-
 	shelf := library.Shelf{
 		Textures:   map[string]*image.RGBA{},
 		References: map[string]bool{},
@@ -322,8 +324,8 @@ func View(data *Window, width, height int) {
 			fmt.Println("#", time.Since(lastChange))
 			shelf.Close()
 		}
-		data.Adapter.Render(rd)
 		monitor.RunEvents()
+		data.Adapter.Render(rd)
 	}
 }
 
@@ -331,7 +333,7 @@ func AddStyles(c cstyle.CSS, node *element.Node, parent *element.Node) *element.
 	n := *node
 	n.Parent = parent
 
-	n.Style = c.GetStyles(&n)
+	n.Style, n.PseudoElements = c.GetStyles(&n)
 
 	if len(node.Children) > 0 {
 		n.Children = make([]*element.Node, 0, len(node.Children))

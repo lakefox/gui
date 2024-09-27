@@ -105,7 +105,11 @@ func GetWH(n element.Node, state *map[string]element.State) WidthHeight {
 	}
 
 	if n.Style["height"] == "100%" {
-		wh.Height -= (self.Margin.Top + self.Margin.Bottom + parent.Padding.Top + parent.Padding.Bottom)
+		if n.Style["position"] == "absolute" {
+			wh.Height -= (self.Margin.Top + self.Margin.Bottom)
+		} else {
+			wh.Height -= (self.Margin.Top + self.Margin.Bottom + parent.Padding.Top + parent.Padding.Bottom)
+		}
 	}
 
 	return wh
@@ -453,7 +457,7 @@ func GetInnerText(n *html.Node) string {
 func GetPositionOffsetNode(n *element.Node) *element.Node {
 	pos := n.Style["position"]
 
-	if pos == "relative" {
+	if pos == "relative" || pos == "absolute" {
 		return n
 	} else {
 		if n.Parent.TagName != "ROOT" {

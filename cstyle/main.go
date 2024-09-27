@@ -26,7 +26,7 @@ import (
 type Plugin struct {
 	Selector func(*element.Node) bool
 	Level    int
-	Handler  func(*element.Node, *map[string]element.State)
+	Handler  func(*element.Node, *map[string]element.State, *library.Shelf)
 }
 
 type Transformer struct {
@@ -74,8 +74,8 @@ func (c *CSS) StyleSheet(path string) {
 		if c.StyleMap[k] == nil {
 			c.StyleMap[k] = []*parser.StyleMap{}
 		}
-		for smK := range v {
-			v[smK].SheetNumber = len(c.StyleSheets)
+		for styleMapKey := range v {
+			v[styleMapKey].SheetNumber = len(c.StyleSheets)
 		}
 		c.StyleMap[k] = append(c.StyleMap[k], v...)
 	}
@@ -95,8 +95,8 @@ func (c *CSS) StyleTag(css string) {
 		if c.StyleMap[k] == nil {
 			c.StyleMap[k] = []*parser.StyleMap{}
 		}
-		for smK := range v {
-			v[smK].SheetNumber = len(c.StyleSheets)
+		for styleMapKey := range v {
+			v[styleMapKey].SheetNumber = len(c.StyleSheets)
 		}
 		c.StyleMap[k] = append(c.StyleMap[k], v...)
 	}
@@ -123,6 +123,7 @@ var inheritedProps = []string{
 	"visibility",
 	"word-spacing",
 	"display",
+	"scrollbar-color",
 }
 
 func (c *CSS) QuickStyles(n *element.Node) map[string]string {
@@ -146,8 +147,9 @@ func (c *CSS) QuickStyles(n *element.Node) map[string]string {
 	return styles
 }
 
-func (c *CSS) GetStyles(n *element.Node) map[string]string {
+func (c *CSS) GetStyles(n *element.Node) (map[string]string, map[string]map[string]string) {
 	styles := make(map[string]string)
+	pseudoStyles := make(map[string]map[string]string)
 
 	// Inherit styles from parent
 	if n.Parent != nil {
@@ -200,9 +202,14 @@ func (c *CSS) GetStyles(n *element.Node) map[string]string {
 		return styleMaps[i].SheetNumber < styleMaps[j].SheetNumber
 	})
 
+	// fmt.Println(n.Properties.Id)
+
 	for _, styleMap := range styleMaps {
+		// fmt.Println(styleMap)
 		parts := styleMap.Selector
 		currentElement := n
+		isPseudo := false
+		pseudoSelector := ""
 		for i, part := range parts {
 			if hovered {
 				for i, v := range part {
@@ -212,12 +219,36 @@ func (c *CSS) GetStyles(n *element.Node) map[string]string {
 					}
 				}
 			}
+			for i, v := range part {
+				if len(v) < 2 {
+					continue
+				}
+				if v[0:2] == "::" {
+					part = append(part[:i], part[i+1:]...)
+					isPseudo = true
+					pseudoSelector = v
+					break
+				}
+			}
+
 			has := selector.Contains(part, selectors)
+			// fmt.Println(part, selectors, has, isPseudo)
 			if i == len(parts)-1 || !has {
 				if has {
-					for k, v := range *styleMap.Styles {
-						styles[k] = v
+					if isPseudo {
+						for k, v := range *styleMap.Styles {
+							if pseudoStyles[pseudoSelector] == nil {
+								pseudoStyles[pseudoSelector] = map[string]string{}
+							}
+							pseudoStyles[pseudoSelector][k] = v
+						}
+
+					} else {
+						for k, v := range *styleMap.Styles {
+							styles[k] = v
+						}
 					}
+
 				}
 				break
 			} else {
@@ -256,11 +287,16 @@ func (c *CSS) GetStyles(n *element.Node) map[string]string {
 		}
 	}
 
-	return styles
+	return styles, pseudoStyles
 }
 
 func (c *CSS) AddPlugin(plugin Plugin) {
-	c.Plugins = append(c.Plugins, plugin)
+	plugins := c.Plugins
+	plugins = append(plugins, plugin)
+	sort.Slice(plugins, func(i, j int) bool {
+		return plugins[i].Level < plugins[j].Level
+	})
+	c.Plugins = plugins
 }
 
 func (c *CSS) AddTransformer(transformer Transformer) {
@@ -341,7 +377,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State,
 	var top, left, right, bottom bool
 
 	if style["position"] == "absolute" {
-		bas := utils.GetPositionOffsetNode(n)
+		bas := utils.GetPositionOffsetNode(n.Parent)
 		base := s[bas.Properties.Id]
 		if topVal := style["top"]; topVal != "" {
 			y = utils.ConvertToPixels(topVal, self.EM, parent.Width) + base.Y
@@ -352,11 +388,11 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State,
 			left = true
 		}
 		if rightVal := style["right"]; rightVal != "" {
-			x = base.Width - width - utils.ConvertToPixels(rightVal, self.EM, parent.Width)
+			x = base.X + ((base.Width - width) - utils.ConvertToPixels(rightVal, self.EM, parent.Width))
 			right = true
 		}
 		if bottomVal := style["bottom"]; bottomVal != "" {
-			y = base.Height - height - utils.ConvertToPixels(bottomVal, self.EM, parent.Width)
+			y = (base.Height - height) - utils.ConvertToPixels(bottomVal, self.EM, parent.Width)
 			bottom = true
 		}
 	} else {
@@ -406,6 +442,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State,
 	self.Height = height
 
 	(*state)[n.Properties.Id] = self
+
 	if !utils.ChildrenHaveText(n) && len(n.InnerText) > 0 {
 		n.InnerText = strings.TrimSpace(n.InnerText)
 		self = genTextNode(n, state, c, shelf)
@@ -455,16 +492,14 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State,
 	}
 
 	(*state)[n.Properties.Id] = self
-	sort.Slice(plugins, func(i, j int) bool {
-		return plugins[i].Level < plugins[j].Level
-	})
 
 	for _, v := range plugins {
 		if v.Selector(n) {
-			v.Handler(n, state)
+			v.Handler(n, state, shelf)
 		}
 	}
 
+	// fmt.Println(n.Properties.Id, "WIDTH: ", self.Width)
 	// Option: Have Grim render all elements
 	if c.Options.RenderElements {
 		wbw := int(self.Width + self.Border.Left.Width + self.Border.Right.Width)
@@ -486,22 +521,23 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State,
 				self.Textures = append([]string{key}, self.Textures...)
 			}
 		} else if self.Background.A > 0 {
-			can := canvas.NewCanvas(wbw, hbw)
-			can.BeginPath()
-			can.FillStyle = self.Background
-			can.LineWidth = 10
-			can.RoundedRect(0, 0, wbw, hbw,
-				[]int{int(self.Border.Radius.TopLeft), int(self.Border.Radius.TopRight), int(self.Border.Radius.BottomRight), int(self.Border.Radius.BottomLeft)})
-			can.Fill()
-			can.ClosePath()
-
-			shelf.Set(key, can.Context)
 			lookup := make(map[string]struct{}, len(self.Textures))
 			for _, v := range self.Textures {
 				lookup[v] = struct{}{}
 			}
 
 			if _, found := lookup[key]; !found {
+				// Only make the drawing if it's not found
+				can := canvas.NewCanvas(wbw, hbw)
+				can.BeginPath()
+				can.FillStyle = self.Background
+				can.LineWidth = 10
+				can.RoundedRect(0, 0, wbw, hbw,
+					[]int{int(self.Border.Radius.TopLeft), int(self.Border.Radius.TopRight), int(self.Border.Radius.BottomRight), int(self.Border.Radius.BottomLeft)})
+				can.Fill()
+				can.ClosePath()
+
+				shelf.Set(key, can.Context)
 				self.Textures = append([]string{key}, self.Textures...)
 			}
 

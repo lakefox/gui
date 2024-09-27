@@ -14,22 +14,23 @@ import (
 )
 
 type Node struct {
-	TagName   string
-	InnerText string
-	InnerHTML string
-	OuterHTML string
-	Parent    *Node `json:"-"`
-	Children  []*Node
-	Style     map[string]string
-	Id        string
-	ClassList ClassList
-	Href      string
-	Src       string
-	Title     string
-	Attribute map[string]string
-	ScrollX   int
-	ScrollY   int
-	Context   *canvas.Canvas
+	TagName        string
+	InnerText      string
+	InnerHTML      string
+	OuterHTML      string
+	Parent         *Node `json:"-"`
+	Children       []*Node
+	Style          map[string]string
+	Id             string
+	ClassList      ClassList
+	Href           string
+	Src            string
+	Title          string
+	Attribute      map[string]string
+	ScrollX        int
+	ScrollY        int
+	Context        *canvas.Canvas
+	PseudoElements map[string]map[string]string
 
 	Value         string
 	OnClick       func(Event) `json:"-"`

@@ -32,7 +32,19 @@ func SplitSelector(s string) []string {
 	var result []string
 	var current strings.Builder
 
-	for _, char := range s {
+	// Check if there's a `::` and split the string
+	var prePseudo string
+	var pseudo string
+
+	if idx := strings.Index(s, "::"); idx != -1 {
+		prePseudo = s[:idx]
+		pseudo = s[idx:] // Keep everything after `::` together
+	} else {
+		prePseudo = s
+	}
+
+	// Process the part before the pseudo-element selector
+	for _, char := range prePseudo {
 		switch char {
 		case '.', '#', '[', ']', ':':
 			if current.Len() > 0 {
@@ -52,6 +64,11 @@ func SplitSelector(s string) []string {
 
 	if current.Len() > 0 {
 		result = append(result, current.String())
+	}
+
+	// Add the pseudo-element (if any) as a single item
+	if pseudo != "" {
+		result = append(result, pseudo)
 	}
 
 	return result

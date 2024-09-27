@@ -136,6 +136,7 @@ func (wm *WindowManager) Draw(nodes []element.State) {
 			if node.Hidden {
 				continue
 			}
+			// fmt.Println("X: ", node.X, "Y: ", node.Y, "Width: ", node.Width, "Height: ", node.Height, "Z: ", node.Z)
 			if node.Z == indexes[a] {
 				// DrawRoundedRect(node.X,
 				// 	node.Y,
@@ -149,7 +150,28 @@ func (wm *WindowManager) Draw(nodes []element.State) {
 					for _, v := range node.Textures {
 						texture, exists := wm.Textures[v]
 						if exists {
-							rl.DrawTexture(*texture, int32(node.X), int32(node.Y), rl.White)
+							sourceRec := rl.Rectangle{
+								X:      0,
+								Y:      0,
+								Width:  float32(texture.Width),
+								Height: float32(texture.Height),
+							}
+
+							if node.Crop.X != 0 || node.Crop.Y != 0 || node.Crop.Width != 0 || node.Crop.Height != 0 {
+								sourceRec = rl.Rectangle{
+									X:      float32(node.Crop.X),
+									Y:      float32(node.Crop.Y),
+									Width:  float32(node.Crop.Width),
+									Height: float32(node.Crop.Height),
+								}
+								// fmt.Println(sourceRec)
+							}
+
+							rl.DrawTextureRec(*texture, sourceRec, rl.Vector2{
+								X: node.X,
+								Y: node.Y + float32(node.Crop.Y),
+							}, rl.White)
+							// rl.DrawTexture(*texture, int32(node.X), int32(node.Y), rl.White)
 						}
 					}
 				}

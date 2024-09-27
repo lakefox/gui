@@ -14,7 +14,9 @@ html {
     font-family: serif;
     color: #000000;
     background-color: #ffffff;
-    overflow-y: auto;
+    /* overflow-y: auto; */
+    scrollbar-color: #c7c7c7 #fafafa;
+    scrollbar-width: auto;
 }
 head {
     display: none;

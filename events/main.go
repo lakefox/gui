@@ -121,14 +121,13 @@ func (m *Monitor) CalcEvents(el *element.Node, data *EventData) {
 			}
 
 			if data.Scroll != 0 {
-				// fmt.Println(data.WD)
 				// !TODO: for now just emit a event, will have to add el.scrollX
 				el.ScrollY = int(utils.Max(float32(el.ScrollY+(-data.Scroll)), 0.0))
 				if el.OnScroll != nil {
 					el.OnScroll(evt)
 				}
 
-				// data.Scroll = 0
+				data.Scroll = 0
 				eventList = append(eventList, "scroll")
 			}
 
