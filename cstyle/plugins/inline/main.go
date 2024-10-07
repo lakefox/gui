@@ -3,7 +3,6 @@ package inline
 import (
 	"gui/cstyle"
 	"gui/element"
-	"gui/library"
 	"math"
 )
 
@@ -22,7 +21,7 @@ func Init() cstyle.Plugin {
 			return matches
 		},
 		Level: 2,
-		Handler: func(n *element.Node, state *map[string]element.State, shelf *library.Shelf) {
+		Handler: func(n *element.Node, state *map[string]element.State) {
 			s := *state
 			self := s[n.Properties.Id]
 			parent := s[n.Parent.Properties.Id]

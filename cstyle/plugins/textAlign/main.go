@@ -3,7 +3,6 @@ package textAlign
 import (
 	"gui/cstyle"
 	"gui/element"
-	"gui/library"
 )
 
 func Init() cstyle.Plugin {
@@ -21,7 +20,7 @@ func Init() cstyle.Plugin {
 			return matches
 		},
 		Level: 3,
-		Handler: func(n *element.Node, state *map[string]element.State, shelf *library.Shelf) {
+		Handler: func(n *element.Node, state *map[string]element.State) {
 			s := *state
 			self := s[n.Properties.Id]
 			minX := float32(9e15)

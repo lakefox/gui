@@ -3,7 +3,7 @@ package scrollbar
 import (
 	"gui/cstyle"
 	"gui/element"
-	"gui/utils"
+	"strconv"
 	"strings"
 )
 
@@ -26,7 +26,7 @@ func Init() cstyle.Transformer {
 				n.Style["position"] = "relative"
 			}
 
-			width := "20px"
+			width := "14px"
 			if n.Style["scrollbar-width"] == "thin" {
 				width = "10px"
 			}
@@ -34,7 +34,7 @@ func Init() cstyle.Transformer {
 				return n
 			}
 
-			splitStr := strings.Split(n.Style["scrollbar-width"], " ")
+			splitStr := strings.Split(n.Style["scrollbar-color"], " ")
 
 			// Initialize the variables
 			var backgroundColor, thumbColor string
@@ -45,10 +45,10 @@ func Init() cstyle.Transformer {
 				backgroundColor = splitStr[1]
 				thumbColor = splitStr[0]
 			} else {
-				backgroundColor = "rgba(255,0,0,1)"
-				// backgroundColor = "#fafafa"
-				thumbColor = "orange"
-				// thumbColor = "#c7c7c7"
+				// backgroundColor = "rgba(0,255,255,1)"
+				backgroundColor = "#fafafa"
+				// thumbColor = "orange"
+				thumbColor = "#c7c7c7"
 
 			}
 
@@ -65,27 +65,32 @@ func Init() cstyle.Transformer {
 			thumb := n.CreateElement("grim-thumb")
 
 			thumb.Style["position"] = "absolute"
-			thumb.Style["top"] = "10px"
+			thumb.Style["top"] = strconv.Itoa(n.ScrollTop) + "px"
 			thumb.Style["left"] = "0"
-			thumb.Style["width"] = "18px"
+			thumb.Style["width"] = width
 			thumb.Style["height"] = "20px"
 			thumb.Style["background"] = thumbColor
 			thumb.Style["cursor"] = "pointer"
 			thumb.Style["z-index"] = "10"
 			scrollbar.AppendChild(&thumb)
 
+			n.Style["width"] = "calc(" + n.Style["width"] + "-" + width + ")"
+			pr := n.Style["padding-right"]
+			if pr == "" {
+				if n.Style["padding"] != "" {
+					pr = n.Style["padding"]
+				}
+			}
+
+			if pr != "" {
+				n.Style["padding-right"] = "calc(" + pr + "+" + width + ")"
+			} else {
+				n.Style["padding-right"] = width
+			}
+
 			n.AppendChild(&scrollbar)
+
 			return n
 		},
-	}
-}
-
-func AddHTML(n *element.Node) {
-	// Head is not renderable
-	n.InnerHTML = utils.InnerHTML(n)
-	tag, closing := utils.NodeToHTML(n)
-	n.OuterHTML = tag + n.InnerHTML + closing
-	for i := range n.Children {
-		AddHTML(n.Children[i])
 	}
 }

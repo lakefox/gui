@@ -4,7 +4,6 @@ import (
 	"fmt"
 	adapter "gui/adapters"
 	"gui/border"
-	"gui/canvas"
 	"gui/color"
 	"gui/element"
 	"gui/font"
@@ -26,7 +25,7 @@ import (
 type Plugin struct {
 	Selector func(*element.Node) bool
 	Level    int
-	Handler  func(*element.Node, *map[string]element.State, *library.Shelf)
+	Handler  func(*element.Node, *map[string]element.State)
 }
 
 type Transformer struct {
@@ -495,55 +494,11 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State,
 
 	for _, v := range plugins {
 		if v.Selector(n) {
-			v.Handler(n, state, shelf)
+			v.Handler(n, state)
 		}
 	}
 
 	// fmt.Println(n.Properties.Id, "WIDTH: ", self.Width)
-	// Option: Have Grim render all elements
-	if c.Options.RenderElements {
-		wbw := int(self.Width + self.Border.Left.Width + self.Border.Right.Width)
-		hbw := int(self.Height + self.Border.Top.Width + self.Border.Bottom.Width)
-
-		key := strconv.Itoa(wbw) + strconv.Itoa(hbw) + utils.RGBAtoString(self.Background)
-
-		exists := shelf.Check(key)
-		bounds := shelf.Bounds(key)
-		// fmt.Println(n.Properties.Id, self.Width, self.Height, bounds)
-
-		if exists && bounds[0] == int(wbw) && bounds[1] == int(hbw) {
-			lookup := make(map[string]struct{}, len(self.Textures))
-			for _, v := range self.Textures {
-				lookup[v] = struct{}{}
-			}
-
-			if _, found := lookup[key]; !found {
-				self.Textures = append([]string{key}, self.Textures...)
-			}
-		} else if self.Background.A > 0 {
-			lookup := make(map[string]struct{}, len(self.Textures))
-			for _, v := range self.Textures {
-				lookup[v] = struct{}{}
-			}
-
-			if _, found := lookup[key]; !found {
-				// Only make the drawing if it's not found
-				can := canvas.NewCanvas(wbw, hbw)
-				can.BeginPath()
-				can.FillStyle = self.Background
-				can.LineWidth = 10
-				can.RoundedRect(0, 0, wbw, hbw,
-					[]int{int(self.Border.Radius.TopLeft), int(self.Border.Radius.TopRight), int(self.Border.Radius.BottomRight), int(self.Border.Radius.BottomLeft)})
-				can.Fill()
-				can.ClosePath()
-
-				shelf.Set(key, can.Context)
-				self.Textures = append([]string{key}, self.Textures...)
-			}
-
-			(*state)[n.Properties.Id] = self
-		}
-	}
 
 	return n
 }

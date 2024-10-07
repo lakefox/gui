@@ -1,9 +1,10 @@
 package crop
 
 import (
+	"fmt"
 	"gui/cstyle"
 	"gui/element"
-	"gui/library"
+	"strings"
 )
 
 func Init() cstyle.Plugin {
@@ -17,72 +18,71 @@ func Init() cstyle.Plugin {
 			}
 		},
 		Level: 1,
-		Handler: func(n *element.Node, state *map[string]element.State, shelf *library.Shelf) {
+		Handler: func(n *element.Node, state *map[string]element.State) {
 			// !TODO: Needs to find crop bounds for X
 			s := *state
 			self := s[n.Properties.Id]
 			// fmt.Println(n.Properties.Id)
-			// if n.ScrollY == 0 {
+			// if n.ScrollTop == 0 {
 			// 	return
 			// }
-			scrollY := findScroll(n)
-			// !TODO: Limit scroll, and make scroll bar
-			// + in the styles per what ever the css way to do it is
-
+			scrollY := n.ScrollY
+			// scrollY := findScroll(n)
+			// thumb := scrollEl.QuerySelector("grim-thumb")
+			// fmt.Println("this", s[scrollEl.Properties.Id].Y, s[thumb.Properties.Id].Y)
+			// scrollTop := int((s[thumb.Properties.Id].Y - s[scrollEl.Properties.Id].Y) + float32(scrollY))
+			// // !TODO: Limit scroll
+			// // + in the styles per what ever the css way to do it is
+			// // fmt.Println(scrollTop, scrollEl.ScrollY)
+			// if scrollTop < 0 {
+			// 	scrollTop = 0
+			// }
 			minY, maxY := findBounds(n, state)
-			// !ISSUE: Can add to the scroll value while it is pegged out
-			scrollAmt := ((maxY - minY) + self.Padding.Bottom) / self.Height
-			if scrollAmt > 1 {
-				diff := scrollAmt - 1
-				if scrollY > int(self.Height*diff) {
-					scrollY = int(self.Height * diff)
-					n.ScrollY = scrollY
-				}
-			}
+			// // !ISSUE: Can add to the scroll value while it is pegged out
+			scrollAmt := ((maxY - minY) + self.Padding.Bottom + self.Padding.Top) / self.Height
+			// // if there is more than 100% of parent
+			// if scrollAmt > 1 {
+			// 	diff := scrollAmt - 1
+			// 	if scrollTop > int(self.Height*diff) {
+			// 		scrollTop = int(self.Height * diff)
+			// 		// need to stop the scroll value by dispatching an event to set the scroll
+			// 	}
+			// }
 
 			// fmt.Println(n.Properties.Id, n.PseudoElements)
+			scrollTop := 0
+			for _, v := range n.Children {
+				if v.TagName == "grim-scrollbar" {
+					if scrollAmt > 1 {
+						diff := 1 - (scrollAmt - 1)
+						p := s[v.Children[0].Properties.Id]
+						p.Height = self.Height * diff
+						p.Y += float32(scrollY)
+						if self.Y+self.Height < p.Y+p.Height {
+							p.Y = (self.Y + self.Height) - p.Height
+						} else if p.Y < self.Y {
+							p.Y = self.Y
+						}
+						fmt.Println(p.Y)
 
-			// DOnt work
-			// !TODO: The width of the scroll bar needs to effect the width of the content inside of the container, needs
-			// + to be moved up the render chain
-			// + Also ::before and ::after can be handled by a plugin but will also need to be moved up
-
-			// need to run before everything else, parents styles that need to change are width -= scrollbar width, padding-right += scrollbar-width
-
-			// !TODO: Add keygen
-			// key := n.Properties.Id + "123123"
-			// exists := shelf.Check(key)
-			// if exists {
-			// lookup := make(map[string]struct{}, len(self.Textures))
-			// for _, v := range self.Textures {
-			// 	lookup[v] = struct{}{}
-			// }
-
-			// if _, found := lookup[key]; !found {
-			// 	self.Textures = append(self.Textures, key)
-			// }
-			// } else {
-			// width := int(self.Width + self.Padding.Left + self.Padding.Right)
-			// height := int(self.Height + self.Padding.Top + self.Padding.Bottom)
-			// ctx := canvas.NewCanvas(width, int(height))
-			// ctx.FillStyle = color.RGBA{0, 255, 0, 255}
-			// ctx.LineWidth = 1
-			// ctx.BeginPath()
-			// ctx.Rect(width-32, -1, 30, int(height)-1)
-			// ctx.Fill()
-			// ctx.ClosePath()
-			// fmt.Println(self.Textures, ctx.Context.RGBAAt(width+10, 10))
-			// self.Textures = append(self.Textures, shelf.Set(key, ctx.Context))
-			// }
-			// self.Width -= 30
-
+						scrollTop = int((p.Y - self.Y))
+						(*state)[v.Children[0].Properties.Id] = p
+					} else {
+						p := s[v.Properties.Id]
+						p.Hidden = true
+						(*state)[v.Properties.Id] = p
+					}
+					break
+				}
+			}
+			fmt.Println(scrollTop, scrollY)
 			for _, v := range n.Children {
 				if v.Style["position"] == "fixed" || v.TagName == "grim-scrollbar" {
 					continue
 				}
 				child := s[v.Properties.Id]
 
-				if (child.Y+child.Height)-float32(scrollY) < (self.Y) || (child.Y-float32(scrollY)) > self.Y+self.Height {
+				if (child.Y+child.Height)-float32(scrollTop) < (self.Y) || (child.Y-float32(scrollTop)) > self.Y+self.Height {
 					child.Hidden = true
 					(*state)[v.Properties.Id] = child
 				} else {
@@ -90,11 +90,11 @@ func Init() cstyle.Plugin {
 					yCrop := 0
 					height := int(child.Height)
 					// !ISSUE: Text got messed up after the cropping? also in the raylib adapter with add the drawrect crop thing
-					if child.Y-float32(scrollY) < (self.Y) {
-						yCrop = int((self.Y) - (child.Y - float32(scrollY)))
+					if child.Y-float32(scrollTop) < (self.Y) {
+						yCrop = int((self.Y) - (child.Y - float32(scrollTop)))
 						height = int(child.Height) - yCrop
-					} else if (child.Y-float32(scrollY))+child.Height > self.Y+self.Height {
-						diff := ((child.Y - float32(scrollY)) + child.Height) - (self.Y + self.Height)
+					} else if (child.Y-float32(scrollTop))+child.Height > self.Y+self.Height {
+						diff := ((child.Y - float32(scrollTop)) + child.Height) - (self.Y + self.Height)
 						height = int(child.Height) - int(diff)
 					}
 					child.Crop = element.Crop{
@@ -104,9 +104,9 @@ func Init() cstyle.Plugin {
 						Height: height,
 					}
 					(*state)[v.Properties.Id] = child
-					// child.Y -= float32(n.ScrollY)
+					// child.Y -= float32(n.ScrollTop)
 
-					updateChildren(v, state, scrollY)
+					updateChildren(v, state, scrollTop)
 				}
 			}
 			(*state)[n.Properties.Id] = self
@@ -123,27 +123,14 @@ func updateChildren(n *element.Node, state *map[string]element.State, offset int
 	}
 }
 
-func findScroll(n *element.Node) int {
-	if n.ScrollY != 0 {
-		return n.ScrollY
-	} else {
-		for _, v := range n.Children {
-			if v.Style["overflow"] == "" && v.Style["overflow-x"] == "" && v.Style["overflow-y"] == "" {
-				s := findScroll(v)
-				if s != 0 {
-					return s
-				}
-			}
-		}
-		return 0
-	}
-}
-
 func findBounds(n *element.Node, state *map[string]element.State) (float32, float32) {
 	s := *state
 	var minY, maxY float32
 	minY = 10e10
 	for _, v := range n.Children {
+		if strings.HasPrefix(v.TagName, "grim") {
+			continue
+		}
 		child := s[v.Properties.Id]
 		if child.Y < minY {
 			minY = child.Y
@@ -161,4 +148,17 @@ func findBounds(n *element.Node, state *map[string]element.State) (float32, floa
 		}
 	}
 	return minY, maxY
+}
+
+func findScroll(n *element.Node) int {
+	// THis function should only return a value if none of its children have a value
+	for _, v := range n.Children {
+		if v.Style["overflow"] == "" && v.Style["overflow-x"] == "" && v.Style["overflow-y"] == "" {
+			s := findScroll(v)
+			if s != 0 {
+				return 0
+			}
+		}
+	}
+	return n.ScrollY
 }

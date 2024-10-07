@@ -29,6 +29,8 @@ type Node struct {
 	Attribute      map[string]string
 	ScrollX        int
 	ScrollY        int
+	ScrollLeft     int
+	ScrollTop      int
 	Context        *canvas.Canvas
 	PseudoElements map[string]map[string]string
 
@@ -76,6 +78,7 @@ type Crop struct {
 type Properties struct {
 	Id             string
 	EventListeners map[string][]func(Event) `json:"-"`
+	Events         []string
 	Focusable      bool
 	Focused        bool
 	Editable       bool
@@ -359,6 +362,11 @@ func (n *Node) GetContext(width, height int) *canvas.Canvas {
 	return ctx
 }
 
+func (n *Node) ScrollTo(x, y int) {
+	n.ScrollTop = y
+	n.ScrollLeft = x
+}
+
 type Event struct {
 	X           int
 	Y           int
@@ -400,6 +408,12 @@ func (node *Node) AddEventListener(name string, callback func(Event)) {
 		node.Properties.EventListeners[name] = append(node.Properties.EventListeners[name], callback)
 	}
 }
+
+func (node *Node) DispatchEvent(event string) {
+	// I want to use dispatch event to dispatch a scroll event if the user scrolls too far on a container from crop
+	node.Properties.Events = append(node.Properties.Events, event)
+}
+
 func funcInSlice(f func(Event), slice []func(Event)) bool {
 	for _, item := range slice {
 		// Compare function values directly

@@ -15,7 +15,7 @@ func main() {
 	// defer profile.Start(profile.MemProfile).Stop() // Memory
 	// defaults read ~/Library/Preferences/.GlobalPreferences.plist
 
-	window := gui.Open("./src/index.html", raylib.Init())
+	window := gui.Open("./src/app.html", raylib.Init())
 	document := window.Document
 
 	body := document.QuerySelector("body")

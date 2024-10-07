@@ -4,7 +4,6 @@ import (
 	"fmt"
 	adapter "gui/adapters"
 	"gui/element"
-	"gui/utils"
 
 	"slices"
 )
@@ -120,14 +119,17 @@ func (m *Monitor) CalcEvents(el *element.Node, data *EventData) {
 				eventList = append(eventList, "contextmenu")
 			}
 
+			el.ScrollY = 0
 			if data.Scroll != 0 {
 				// !TODO: for now just emit a event, will have to add el.scrollX
-				el.ScrollY = int(utils.Max(float32(el.ScrollY+(-data.Scroll)), 0.0))
+				el.ScrollTop = int(el.ScrollTop + (-data.Scroll))
 				if el.OnScroll != nil {
 					el.OnScroll(evt)
 				}
 
-				data.Scroll = 0
+				el.ScrollY = -data.Scroll
+
+				// data.Scroll = 0
 				eventList = append(eventList, "scroll")
 			}
 
@@ -198,6 +200,10 @@ func (m *Monitor) CalcEvents(el *element.Node, data *EventData) {
 			el.OnMouseLeave(evt)
 		}
 		eventList = append(eventList, "mouseleave")
+	}
+
+	if len(el.Properties.Events) > 0 {
+		eventList = append(eventList, el.Properties.Events...)
 	}
 
 	(*m.History)[el.Properties.Id] = element.EventList{

@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	adapter "gui/adapters"
+	"gui/canvas"
 	"gui/cstyle"
 	"gui/cstyle/plugins/crop"
 	"gui/cstyle/plugins/flex"
@@ -87,13 +88,13 @@ func New(adapterFunction *adapter.Adapter) Window {
 	css.AddPlugin(flex.Init())
 	css.AddPlugin(crop.Init())
 
+	css.AddTransformer(scrollbar.Init())
 	css.AddTransformer(flexprep.Init())
 	css.AddTransformer(marginblock.Init())
 	css.AddTransformer(ul.Init())
 	css.AddTransformer(ol.Init())
 	// css.AddTransformer(textInline.Init())
 	css.AddTransformer(text.Init())
-	css.AddTransformer(scrollbar.Init())
 
 	el := element.Node{}
 	document := el.CreateElement("ROOT")
@@ -112,7 +113,7 @@ func New(adapterFunction *adapter.Adapter) Window {
 	}
 }
 
-func (w *Window) Render(doc *element.Node, state *map[string]element.State) []element.State {
+func (w *Window) Render(doc *element.Node, state *map[string]element.State, shelf *library.Shelf) []element.State {
 	s := *state
 
 	flatDoc := flatten(doc)
@@ -134,11 +135,58 @@ func (w *Window) Render(doc *element.Node, state *map[string]element.State) []el
 	}
 
 	// Iterate over the map and delete keys not in the set
-	// for k := range s {
-	// 	if _, found := keysSet[k]; !found {
-	// 		delete(s, k)
-	// 	}
-	// }
+	for k := range s {
+		if _, found := keysSet[k]; !found {
+			delete(s, k)
+		}
+	}
+
+	if w.CSS.Options.RenderElements {
+		for k, self := range store {
+			// Option: Have Grim render all elements
+			wbw := int(self.Width + self.Border.Left.Width + self.Border.Right.Width)
+			hbw := int(self.Height + self.Border.Top.Width + self.Border.Bottom.Width)
+
+			key := strconv.Itoa(wbw) + strconv.Itoa(hbw) + utils.RGBAtoString(self.Background)
+
+			exists := shelf.Check(key)
+			bounds := shelf.Bounds(key)
+			// fmt.Println(n.Properties.Id, self.Width, self.Height, bounds)
+
+			if exists && bounds[0] == int(wbw) && bounds[1] == int(hbw) {
+				lookup := make(map[string]struct{}, len(self.Textures))
+				for _, v := range self.Textures {
+					lookup[v] = struct{}{}
+				}
+
+				if _, found := lookup[key]; !found {
+					self.Textures = append([]string{key}, self.Textures...)
+					store[k] = self
+				}
+			} else if self.Background.A > 0 {
+				lookup := make(map[string]struct{}, len(self.Textures))
+				for _, v := range self.Textures {
+					lookup[v] = struct{}{}
+				}
+
+				if _, found := lookup[key]; !found {
+					// Only make the drawing if it's not found
+					can := canvas.NewCanvas(wbw, hbw)
+					can.BeginPath()
+					can.FillStyle = self.Background
+					can.LineWidth = 10
+					can.RoundedRect(0, 0, wbw, hbw,
+						[]int{int(self.Border.Radius.TopLeft), int(self.Border.Radius.TopRight), int(self.Border.Radius.BottomRight), int(self.Border.Radius.BottomLeft)})
+					can.Fill()
+					can.ClosePath()
+
+					shelf.Set(key, can.Context)
+					self.Textures = append([]string{key}, self.Textures...)
+					store[k] = self
+				}
+			}
+		}
+	}
 
 	return store
 }
@@ -309,7 +357,7 @@ func View(data *Window, width, height int) {
 			// fmt.Println("Compute Node Style: ", time.Since(lastChange1))
 			// lastChange1 = time.Now()
 
-			rd = data.Render(newDoc, &state)
+			rd = data.Render(newDoc, &state, &shelf)
 			// fmt.Println("Render: ", time.Since(lastChange1))
 			// lastChange1 = time.Now()
 
