@@ -14,23 +14,25 @@ import (
 )
 
 type Node struct {
-	TagName        string
-	InnerText      string
-	InnerHTML      string
-	OuterHTML      string
-	Parent         *Node `json:"-"`
-	Children       []*Node
-	Style          map[string]string
-	Id             string
-	ClassList      ClassList
-	Href           string
-	Src            string
-	Title          string
-	Attribute      map[string]string
+	TagName   string
+	InnerText string
+	InnerHTML string
+	OuterHTML string
+	Parent    *Node `json:"-"`
+	Children  []*Node
+	Style     map[string]string
+	Id        string
+	ClassList ClassList
+	Href      string
+	Src       string
+	Title     string
+	Attribute map[string]string
+	// !ISSUE: I don't like the scrollx/y
 	ScrollX        int
 	ScrollY        int
 	ScrollLeft     int
 	ScrollTop      int
+	ScrollHeight   int
 	Context        *canvas.Canvas
 	PseudoElements map[string]map[string]string
 
@@ -59,11 +61,12 @@ type State struct {
 	EM         float32
 	Background ic.RGBA
 	// Color      ic.RGBA
-	Margin  MarginPadding
-	Padding MarginPadding
-	Cursor  string
-	Crop    Crop
-	Hidden  bool
+	Margin       MarginPadding
+	Padding      MarginPadding
+	Cursor       string
+	Crop         Crop
+	Hidden       bool
+	ScrollHeight int
 }
 
 type Crop struct {

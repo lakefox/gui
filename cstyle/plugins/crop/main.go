@@ -22,60 +22,53 @@ func Init() cstyle.Plugin {
 			// !TODO: Needs to find crop bounds for X
 			s := *state
 			self := s[n.Properties.Id]
-			// fmt.Println(n.Properties.Id)
-			// if n.ScrollTop == 0 {
-			// 	return
-			// }
-			scrollY := n.ScrollY
-			// scrollY := findScroll(n)
-			// thumb := scrollEl.QuerySelector("grim-thumb")
-			// fmt.Println("this", s[scrollEl.Properties.Id].Y, s[thumb.Properties.Id].Y)
-			// scrollTop := int((s[thumb.Properties.Id].Y - s[scrollEl.Properties.Id].Y) + float32(scrollY))
-			// // !TODO: Limit scroll
-			// // + in the styles per what ever the css way to do it is
-			// // fmt.Println(scrollTop, scrollEl.ScrollY)
-			// if scrollTop < 0 {
-			// 	scrollTop = 0
-			// }
+			// parent := s[n.Parent.Properties.Id]
+
+			scrollTop := findScroll(n)
+			fmt.Println(scrollTop)
 			minY, maxY := findBounds(n, state)
+
 			// // !ISSUE: Can add to the scroll value while it is pegged out
 			scrollAmt := ((maxY - minY) + self.Padding.Bottom + self.Padding.Top) / self.Height
-			// // if there is more than 100% of parent
-			// if scrollAmt > 1 {
-			// 	diff := scrollAmt - 1
-			// 	if scrollTop > int(self.Height*diff) {
-			// 		scrollTop = int(self.Height * diff)
-			// 		// need to stop the scroll value by dispatching an event to set the scroll
-			// 	}
-			// }
 
-			// fmt.Println(n.Properties.Id, n.PseudoElements)
-			scrollTop := 0
 			for _, v := range n.Children {
 				if v.TagName == "grim-scrollbar" {
 					if scrollAmt > 1 {
 						diff := 1 - (scrollAmt - 1)
 						p := s[v.Children[0].Properties.Id]
 						p.Height = self.Height * diff
-						p.Y += float32(scrollY)
+						p.Y += float32(scrollAmt)
 						if self.Y+self.Height < p.Y+p.Height {
 							p.Y = (self.Y + self.Height) - p.Height
 						} else if p.Y < self.Y {
 							p.Y = self.Y
 						}
-						fmt.Println(p.Y)
 
-						scrollTop = int((p.Y - self.Y))
 						(*state)[v.Children[0].Properties.Id] = p
 					} else {
 						p := s[v.Properties.Id]
 						p.Hidden = true
 						(*state)[v.Properties.Id] = p
+						p = s[v.Children[0].Properties.Id]
+						p.Hidden = true
+						(*state)[v.Children[0].Properties.Id] = p
+						// originalWidth, originalPaddingRight := getOriginalStyles(n.Style)
+						// fmt.Println(n.Style["width"], originalWidth, originalPaddingRight)
+						// if originalWidth != "" {
+						// 	self.Width = utils.ConvertToPixels(originalWidth, self.EM, parent.Width)
+						// } else {
+						// 	self.Width = 0
+						// }
+						// if originalPaddingRight != "" {
+						// 	self.Padding.Right = utils.ConvertToPixels(originalPaddingRight, self.EM, parent.Width)
+						// } else {
+						// 	self.Padding.Right = 0
+						// }
+						// fmt.Println(self.Width, self.Padding.Right)
 					}
 					break
 				}
 			}
-			fmt.Println(scrollTop, scrollY)
 			for _, v := range n.Children {
 				if v.Style["position"] == "fixed" || v.TagName == "grim-scrollbar" {
 					continue
@@ -151,14 +144,52 @@ func findBounds(n *element.Node, state *map[string]element.State) (float32, floa
 }
 
 func findScroll(n *element.Node) int {
-	// THis function should only return a value if none of its children have a value
-	for _, v := range n.Children {
-		if v.Style["overflow"] == "" && v.Style["overflow-x"] == "" && v.Style["overflow-y"] == "" {
-			s := findScroll(v)
-			if s != 0 {
-				return 0
+	if n.ScrollTop != 0 {
+		return n.ScrollTop
+	} else {
+		for _, v := range n.Children {
+			if v.Style["overflow"] == "" && v.Style["overflow-x"] == "" && v.Style["overflow-y"] == "" {
+				s := findScroll(v)
+				if s != 0 {
+					return s
+				}
 			}
 		}
+		return 0
 	}
-	return n.ScrollY
 }
+
+// // Helper function to extract the original value from a calc expression
+// func extractOriginalValue(value string, operator string) string {
+// 	if strings.HasPrefix(value, "calc(") && strings.Contains(value, operator) {
+// 		// Trim "calc(" and everything after the operator
+// 		start := strings.TrimPrefix(value, "calc(")
+// 		end := strings.Index(start, operator)
+// 		if end != -1 {
+// 			return start[:end]
+// 		}
+// 	}
+// 	return ""
+// }
+
+// // Function to return the original width and padding-right
+// func getOriginalStyles(n map[string]string) (originalWidth, originalPaddingRight string) {
+// 	// Get the current width and padding-right
+// 	currentWidth := n["width"]
+// 	pr := n["padding-right"]
+
+// 	// Handle the case where padding-right might be in padding shorthand
+// 	if pr == "" {
+// 		if n["padding"] != "" {
+// 			pr = n["padding"]
+// 		}
+// 	}
+
+// 	// Extract the original width by looking for calc and -
+// 	originalWidth = extractOriginalValue(currentWidth, "-")
+
+// 	// Extract the original padding-right by looking for calc and +
+// 	originalPaddingRight = extractOriginalValue(pr, "+")
+
+// 	return originalWidth, originalPaddingRight
+// }

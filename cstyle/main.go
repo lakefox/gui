@@ -467,25 +467,32 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State,
 
 	(*state)[n.Properties.Id] = self
 	(*state)[n.Parent.Properties.Id] = parent
-
+	self.ScrollHeight = 0
 	var childYOffset float32
+
 	for i := 0; i < len(n.Children); i++ {
 		v := n.Children[i]
 		v.Parent = n
 		n.Children[i] = c.ComputeNodeStyle(v, state, shelf)
 		cState := (*state)[n.Children[i].Properties.Id]
-		if style["height"] == "" && style["min-height"] == "" {
+		if style["height"] == "" && style["max-height"] == "" {
 			if v.Style["position"] != "absolute" && cState.Y+cState.Height > childYOffset {
 				childYOffset = cState.Y + cState.Height
 				self.Height = cState.Y - self.Border.Top.Width - self.Y + cState.Height
 				self.Height += cState.Margin.Top + cState.Margin.Bottom + cState.Padding.Top + cState.Padding.Bottom + cState.Border.Top.Width + cState.Border.Bottom.Width
 			}
 		}
+		sh := int((cState.Y + cState.Height) - self.Y)
+		if self.ScrollHeight < sh {
+			self.ScrollHeight = sh
+		}
+
 		if cState.Width > self.Width {
 			self.Width = cState.Width
 		}
 	}
 
+	self.ScrollHeight += int(self.Padding.Bottom)
 	if style["height"] == "" {
 		self.Height += self.Padding.Bottom
 	}
@@ -497,8 +504,6 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State,
 			v.Handler(n, state)
 		}
 	}
-
-	// fmt.Println(n.Properties.Id, "WIDTH: ", self.Width)
 
 	return n
 }

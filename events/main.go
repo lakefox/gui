@@ -122,14 +122,23 @@ func (m *Monitor) CalcEvents(el *element.Node, data *EventData) {
 			el.ScrollY = 0
 			if data.Scroll != 0 {
 				// !TODO: for now just emit a event, will have to add el.scrollX
+
 				el.ScrollTop = int(el.ScrollTop + (-data.Scroll))
+
+				if el.ScrollTop > el.ScrollHeight-int(self.Height) {
+					el.ScrollTop = el.ScrollHeight - int(self.Height)
+				}
+
+				if el.ScrollTop <= 0 {
+					el.ScrollTop = 0
+				}
+
 				if el.OnScroll != nil {
 					el.OnScroll(evt)
 				}
 
 				el.ScrollY = -data.Scroll
 
-				// data.Scroll = 0
 				eventList = append(eventList, "scroll")
 			}
 

@@ -365,7 +365,7 @@ func View(data *Window, width, height int) {
 			// fmt.Println("Load: ", time.Since(lastChange1))
 			// lastChange1 = time.Now()
 
-			AddHTML(&data.Document)
+			AddHTMLAndAttrs(&data.Document, &state)
 			// fmt.Println("Add HTML: ", time.Since(lastChange1))
 
 			data.Scripts.Run(&data.Document)
@@ -434,13 +434,16 @@ func CreateNode(node *html.Node, parent *element.Node) {
 	}
 }
 
-func AddHTML(n *element.Node) {
+func AddHTMLAndAttrs(n *element.Node, state *map[string]element.State) {
 	// Head is not renderable
+	s := (*state)
 	n.InnerHTML = utils.InnerHTML(n)
 	tag, closing := utils.NodeToHTML(n)
 	n.OuterHTML = tag + n.InnerHTML + closing
+	// !NOTE: This is the only spot you can pierce the vale
+	n.ScrollHeight = s[n.Properties.Id].ScrollHeight
 	for i := range n.Children {
-		AddHTML(n.Children[i])
+		AddHTMLAndAttrs(n.Children[i], state)
 	}
 }
 
