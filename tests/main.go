@@ -5,14 +5,15 @@ import (
 	"gui"
 	"gui/adapters/raylib"
 	"gui/element"
-	// "github.com/pkg/profile"
+
+	"github.com/pkg/profile"
 )
 
 // go tool pprof --pdf ./main.go /var/folders/7b/c07zbwkj03nf7cs4vm_0yw1w0000gn/T/profile1893611654/cpu.pprof > file.pdf
 
 func main() {
-	// defer profile.Start().Stop() // CPU
-	// defer profile.Start(profile.MemProfile).Stop() // Memory
+	defer profile.Start(profile.ProfilePath(".")).Stop() // CPU
+	// defer profile.Start(profile.MemProfile, profile.ProfilePath(".")).Stop() // Memory
 	// defaults read ~/Library/Preferences/.GlobalPreferences.plist
 	// !ISSUE: Flex2 doesn't work anymore
 	window := gui.Open("./src/index.html", raylib.Init())

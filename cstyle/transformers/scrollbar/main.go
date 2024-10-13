@@ -1,6 +1,7 @@
 package scrollbar
 
 import (
+	"fmt"
 	"gui/cstyle"
 	"gui/element"
 	"strconv"
@@ -17,14 +18,23 @@ func Init() cstyle.Transformer {
 			}
 		},
 		Handler: func(n *element.Node, c *cstyle.CSS) *element.Node {
-			// !TODO: Inject grim-scrollbar and grim-scrollbar-thumb elements with stylings added to it
-			// + positioning of it should be done by the crop plugin
-			// + this is how all :: props should be handled, i think
-			// + also crop should hide this if
-			// fmt.Println(n.Style, "here")
+			overflowProps := strings.Split(n.Style["overflow"], " ")
+			if n.Style["overflow-y"] == "" {
+				val := overflowProps[0]
+				if len(overflowProps) >= 2 {
+					val = overflowProps[1]
+				}
+				n.Style["overflow-y"] = val
+			}
+			if n.Style["overflow-x"] == "" {
+				n.Style["overflow-x"] = overflowProps[0]
+			}
+
 			if n.Style["position"] == "" {
 				n.Style["position"] = "relative"
 			}
+
+			fmt.Println(n.ScrollHeight, n.Style["height"])
 
 			width := "14px"
 			if n.Style["scrollbar-width"] == "thin" {
@@ -45,50 +55,52 @@ func Init() cstyle.Transformer {
 				backgroundColor = splitStr[1]
 				thumbColor = splitStr[0]
 			} else {
-				// backgroundColor = "rgba(0,255,255,1)"
 				backgroundColor = "#fafafa"
-				// thumbColor = "orange"
 				thumbColor = "#c7c7c7"
 
 			}
 
-			scrollbar := n.CreateElement("grim-scrollbar")
+			// Y scrollbar
 
-			scrollbar.Style["position"] = "absolute"
-			scrollbar.Style["top"] = "0"
-			scrollbar.Style["right"] = "0"
-			scrollbar.Style["width"] = width
-			scrollbar.Style["height"] = "100%"
-			scrollbar.Style["z-index"] = "9"
-			scrollbar.Style["background"] = backgroundColor
+			if n.Style["overflow-y"] == "scroll" || n.Style["overflow-y"] == "auto" {
+				scrollbar := n.CreateElement("grim-scrollbar")
 
-			thumb := n.CreateElement("grim-thumb")
+				scrollbar.Style["position"] = "absolute"
+				scrollbar.Style["top"] = "0"
+				scrollbar.Style["right"] = "0"
+				scrollbar.Style["width"] = width
+				scrollbar.Style["height"] = "100%"
+				scrollbar.Style["z-index"] = "9"
+				scrollbar.Style["background"] = backgroundColor
 
-			thumb.Style["position"] = "absolute"
-			thumb.Style["top"] = strconv.Itoa(n.ScrollTop) + "px"
-			thumb.Style["left"] = "0"
-			thumb.Style["width"] = width
-			thumb.Style["height"] = "20px"
-			thumb.Style["background"] = thumbColor
-			thumb.Style["cursor"] = "pointer"
-			thumb.Style["z-index"] = "10"
-			scrollbar.AppendChild(&thumb)
+				thumb := n.CreateElement("grim-thumb")
 
-			n.Style["width"] = "calc(" + n.Style["width"] + "-" + width + ")"
-			pr := n.Style["padding-right"]
-			if pr == "" {
-				if n.Style["padding"] != "" {
-					pr = n.Style["padding"]
+				thumb.Style["position"] = "absolute"
+				thumb.Style["top"] = strconv.Itoa(n.ScrollTop) + "px"
+				thumb.Style["left"] = "0"
+				thumb.Style["width"] = width
+				thumb.Style["height"] = "20px"
+				thumb.Style["background"] = thumbColor
+				thumb.Style["cursor"] = "pointer"
+				thumb.Style["z-index"] = "10"
+				scrollbar.AppendChild(&thumb)
+
+				n.Style["width"] = "calc(" + n.Style["width"] + "-" + width + ")"
+				pr := n.Style["padding-right"]
+				if pr == "" {
+					if n.Style["padding"] != "" {
+						pr = n.Style["padding"]
+					}
 				}
-			}
 
-			if pr != "" {
-				n.Style["padding-right"] = "calc(" + pr + "+" + width + ")"
-			} else {
-				n.Style["padding-right"] = width
-			}
+				if pr != "" {
+					n.Style["padding-right"] = "calc(" + pr + "+" + width + ")"
+				} else {
+					n.Style["padding-right"] = width
+				}
 
-			n.AppendChild(&scrollbar)
+				n.AppendChild(&scrollbar)
+			}
 
 			return n
 		},

@@ -20,8 +20,6 @@ import (
 	imgFont "golang.org/x/image/font"
 )
 
-// !TODO: Make a fine selector to target tags and if it has children or not etc
-// + could copy the transformers but idk
 type Plugin struct {
 	Selector func(*element.Node) bool
 	Level    int
@@ -231,7 +229,7 @@ func (c *CSS) GetStyles(n *element.Node) (map[string]string, map[string]map[stri
 			}
 
 			has := selector.Contains(part, selectors)
-			// fmt.Println(part, selectors, has, isPseudo)
+
 			if i == len(parts)-1 || !has {
 				if has {
 					if isPseudo {
@@ -532,6 +530,7 @@ func genTextNode(n *element.Node, state *map[string]element.State, css *CSS, she
 	}
 	fid := n.Style["font-family"] + fmt.Sprint(self.EM, bold, italic)
 	if css.Fonts[fid] == nil {
+		fmt.Println(fid)
 		f, _ := font.LoadFont(n.Style["font-family"], int(self.EM), bold, italic)
 		css.Fonts[fid] = f
 	}

@@ -247,6 +247,8 @@ func View(data *Window, width, height int) {
 
 	newWidth, newHeight := width, height
 
+	// !ISSUE: Adding the styles at run time works but first its better if we don't recalculate things
+	// + but also the event handler has no context of psuedo elements like the scroll bar so we can't do cursor changes
 	monitor := events.Monitor{
 		History:  &map[string]element.EventList{},
 		Adapter:  data.Adapter,

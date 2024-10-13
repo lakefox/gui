@@ -5,6 +5,7 @@ import (
 	adapter "gui/adapters"
 	"gui/cstyle"
 	"gui/element"
+	"strings"
 
 	"slices"
 )
@@ -127,7 +128,9 @@ func (m *Monitor) CalcEvents(el *element.Node, data *EventData) {
 
 				styledEl, _ := m.CSS.GetStyles(el)
 
-				if styledEl["overflow"] != "" || styledEl["overflow-x"] != "" || styledEl["overflow-y"] != "" {
+				// !TODO: Add scrolling for dragging over the scroll bar and arrow keys if it is focused
+
+				if hasAutoOrScroll(styledEl) {
 					el.ScrollTop = int(el.ScrollTop + (-data.Scroll))
 					if el.ScrollTop > el.ScrollHeight-int(self.Height) {
 						el.ScrollTop = el.ScrollHeight - int(self.Height)
@@ -269,4 +272,19 @@ func ProcessKeyEvent(n *element.Node, key int) {
 		// Record other key presses
 		n.Value += string(rune(key))
 	}
+}
+
+func hasAutoOrScroll(styledEl map[string]string) bool {
+	overflowKeys := []string{"overflow", "overflow-x", "overflow-y"}
+	for _, key := range overflowKeys {
+		if value, exists := styledEl[key]; exists {
+			values := strings.Fields(value) // Splits the value by spaces
+			for _, v := range values {
+				if v == "auto" || v == "scroll" {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }

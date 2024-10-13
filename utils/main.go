@@ -6,7 +6,6 @@ import (
 	"gui/element"
 	ic "image/color"
 	"reflect"
-	"regexp"
 	"strconv"
 	"strings"
 
@@ -125,32 +124,37 @@ func GetMP(n element.Node, wh WidthHeight, state *map[string]element.State, t st
 	style := n.Style
 	leftKey, rightKey, topKey, bottomKey := t+"-left", t+"-right", t+"-top", t+"-bottom"
 
+	leftStyle := style[leftKey]
+	rightStyle := style[rightKey]
+	topStyle := style[topKey]
+	bottomStyle := style[bottomKey]
+
 	if style[t] != "" {
 		left, right, top, bottom := convertMarginToIndividualProperties(style[t])
-		if style[leftKey] == "" {
-			style[leftKey] = left
+		if leftStyle == "" {
+			leftStyle = left
 		}
-		if style[rightKey] == "" {
-			style[rightKey] = right
+		if rightStyle == "" {
+			rightStyle = right
 		}
-		if style[topKey] == "" {
-			style[topKey] = top
+		if topStyle == "" {
+			topStyle = top
 		}
-		if style[bottomKey] == "" {
-			style[bottomKey] = bottom
+		if bottomStyle == "" {
+			bottomStyle = bottom
 		}
 	}
 
 	// Convert left and right properties
-	if style[leftKey] != "" || style[rightKey] != "" {
-		m.Left = ConvertToPixels(style[leftKey], fs, wh.Width)
-		m.Right = ConvertToPixels(style[rightKey], fs, wh.Width)
+	if leftStyle != "" || rightStyle != "" {
+		m.Left = ConvertToPixels(leftStyle, fs, wh.Width)
+		m.Right = ConvertToPixels(rightStyle, fs, wh.Width)
 	}
 
 	// Convert top and bottom properties
-	if style[topKey] != "" || style[bottomKey] != "" {
-		m.Top = ConvertToPixels(style[topKey], fs, wh.Height)
-		m.Bottom = ConvertToPixels(style[bottomKey], fs, wh.Height)
+	if topStyle != "" || bottomStyle != "" {
+		m.Top = ConvertToPixels(topStyle, fs, wh.Height)
+		m.Bottom = ConvertToPixels(bottomStyle, fs, wh.Height)
 	}
 
 	if t == "margin" {
@@ -201,8 +205,12 @@ func GetMP(n element.Node, wh WidthHeight, state *map[string]element.State, t st
 		}
 
 		// Handle auto margins
-		if style["margin"] == "auto" && style[leftKey] == "" && style[rightKey] == "" {
-			pwh := GetWH(*n.Parent, state)
+		if style["margin"] == "auto" && leftStyle == "" && rightStyle == "" {
+			// pwh := GetWH(*n.Parent, state)
+			parent := s[n.Parent.Properties.Id]
+			pwh := WidthHeight{
+				Width: parent.Width,
+			}
 			m.Left = Max((pwh.Width-wh.Width)/2, 0)
 			m.Right = m.Left
 		}
@@ -212,50 +220,30 @@ func GetMP(n element.Node, wh WidthHeight, state *map[string]element.State, t st
 }
 
 func convertMarginToIndividualProperties(margin string) (string, string, string, string) {
-	// Remove extra whitespace
-	margin = strings.TrimSpace(margin)
-
-	if margin == "" {
-		return "0px", "0px", "0px", "0px"
-	}
-
-	// Regular expression to match values with optional units
-	re := regexp.MustCompile(`(-?\d+(\.\d+)?)(\w*|\%)?`)
-
-	// Extract numerical values from the margin property
-	matches := re.FindAllStringSubmatch(margin, -1)
-
-	// Initialize variables for individual margins
-	var left, right, top, bottom string
-
-	switch len(matches) {
+	parts := strings.Fields(margin)
+	switch len(parts) {
 	case 1:
-		// If only one value is provided, apply it to all margins
-		left = matches[0][0]
-		right = matches[0][0]
-		top = matches[0][0]
-		bottom = matches[0][0]
+		return parts[0], parts[0], parts[0], parts[0]
 	case 2:
-		// If two values are provided, apply the first to top and bottom, and the second to left and right
-		top = matches[0][0]
-		bottom = matches[0][0]
-		left = matches[1][0]
-		right = matches[1][0]
+		return parts[0], parts[1], parts[0], parts[1]
 	case 3:
-		// If three values are provided, apply the first to top, the second to left and right, and the third to bottom
-		top = matches[0][0]
-		left = matches[1][0]
-		right = matches[1][0]
-		bottom = matches[2][0]
+		return parts[0], parts[1], parts[2], parts[1]
 	case 4:
-		// If four values are provided, apply them to top, right, bottom, and left, respectively
-		top = matches[0][0]
-		right = matches[1][0]
-		bottom = matches[2][0]
-		left = matches[3][0]
+		return parts[0], parts[1], parts[2], parts[3]
 	}
+	return "0px", "0px", "0px", "0px"
+}
 
-	return left, right, top, bottom
+var unitFactors = map[string]float64{
+	"px": 1,
+	"em": -1, // special handling
+	"pt": 1.33,
+	"pc": 16.89,
+	"%":  -1, // special handling
+	"vw": -1, // special handling
+	"vh": -1, // special handling
+	"cm": 37.79527559,
+	"in": 96,
 }
 
 // ConvertToPixels converts a CSS measurement to pixels.
@@ -275,37 +263,24 @@ func ConvertToPixels(value string, em, max float32) float32 {
 		return evaluateCalcExpression(value[5:len(value)-1], em, max)
 	}
 
-	// Optimize map lookups with a fixed set of unit conversions
-	unitFactors := [][2]string{
-		{"px", "1"},
-		{"em", "em"},
-		{"pt", "1.33"},
-		{"pc", "16.89"},
-		{"%", "max/100"},
-		{"vw", "max/100"},
-		{"vh", "max/100"},
-		{"cm", "37.79527559"},
-		{"in", "96"},
-	}
-
-	for _, unit := range unitFactors {
-		if strings.HasSuffix(value, unit[0]) {
-			cutStr := value[:len(value)-len(unit[0])]
+	for unit, factor := range unitFactors {
+		if strings.HasSuffix(value, unit) {
+			cutStr := strings.TrimSuffix(value, unit)
 			numericValue, err := strconv.ParseFloat(cutStr, 64)
 			if err != nil {
-				return 0 // Handle error or return default value
+				return 0
 			}
 
-			// Handle special cases for "%" and "vw/vh" units
-			switch unit[1] {
-			case "em":
-				return float32(numericValue) * em
-			case "max/100":
-				return float32(numericValue) * (max / 100)
-			default:
-				factor, _ := strconv.ParseFloat(unit[1], 64)
-				return float32(numericValue) * float32(factor)
+			// Handle special units like "em", "%" etc.
+			if factor == -1 {
+				switch unit {
+				case "em":
+					return float32(numericValue) * em
+				case "%", "vw", "vh":
+					return float32(numericValue) * (max / 100)
+				}
 			}
+			return float32(numericValue) * float32(factor)
 		}
 	}
 
