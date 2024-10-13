@@ -252,6 +252,7 @@ func View(data *Window, width, height int) {
 		Adapter:  data.Adapter,
 		State:    &state,
 		Document: &data.Document,
+		CSS:      &data.CSS,
 	}
 
 	data.Adapter.AddEventListener("windowresize", func(e element.Event) {
@@ -285,7 +286,6 @@ func View(data *Window, width, height int) {
 
 	data.Adapter.AddEventListener("scroll", func(e element.Event) {
 		currentEvent.Scroll = e.Data.(int)
-		// data.Document.Children[0].ScrollY = 120
 		monitor.GetEvents(&currentEvent)
 		currentEvent.Scroll = 0
 	})
@@ -333,7 +333,6 @@ func View(data *Window, width, height int) {
 		}
 
 		newHash, _ := hashStruct(&data.Document.Children[0])
-
 		if !bytes.Equal(hash, newHash) || resize {
 			hash = newHash
 			// fmt.Println("########################")

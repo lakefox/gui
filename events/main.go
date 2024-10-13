@@ -3,6 +3,7 @@ package events
 import (
 	"fmt"
 	adapter "gui/adapters"
+	"gui/cstyle"
 	"gui/element"
 
 	"slices"
@@ -23,6 +24,7 @@ type Monitor struct {
 	EventList *element.EventList
 	Adapter   *adapter.Adapter
 	History   *map[string]element.EventList
+	CSS       *cstyle.CSS
 }
 
 func (m *Monitor) RunEvents() bool {
@@ -119,27 +121,31 @@ func (m *Monitor) CalcEvents(el *element.Node, data *EventData) {
 				eventList = append(eventList, "contextmenu")
 			}
 
-			el.ScrollY = 0
+			// el.ScrollY = 0
 			if data.Scroll != 0 {
 				// !TODO: for now just emit a event, will have to add el.scrollX
 
-				el.ScrollTop = int(el.ScrollTop + (-data.Scroll))
+				styledEl, _ := m.CSS.GetStyles(el)
 
-				if el.ScrollTop > el.ScrollHeight-int(self.Height) {
-					el.ScrollTop = el.ScrollHeight - int(self.Height)
+				if styledEl["overflow"] != "" || styledEl["overflow-x"] != "" || styledEl["overflow-y"] != "" {
+					el.ScrollTop = int(el.ScrollTop + (-data.Scroll))
+					if el.ScrollTop > el.ScrollHeight-int(self.Height) {
+						el.ScrollTop = el.ScrollHeight - int(self.Height)
+					}
+
+					if el.ScrollTop <= 0 {
+						el.ScrollTop = 0
+					}
+
+					if el.OnScroll != nil {
+						el.OnScroll(evt)
+					}
+
+					data.Scroll = 0
+
+					eventList = append(eventList, "scroll")
 				}
 
-				if el.ScrollTop <= 0 {
-					el.ScrollTop = 0
-				}
-
-				if el.OnScroll != nil {
-					el.OnScroll(evt)
-				}
-
-				el.ScrollY = -data.Scroll
-
-				eventList = append(eventList, "scroll")
 			}
 
 			if !evt.MouseEnter {

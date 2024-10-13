@@ -281,10 +281,10 @@ func drawSolidBorder(ctx *canvas.Canvas, side string, border element.BorderSide,
 		// fmt.Println(4)
 		v1 := math.Max(float64(s.Border.Radius.TopLeft), 1)
 		v2 := math.Max(float64(s.Border.Radius.BottomLeft), 1)
-		genSolidBorder(ctx, height, v2, v1, border, s.Border.Top, s.Border.Bottom)
+		genSolidBorder(ctx, height, v2, v1, border, s.Border.Bottom, s.Border.Top)
 
 		ctx.Translate(0, float64(height))
-		ctx.Rotate(-math.Pi / 2)
+		ctx.Rotate((-math.Pi / 2))
 	}
 	ctx.Fill()
 	// ctx.Stroke()
