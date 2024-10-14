@@ -247,14 +247,16 @@ func View(data *Window, width, height int) {
 
 	newWidth, newHeight := width, height
 
+	var transformedDoc *element.Node
+
 	// !ISSUE: Adding the styles at run time works but first its better if we don't recalculate things
-	// + but also the event handler has no context of psuedo elements like the scroll bar so we can't do cursor changes
+	// + but also the event handler has no context of psuedo elements like the scroll bar so we can't do cursor changes or mousedown
 	monitor := events.Monitor{
-		History:  &map[string]element.EventList{},
-		Adapter:  data.Adapter,
-		State:    &state,
-		Document: &data.Document,
-		CSS:      &data.CSS,
+		History: &map[string]element.EventList{},
+		Adapter: data.Adapter,
+		State:   &state,
+		// Document: &data.Document,
+		CSS: &data.CSS,
 	}
 
 	data.Adapter.AddEventListener("windowresize", func(e element.Event) {
@@ -272,44 +274,45 @@ func View(data *Window, width, height int) {
 	data.Adapter.AddEventListener("keydown", func(e element.Event) {
 		currentEvent.Key = e.Data.(int)
 		currentEvent.KeyState = true
-		monitor.GetEvents(&currentEvent)
+		monitor.CalcEvents(transformedDoc, &currentEvent)
 	})
 	data.Adapter.AddEventListener("keyup", func(e element.Event) {
 		currentEvent.Key = 0
 		currentEvent.KeyState = false
-		monitor.GetEvents(&currentEvent)
+		monitor.CalcEvents(transformedDoc, &currentEvent)
 	})
 
 	data.Adapter.AddEventListener("mousemove", func(e element.Event) {
 		pos := e.Data.([]int)
 		currentEvent.Position = pos
-		monitor.GetEvents(&currentEvent)
+		monitor.CalcEvents(transformedDoc, &currentEvent)
 	})
 
 	data.Adapter.AddEventListener("scroll", func(e element.Event) {
 		currentEvent.Scroll = e.Data.(int)
-		monitor.GetEvents(&currentEvent)
+		fmt.Println("scroll")
+		monitor.CalcEvents(transformedDoc, &currentEvent)
 		currentEvent.Scroll = 0
 	})
 
 	data.Adapter.AddEventListener("mousedown", func(e element.Event) {
 		currentEvent.Click = true
-		monitor.GetEvents(&currentEvent)
+		monitor.CalcEvents(transformedDoc, &currentEvent)
 	})
 
 	data.Adapter.AddEventListener("mouseup", func(e element.Event) {
 		currentEvent.Click = false
-		monitor.GetEvents(&currentEvent)
+		monitor.CalcEvents(transformedDoc, &currentEvent)
 	})
 
 	data.Adapter.AddEventListener("contextmenudown", func(e element.Event) {
 		currentEvent.Context = true
-		monitor.GetEvents(&currentEvent)
+		monitor.CalcEvents(transformedDoc, &currentEvent)
 	})
 
 	data.Adapter.AddEventListener("contextmenuup", func(e element.Event) {
 		currentEvent.Context = true
-		monitor.GetEvents(&currentEvent)
+		monitor.CalcEvents(transformedDoc, &currentEvent)
 	})
 
 	// Main game loop
@@ -345,7 +348,11 @@ func View(data *Window, width, height int) {
 
 			// fmt.Println("Copy Node: ", time.Since(lastChange1))
 			// lastChange1 = time.Now()
+
+			// This is where the document needs to be updated at
 			newDoc = data.CSS.Transform(newDoc)
+			// monitor.Document = newDoc
+			transformedDoc = newDoc
 			// fmt.Println("Transform: ", time.Since(lastChange1))
 			// lastChange1 = time.Now()
 
@@ -371,7 +378,7 @@ func View(data *Window, width, height int) {
 
 			data.Scripts.Run(&data.Document)
 			fmt.Println("#", time.Since(lastChange))
-			shelf.Close()
+			shelf.Clean()
 		}
 		monitor.RunEvents()
 		data.Adapter.Render(rd)

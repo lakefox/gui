@@ -495,6 +495,8 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State,
 		self.Height += self.Padding.Bottom
 	}
 
+	self.ScrollHeight -= int(self.Height)
+
 	(*state)[n.Properties.Id] = self
 
 	for _, v := range plugins {

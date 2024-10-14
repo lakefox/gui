@@ -32,6 +32,7 @@ func (m *Monitor) RunEvents() bool {
 	eventRan := false
 	for _, evt := range *m.History {
 		if len(evt.List) > 0 {
+			fmt.Println(evt)
 			for _, v := range evt.List {
 				if len(evt.Event.Target.Properties.EventListeners[v]) > 0 {
 					for _, handler := range evt.Event.Target.Properties.EventListeners[v] {
@@ -49,19 +50,19 @@ func (m *Monitor) GetEvents(data *EventData) {
 	m.CalcEvents(m.Document, data)
 }
 
-func (m *Monitor) CalcEvents(el *element.Node, data *EventData) {
+func (m *Monitor) CalcEvents(n *element.Node, data *EventData) {
 	// loop through state to build events, then use multithreading to complete
 	// map
-	for _, v := range el.Children {
+	for _, v := range n.Children {
 		m.CalcEvents(v, data)
 	}
 
 	mHistory := *m.History
 	eventList := []string{}
-	evt := mHistory[el.Properties.Id].Event
+	evt := mHistory[n.Properties.Id].Event
 
 	s := *m.State
-	self := s[el.Properties.Id]
+	self := s[n.Properties.Id]
 
 	if evt.Target == nil {
 		evt = element.Event{
@@ -69,9 +70,9 @@ func (m *Monitor) CalcEvents(el *element.Node, data *EventData) {
 			Y:          data.Position[1],
 			MouseUp:    true,
 			MouseLeave: true,
-			Target:     el,
+			// Target:     n,
 		}
-		(*m.History)[el.Properties.Id] = element.EventList{
+		(*m.History)[n.Properties.Id] = element.EventList{
 			Event: evt,
 			List:  []string{},
 		}
@@ -83,15 +84,15 @@ func (m *Monitor) CalcEvents(el *element.Node, data *EventData) {
 		if self.Y < float32(data.Position[1]) && self.Y+self.Height > float32(data.Position[1]) {
 			// Mouse is over element
 			isMouseOver = true
-			if !slices.Contains(el.ClassList.Classes, ":hover") {
-				el.ClassList.Add(":hover")
+			if !slices.Contains(n.ClassList.Classes, ":hover") {
+				n.ClassList.Add(":hover")
 			}
 
 			if data.Click && !evt.MouseDown {
 				evt.MouseDown = true
 				evt.MouseUp = false
-				if el.OnMouseDown != nil {
-					el.OnMouseDown(evt)
+				if n.OnMouseDown != nil {
+					n.OnMouseDown(evt)
 				}
 				eventList = append(eventList, "mousedown")
 			}
@@ -100,24 +101,24 @@ func (m *Monitor) CalcEvents(el *element.Node, data *EventData) {
 				evt.MouseUp = true
 				evt.MouseDown = false
 				evt.Click = false
-				if el.OnMouseUp != nil {
-					el.OnMouseUp(evt)
+				if n.OnMouseUp != nil {
+					n.OnMouseUp(evt)
 				}
 				eventList = append(eventList, "mouseup")
 			}
 
 			if data.Click && !evt.Click {
 				evt.Click = true
-				if el.OnClick != nil {
-					el.OnClick(evt)
+				if n.OnClick != nil {
+					n.OnClick(evt)
 				}
 				eventList = append(eventList, "click")
 			}
 
 			if data.Context {
 				evt.ContextMenu = true
-				if el.OnContextMenu != nil {
-					el.OnContextMenu(evt)
+				if n.OnContextMenu != nil {
+					n.OnContextMenu(evt)
 				}
 				eventList = append(eventList, "contextmenu")
 			}
@@ -126,22 +127,22 @@ func (m *Monitor) CalcEvents(el *element.Node, data *EventData) {
 			if data.Scroll != 0 {
 				// !TODO: for now just emit a event, will have to add el.scrollX
 
-				styledEl, _ := m.CSS.GetStyles(el)
+				styledEl, _ := m.CSS.GetStyles(n)
 
 				// !TODO: Add scrolling for dragging over the scroll bar and arrow keys if it is focused
 
 				if hasAutoOrScroll(styledEl) {
-					el.ScrollTop = int(el.ScrollTop + (-data.Scroll))
-					if el.ScrollTop > el.ScrollHeight-int(self.Height) {
-						el.ScrollTop = el.ScrollHeight - int(self.Height)
+					n.ScrollTop = int(n.ScrollTop + (-data.Scroll))
+					if n.ScrollTop > n.ScrollHeight {
+						n.ScrollTop = n.ScrollHeight
 					}
 
-					if el.ScrollTop <= 0 {
-						el.ScrollTop = 0
+					if n.ScrollTop <= 0 {
+						n.ScrollTop = 0
 					}
 
-					if el.OnScroll != nil {
-						el.OnScroll(evt)
+					if n.OnScroll != nil {
+						n.OnScroll(evt)
 					}
 
 					data.Scroll = 0
@@ -155,11 +156,11 @@ func (m *Monitor) CalcEvents(el *element.Node, data *EventData) {
 				evt.MouseEnter = true
 				evt.MouseOver = true
 				evt.MouseLeave = false
-				if el.OnMouseEnter != nil {
-					el.OnMouseEnter(evt)
+				if n.OnMouseEnter != nil {
+					n.OnMouseEnter(evt)
 				}
-				if el.OnMouseOver != nil {
-					el.OnMouseEnter(evt)
+				if n.OnMouseOver != nil {
+					n.OnMouseEnter(evt)
 				}
 				eventList = append(eventList, "mouseenter")
 				eventList = append(eventList, "mouseover")
@@ -174,8 +175,8 @@ func (m *Monitor) CalcEvents(el *element.Node, data *EventData) {
 			if evt.X != int(data.Position[0]) && evt.Y != int(data.Position[1]) {
 				evt.X = int(data.Position[0])
 				evt.Y = int(data.Position[1])
-				if el.OnMouseMove != nil {
-					el.OnMouseMove(evt)
+				if n.OnMouseMove != nil {
+					n.OnMouseMove(evt)
 				}
 				eventList = append(eventList, "mousemove")
 			}
@@ -184,11 +185,11 @@ func (m *Monitor) CalcEvents(el *element.Node, data *EventData) {
 			// issue: need to only add the text data and events to focused elements and only
 			// 		  one at a time
 			if data.Key != 0 {
-				if el.Properties.Editable {
-					el.Value = el.InnerText
-					ProcessKeyEvent(el, int(data.Key))
+				if n.Properties.Editable {
+					n.Value = n.InnerText
+					ProcessKeyEvent(n, int(data.Key))
 
-					el.InnerText = el.Value
+					n.InnerText = n.Value
 					eventList = append(eventList, "keypress")
 				}
 
@@ -196,14 +197,14 @@ func (m *Monitor) CalcEvents(el *element.Node, data *EventData) {
 
 		} else {
 			isMouseOver = false
-			if slices.Contains(el.ClassList.Classes, ":hover") {
-				el.ClassList.Remove(":hover")
+			if slices.Contains(n.ClassList.Classes, ":hover") {
+				n.ClassList.Remove(":hover")
 			}
 		}
 	} else {
 		isMouseOver = false
-		if slices.Contains(el.ClassList.Classes, ":hover") {
-			el.ClassList.Remove(":hover")
+		if slices.Contains(n.ClassList.Classes, ":hover") {
+			n.ClassList.Remove(":hover")
 		}
 	}
 
@@ -213,18 +214,18 @@ func (m *Monitor) CalcEvents(el *element.Node, data *EventData) {
 		evt.MouseEnter = false
 		evt.MouseOver = false
 		evt.MouseLeave = true
-		el.Properties.Hover = false
-		if el.OnMouseLeave != nil {
-			el.OnMouseLeave(evt)
+		n.Properties.Hover = false
+		if n.OnMouseLeave != nil {
+			n.OnMouseLeave(evt)
 		}
 		eventList = append(eventList, "mouseleave")
 	}
 
-	if len(el.Properties.Events) > 0 {
-		eventList = append(eventList, el.Properties.Events...)
+	if len(n.Properties.Events) > 0 {
+		eventList = append(eventList, n.Properties.Events...)
 	}
 
-	(*m.History)[el.Properties.Id] = element.EventList{
+	(*m.History)[n.Properties.Id] = element.EventList{
 		Event: evt,
 		List:  eventList,
 	}

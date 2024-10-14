@@ -51,7 +51,7 @@ func (s *Shelf) Delete(key string) {
 	delete(s.Textures, key)
 }
 
-func (s *Shelf) Close() {
+func (s *Shelf) Clean() {
 	for k, v := range s.References {
 		if !v {
 			if s.UnloadCallback != nil {

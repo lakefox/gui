@@ -14,21 +14,23 @@ import (
 )
 
 type Node struct {
-	TagName        string
-	InnerText      string
-	InnerHTML      string
-	OuterHTML      string
-	Parent         *Node `json:"-"`
-	Children       []*Node
-	Style          map[string]string
-	Id             string
-	ClassList      ClassList
-	Href           string
-	Src            string
-	Title          string
-	Attribute      map[string]string
-	ScrollLeft     int
-	ScrollTop      int
+	TagName    string
+	InnerText  string
+	InnerHTML  string
+	OuterHTML  string
+	Parent     *Node `json:"-"`
+	Children   []*Node
+	Style      map[string]string
+	Id         string
+	ClassList  ClassList
+	Href       string
+	Src        string
+	Title      string
+	Attribute  map[string]string
+	ScrollLeft int
+	ScrollTop  int
+	// !NOTE: ScrollHeight is the amount of scroll left, not the total amount of scroll
+	// + if you  want the smae scrollHeight like js the add the height of the element to it
 	ScrollHeight   int
 	Context        *canvas.Canvas
 	PseudoElements map[string]map[string]string
@@ -340,6 +342,7 @@ func (n *Node) Remove() {
 	}
 }
 
+// !TODO: Add focus so you can make the scroll bar move with keys and mouse over
 func (n *Node) Focus() {
 	if n.Properties.Focusable {
 		n.Properties.Focused = true

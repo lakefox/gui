@@ -1,7 +1,6 @@
 package scrollbar
 
 import (
-	"fmt"
 	"gui/cstyle"
 	"gui/element"
 	"strconv"
@@ -34,8 +33,6 @@ func Init() cstyle.Transformer {
 				n.Style["position"] = "relative"
 			}
 
-			fmt.Println(n.ScrollHeight, n.Style["height"])
-
 			width := "14px"
 			if n.Style["scrollbar-width"] == "thin" {
 				width = "10px"
@@ -62,7 +59,7 @@ func Init() cstyle.Transformer {
 
 			// Y scrollbar
 
-			if n.Style["overflow-y"] == "scroll" || n.Style["overflow-y"] == "auto" {
+			if (n.Style["overflow-y"] == "scroll" || n.Style["overflow-y"] == "auto") && n.ScrollHeight > 0 {
 				scrollbar := n.CreateElement("grim-scrollbar")
 
 				scrollbar.Style["position"] = "absolute"
@@ -85,11 +82,6 @@ func Init() cstyle.Transformer {
 				thumb.Style["z-index"] = "10"
 				scrollbar.AppendChild(&thumb)
 
-				// !ISSUE: need to remove the scroll bar if there is no need for it
-				// + overflow-y: auto would be the only case... but need to see if the contents overflow
-				// + currently can't think of a way to do this but n.ScrollHeight does exist
-				// + just don't know the height of the container if say height: 100%. that is calculated later
-				// + but it needs to be removed here
 				n.Style["width"] = "calc(" + n.Style["width"] + "-" + width + ")"
 				pr := n.Style["padding-right"]
 				if pr == "" {
