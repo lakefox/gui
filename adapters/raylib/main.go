@@ -223,7 +223,7 @@ func (wm *WindowManager) GetEvents() {
 	}
 
 	// Other keys
-	for i := 8; i <= 255; i++ {
+	for i := 0; i <= 350; i++ {
 		// for i := 32; i < 126; i++ {
 		isDown := rl.IsKeyDown(int32(i))
 		if wm.CurrentEvents[i] != isDown {

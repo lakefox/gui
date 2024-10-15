@@ -483,7 +483,7 @@ func NodeToHTML(node *element.Node) (string, string) {
 	var buffer bytes.Buffer
 	buffer.WriteString("<" + node.TagName)
 
-	if node.Properties.Editable {
+	if node.ContentEditable {
 		buffer.WriteString(" contentEditable=\"true\"")
 	}
 

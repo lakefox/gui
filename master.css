@@ -580,6 +580,10 @@ a {
     text-decoration-color: #0100ee;
     display: inline;
 }
+a:focus {
+    border: 10px solid blue;
+    background: red;
+}
 a:active {
     color: #551a8b;
 }

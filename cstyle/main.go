@@ -166,56 +166,39 @@ func (c *CSS) GetStyles(n *element.Node) (map[string]string, map[string]map[stri
 	// !IDEA: Might be able to only reload page if element that is being hoverved over has a possible :hover class
 	// + might addeventlisteners here?????
 
-	// Check if node is hovered
-	hovered := false
-	for _, class := range n.ClassList.Classes {
-		if class == ":hover" {
-			hovered = true
-			break
-		}
-	}
-
 	// Apply styles from style sheets
 	selectors := []string{}
-	if n.Properties.Focusable && n.Properties.Focused {
-		selectors = append(selectors, ":focus")
-	}
 
-	for _, class := range n.ClassList.Classes {
-		selectors = append(selectors, "."+class)
-	}
+	selectors = append(selectors, n.TagName)
 
 	if n.Id != "" {
 		selectors = append(selectors, "#"+n.Id)
 	}
 
-	selectors = append(selectors, n.TagName)
+	for _, class := range n.ClassList.Classes {
+		if class[0] == ':' {
+			selectors = append(selectors, class)
+		} else {
+			selectors = append(selectors, "."+class)
+		}
+	}
+
 	styleMaps := []*parser.StyleMap{}
 	for _, v := range selectors {
 		styleMaps = append(styleMaps, c.StyleMap[v]...)
 	}
 
-	sort.Slice(styleMaps, func(i, j int) bool {
-		return styleMaps[i].SheetNumber < styleMaps[j].SheetNumber
-	})
-
-	// fmt.Println(n.Properties.Id)
+	// !NOTE: might break something.. I forgot why its here, but commenting it out fixes the focus sooo
+	// sort.Slice(styleMaps, func(i, j int) bool {
+	// 	return styleMaps[i].SheetNumber < styleMaps[j].SheetNumber
+	// })
 
 	for _, styleMap := range styleMaps {
-		// fmt.Println(styleMap)
 		parts := styleMap.Selector
 		currentElement := n
 		isPseudo := false
 		pseudoSelector := ""
 		for i, part := range parts {
-			if hovered {
-				for i, v := range part {
-					if v == ":hover" {
-						part = append(part[:i], part[i+1:]...)
-						break
-					}
-				}
-			}
 			for i, v := range part {
 				if len(v) < 2 {
 					continue
@@ -245,18 +228,18 @@ func (c *CSS) GetStyles(n *element.Node) (map[string]string, map[string]map[stri
 							styles[k] = v
 						}
 					}
-
 				}
 				break
 			} else {
 				selectors = []string{}
 				currentElement = currentElement.Parent
-				if currentElement.Properties.Focusable && currentElement.Properties.Focused {
-					selectors = append(selectors, ":focus")
-				}
 
 				for _, class := range currentElement.ClassList.Classes {
-					selectors = append(selectors, "."+class)
+					if class[0] == ':' {
+						selectors = append(selectors, class)
+					} else {
+						selectors = append(selectors, "."+class)
+					}
 				}
 
 				if n.Id != "" {

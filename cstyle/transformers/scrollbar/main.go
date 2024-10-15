@@ -67,7 +67,6 @@ func Init() cstyle.Transformer {
 				scrollbar.Style["right"] = "0"
 				scrollbar.Style["width"] = width
 				scrollbar.Style["height"] = "100%"
-				scrollbar.Style["z-index"] = "9"
 				scrollbar.Style["background"] = backgroundColor
 
 				thumb := n.CreateElement("grim-thumb")
@@ -79,7 +78,6 @@ func Init() cstyle.Transformer {
 				thumb.Style["height"] = "20px"
 				thumb.Style["background"] = thumbColor
 				thumb.Style["cursor"] = "pointer"
-				thumb.Style["z-index"] = "10"
 				scrollbar.AppendChild(&thumb)
 
 				n.Style["width"] = "calc(" + n.Style["width"] + "-" + width + ")"

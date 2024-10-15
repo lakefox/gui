@@ -247,16 +247,14 @@ func View(data *Window, width, height int) {
 
 	newWidth, newHeight := width, height
 
-	var transformedDoc *element.Node
-
 	// !ISSUE: Adding the styles at run time works but first its better if we don't recalculate things
 	// + but also the event handler has no context of psuedo elements like the scroll bar so we can't do cursor changes or mousedown
 	monitor := events.Monitor{
-		History: &map[string]element.EventList{},
-		Adapter: data.Adapter,
-		State:   &state,
-		// Document: &data.Document,
-		CSS: &data.CSS,
+		History:  &map[string]element.EventList{},
+		Adapter:  data.Adapter,
+		State:    &state,
+		Document: &data.Document,
+		CSS:      &data.CSS,
 	}
 
 	data.Adapter.AddEventListener("windowresize", func(e element.Event) {
@@ -274,45 +272,44 @@ func View(data *Window, width, height int) {
 	data.Adapter.AddEventListener("keydown", func(e element.Event) {
 		currentEvent.Key = e.Data.(int)
 		currentEvent.KeyState = true
-		monitor.CalcEvents(transformedDoc, &currentEvent)
+		monitor.GetEvents(&currentEvent)
 	})
 	data.Adapter.AddEventListener("keyup", func(e element.Event) {
 		currentEvent.Key = 0
 		currentEvent.KeyState = false
-		monitor.CalcEvents(transformedDoc, &currentEvent)
+		monitor.GetEvents(&currentEvent)
 	})
 
 	data.Adapter.AddEventListener("mousemove", func(e element.Event) {
 		pos := e.Data.([]int)
 		currentEvent.Position = pos
-		monitor.CalcEvents(transformedDoc, &currentEvent)
+		monitor.GetEvents(&currentEvent)
 	})
 
 	data.Adapter.AddEventListener("scroll", func(e element.Event) {
 		currentEvent.Scroll = e.Data.(int)
-		fmt.Println("scroll")
-		monitor.CalcEvents(transformedDoc, &currentEvent)
+		monitor.GetEvents(&currentEvent)
 		currentEvent.Scroll = 0
 	})
 
 	data.Adapter.AddEventListener("mousedown", func(e element.Event) {
 		currentEvent.Click = true
-		monitor.CalcEvents(transformedDoc, &currentEvent)
+		monitor.GetEvents(&currentEvent)
 	})
 
 	data.Adapter.AddEventListener("mouseup", func(e element.Event) {
 		currentEvent.Click = false
-		monitor.CalcEvents(transformedDoc, &currentEvent)
+		monitor.GetEvents(&currentEvent)
 	})
 
 	data.Adapter.AddEventListener("contextmenudown", func(e element.Event) {
 		currentEvent.Context = true
-		monitor.CalcEvents(transformedDoc, &currentEvent)
+		monitor.GetEvents(&currentEvent)
 	})
 
 	data.Adapter.AddEventListener("contextmenuup", func(e element.Event) {
 		currentEvent.Context = true
-		monitor.CalcEvents(transformedDoc, &currentEvent)
+		monitor.GetEvents(&currentEvent)
 	})
 
 	// Main game loop
@@ -338,6 +335,7 @@ func View(data *Window, width, height int) {
 		}
 
 		newHash, _ := hashStruct(&data.Document.Children[0])
+
 		if !bytes.Equal(hash, newHash) || resize {
 			hash = newHash
 			// fmt.Println("########################")
@@ -352,7 +350,6 @@ func View(data *Window, width, height int) {
 			// This is where the document needs to be updated at
 			newDoc = data.CSS.Transform(newDoc)
 			// monitor.Document = newDoc
-			transformedDoc = newDoc
 			// fmt.Println("Transform: ", time.Since(lastChange1))
 			// lastChange1 = time.Now()
 
@@ -380,7 +377,12 @@ func View(data *Window, width, height int) {
 			fmt.Println("#", time.Since(lastChange))
 			shelf.Clean()
 		}
+
 		monitor.RunEvents()
+		// if monitor.Focus != nil {
+		// 	fmt.Println("FOCUS")
+		// 	monitor.Focus.Focus()
+		// }
 		data.Adapter.Render(rd)
 	}
 }
@@ -413,13 +415,15 @@ func CreateNode(node *html.Node, parent *element.Node) {
 			} else if attr.Key == "id" {
 				newNode.Id = attr.Val
 			} else if attr.Key == "contenteditable" && (attr.Val == "" || attr.Val == "true") {
-				newNode.Properties.Editable = true
+				newNode.ContentEditable = true
 			} else if attr.Key == "href" {
 				newNode.Href = attr.Val
 			} else if attr.Key == "src" {
 				newNode.Src = attr.Val
 			} else if attr.Key == "title" {
 				newNode.Title = attr.Val
+			} else if attr.Key == "tabindex" {
+				newNode.TabIndex, _ = strconv.Atoi(attr.Val)
 			} else {
 				newNode.SetAttribute(attr.Key, attr.Val)
 			}

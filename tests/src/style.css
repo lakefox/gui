@@ -15,6 +15,11 @@ div#box {
     z-index: 2;
     /* text-decoration: underline; */
 }
+
+#box:focus {
+    border: 1px solid aqua;
+}
+
 #box2 {
     color: blanchedalmond;
     font-size: 100px;

@@ -26,13 +26,19 @@ type Monitor struct {
 	Adapter   *adapter.Adapter
 	History   *map[string]element.EventList
 	CSS       *cstyle.CSS
+	Focus     Focus
+}
+
+type Focus struct {
+	Selected            int
+	LastClickWasFocused bool
+	Nodes               []*element.Node
 }
 
 func (m *Monitor) RunEvents() bool {
 	eventRan := false
 	for _, evt := range *m.History {
 		if len(evt.List) > 0 {
-			fmt.Println(evt)
 			for _, v := range evt.List {
 				if len(evt.Event.Target.Properties.EventListeners[v]) > 0 {
 					for _, handler := range evt.Event.Target.Properties.EventListeners[v] {
@@ -47,6 +53,7 @@ func (m *Monitor) RunEvents() bool {
 }
 
 func (m *Monitor) GetEvents(data *EventData) {
+	m.Focus.LastClickWasFocused = false
 	m.CalcEvents(m.Document, data)
 }
 
@@ -57,6 +64,27 @@ func (m *Monitor) CalcEvents(n *element.Node, data *EventData) {
 		m.CalcEvents(v, data)
 	}
 
+	if n.TabIndex > -1 {
+		if m.Focus.Nodes != nil {
+			selectedIndex := -1
+			for i, v := range m.Focus.Nodes {
+				if v.Properties.Id == n.Properties.Id {
+					selectedIndex = i
+				}
+			}
+			if selectedIndex == -1 {
+				m.Focus.Nodes = append([]*element.Node{n}, m.Focus.Nodes...)
+			}
+		} else {
+			m.Focus = Focus{}
+			m.Focus.Selected = -1
+			m.Focus.Nodes = append(m.Focus.Nodes, n)
+		}
+	}
+	// sort.Slice(m.Focus.Nodes, func(i, j int) bool {
+	// 	return m.Focus.Nodes[i].TabIndex < m.Focus.Nodes[j].TabIndex // Ascending order by TabIndex
+	// })
+
 	mHistory := *m.History
 	eventList := []string{}
 	evt := mHistory[n.Properties.Id].Event
@@ -65,12 +93,15 @@ func (m *Monitor) CalcEvents(n *element.Node, data *EventData) {
 	self := s[n.Properties.Id]
 
 	if evt.Target == nil {
+		if len(data.Position) < 2 {
+			data.Position = []int{0, 0}
+		}
 		evt = element.Event{
 			X:          data.Position[0],
 			Y:          data.Position[1],
 			MouseUp:    true,
 			MouseLeave: true,
-			// Target:     n,
+			Target:     n,
 		}
 		(*m.History)[n.Properties.Id] = element.EventList{
 			Event: evt,
@@ -109,6 +140,45 @@ func (m *Monitor) CalcEvents(n *element.Node, data *EventData) {
 
 			if data.Click && !evt.Click {
 				evt.Click = true
+
+				if n.TabIndex > -1 {
+					if m.Focus.Selected > -1 {
+						if m.Focus.Nodes[m.Focus.Selected].Properties.Id != n.Properties.Id {
+							m.Focus.Nodes[m.Focus.Selected].Blur()
+						} else {
+							m.Focus.LastClickWasFocused = true
+
+						}
+					} else {
+						selectedIndex := -1
+						for i, v := range m.Focus.Nodes {
+							if v.Properties.Id == n.Properties.Id {
+								selectedIndex = i
+							}
+						}
+						if selectedIndex == -1 {
+							m.Focus.Nodes = append([]*element.Node{n}, m.Focus.Nodes...)
+							// sort.Slice(m.Focus.Nodes, func(i, j int) bool {
+							// 	return m.Focus.Nodes[i].TabIndex < m.Focus.Nodes[j].TabIndex // Ascending order by TabIndex
+							// })
+							for i, v := range m.Focus.Nodes {
+								if v.Properties.Id == n.Properties.Id {
+									selectedIndex = i
+								}
+							}
+						}
+
+						m.Focus.Selected = selectedIndex
+						n.Focus()
+						m.Focus.LastClickWasFocused = true
+					}
+
+				} else if m.Focus.Selected > -1 {
+					if m.Focus.Nodes[m.Focus.Selected].Properties.Id != n.Properties.Id && !m.Focus.LastClickWasFocused {
+						m.Focus.Nodes[m.Focus.Selected].Blur()
+						m.Focus.Selected = -1
+					}
+				}
 				if n.OnClick != nil {
 					n.OnClick(evt)
 				}
@@ -130,6 +200,7 @@ func (m *Monitor) CalcEvents(n *element.Node, data *EventData) {
 				styledEl, _ := m.CSS.GetStyles(n)
 
 				// !TODO: Add scrolling for dragging over the scroll bar and arrow keys if it is focused
+				// + Working on the focus part, the dragging part will be hard as events has no context of the scrollbars
 
 				if hasAutoOrScroll(styledEl) {
 					n.ScrollTop = int(n.ScrollTop + (-data.Scroll))
@@ -185,14 +256,31 @@ func (m *Monitor) CalcEvents(n *element.Node, data *EventData) {
 			// issue: need to only add the text data and events to focused elements and only
 			// 		  one at a time
 			if data.Key != 0 {
-				if n.Properties.Editable {
+				if n.ContentEditable {
 					n.Value = n.InnerText
 					ProcessKeyEvent(n, int(data.Key))
 
 					n.InnerText = n.Value
 					eventList = append(eventList, "keypress")
 				}
+				if data.Key == 258 && data.KeyState {
+					// Tab
+					mfsLen := len(m.Focus.Nodes)
+					if mfsLen > 0 {
+						store := m.Focus.Selected
+						m.Focus.Selected += 1
+						if m.Focus.Selected >= mfsLen {
+							m.Focus.Selected = 0
+						}
+						if store != m.Focus.Selected {
+							if store > -1 {
+								m.Focus.Nodes[store].Blur()
+							}
+							m.Focus.Nodes[m.Focus.Selected].Focus()
+						}
+					}
 
+				}
 			}
 
 		} else {

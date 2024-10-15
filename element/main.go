@@ -14,21 +14,24 @@ import (
 )
 
 type Node struct {
-	TagName    string
-	InnerText  string
-	InnerHTML  string
-	OuterHTML  string
-	Parent     *Node `json:"-"`
-	Children   []*Node
-	Style      map[string]string
-	Id         string
-	ClassList  ClassList
-	Href       string
-	Src        string
-	Title      string
-	Attribute  map[string]string
-	ScrollLeft int
-	ScrollTop  int
+	TagName         string
+	InnerText       string
+	InnerHTML       string
+	OuterHTML       string
+	Parent          *Node `json:"-"`
+	Children        []*Node
+	Style           map[string]string
+	Id              string
+	ClassList       ClassList
+	Href            string
+	Src             string
+	Title           string
+	Attribute       map[string]string
+	ScrollLeft      int
+	ScrollTop       int
+	TabIndex        int
+	ContentEditable bool
+
 	// !NOTE: ScrollHeight is the amount of scroll left, not the total amount of scroll
 	// + if you  want the smae scrollHeight like js the add the height of the element to it
 	ScrollHeight   int
@@ -50,16 +53,15 @@ type Node struct {
 
 type State struct {
 	// Id         string
-	X          float32
-	Y          float32
-	Z          float32
-	Width      float32
-	Height     float32
-	Border     Border
-	Textures   []string
-	EM         float32
-	Background ic.RGBA
-	// Color      ic.RGBA
+	X            float32
+	Y            float32
+	Z            float32
+	Width        float32
+	Height       float32
+	Border       Border
+	Textures     []string
+	EM           float32
+	Background   ic.RGBA
 	Margin       MarginPadding
 	Padding      MarginPadding
 	Cursor       string
@@ -81,11 +83,9 @@ type Properties struct {
 	Id             string
 	EventListeners map[string][]func(Event) `json:"-"`
 	Events         []string
-	Focusable      bool
-	Focused        bool
-	Editable       bool
 	Hover          bool
-	Selected       []float32
+	// !TODO: After focus
+	Selected []float32
 }
 
 type ClassList struct {
@@ -177,6 +177,25 @@ func (n *Node) SetAttribute(key, value string) {
 }
 
 func (n *Node) CreateElement(name string) Node {
+	ti := -1
+
+	focusableElements := map[string]bool{
+		"input":    true,
+		"button":   true,
+		"select":   true,
+		"textarea": true,
+		"output":   true,
+		"a":        true,
+		"area":     true,
+		"audio":    true,
+		"video":    true,
+		"details":  true,
+		"label":    true,
+	}
+
+	if focusableElements[name] {
+		ti = 0
+	}
 	return Node{
 		TagName:   name,
 		InnerText: "",
@@ -189,17 +208,16 @@ func (n *Node) CreateElement(name string) Node {
 			Classes: []string{},
 			Value:   "",
 		},
-		Href:      "",
-		Src:       "",
-		Title:     "",
-		Attribute: make(map[string]string),
-		Value:     "",
+		Href:            "",
+		Src:             "",
+		Title:           "",
+		Attribute:       make(map[string]string),
+		Value:           "",
+		TabIndex:        ti,
+		ContentEditable: false,
 		Properties: Properties{
 			Id:             "",
 			EventListeners: make(map[string][]func(Event)),
-			Focusable:      false,
-			Focused:        false,
-			Editable:       false,
 			Hover:          false,
 			Selected:       []float32{},
 		},
@@ -242,19 +260,21 @@ func TestSelector(selectString string, n *Node) bool {
 	parts := strings.Split(selectString, ">")
 
 	selectors := []string{}
-	if n.Properties.Focusable && n.Properties.Focused {
-		selectors = append(selectors, ":focus")
-	}
 
-	for _, class := range n.ClassList.Classes {
-		selectors = append(selectors, "."+class)
-	}
+	selectors = append(selectors, n.TagName)
 
 	if n.Id != "" {
 		selectors = append(selectors, "#"+n.Id)
 	}
 
-	selectors = append(selectors, n.TagName)
+	for _, class := range n.ClassList.Classes {
+		if class[0] == ':' {
+			selectors = append(selectors, class)
+		} else {
+			selectors = append(selectors, "."+class)
+		}
+	}
+
 	part := selector.SplitSelector(strings.TrimSpace(parts[len(parts)-1]))
 	// fmt.Println(part)
 
@@ -320,9 +340,6 @@ func (n *Node) InsertBefore(c, tgt *Node) {
 	}
 	if nodeIndex > 0 {
 		n.Children = append(n.Children[:nodeIndex], append([]*Node{c}, n.Children[nodeIndex:]...)...)
-		// n.Children = append(n.Children, Node{}) // Add a zero value to expand the slice
-		// copy(n.Children[nodeIndex+1:], n.Children[nodeIndex:])
-		// n.Children[nodeIndex] = c
 	} else {
 		n.AppendChild(c)
 	}
@@ -344,17 +361,20 @@ func (n *Node) Remove() {
 
 // !TODO: Add focus so you can make the scroll bar move with keys and mouse over
 func (n *Node) Focus() {
-	if n.Properties.Focusable {
-		n.Properties.Focused = true
+	// !ISSUE: REMOVE
+	has := false
+	for _, v := range n.ClassList.Classes {
+		if v == ":focus" {
+			has = true
+		}
+	}
+	if !has {
 		n.ClassList.Add(":focus")
 	}
 }
 
 func (n *Node) Blur() {
-	if n.Properties.Focusable {
-		n.Properties.Focused = false
-		n.ClassList.Remove(":focus")
-	}
+	n.ClassList.Remove(":focus")
 }
 
 func (n *Node) GetContext(width, height int) *canvas.Canvas {
@@ -374,6 +394,7 @@ type Event struct {
 	X           int
 	Y           int
 	KeyCode     int
+	Scroll      int
 	Key         string
 	CtrlKey     bool
 	MetaKey     bool
