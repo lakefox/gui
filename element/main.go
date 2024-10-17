@@ -194,7 +194,7 @@ func (n *Node) CreateElement(name string) Node {
 	}
 
 	if focusableElements[name] {
-		ti = 0
+		ti = 9999999
 	}
 	return Node{
 		TagName:   name,

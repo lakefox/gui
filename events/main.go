@@ -5,7 +5,10 @@ import (
 	adapter "gui/adapters"
 	"gui/cstyle"
 	"gui/element"
+	"sort"
+	"strconv"
 	"strings"
+	"unicode"
 
 	"slices"
 )
@@ -73,6 +76,14 @@ func (m *Monitor) CalcEvents(n *element.Node, data *EventData) {
 				}
 			}
 			if selectedIndex == -1 {
+				if n.TabIndex == 9999999 {
+					// Add the last digits of the properties.id to make the elements sort in order
+					numStr := strings.TrimFunc(n.Properties.Id, func(r rune) bool {
+						return !unicode.IsDigit(r) // Remove non-digit characters
+					})
+					prid, _ := strconv.Atoi(numStr)
+					n.TabIndex += prid
+				}
 				m.Focus.Nodes = append([]*element.Node{n}, m.Focus.Nodes...)
 			}
 		} else {
@@ -81,9 +92,9 @@ func (m *Monitor) CalcEvents(n *element.Node, data *EventData) {
 			m.Focus.Nodes = append(m.Focus.Nodes, n)
 		}
 	}
-	// sort.Slice(m.Focus.Nodes, func(i, j int) bool {
-	// 	return m.Focus.Nodes[i].TabIndex < m.Focus.Nodes[j].TabIndex // Ascending order by TabIndex
-	// })
+	sort.Slice(m.Focus.Nodes, func(i, j int) bool {
+		return m.Focus.Nodes[i].TabIndex < m.Focus.Nodes[j].TabIndex // Ascending order by TabIndex
+	})
 
 	mHistory := *m.History
 	eventList := []string{}
@@ -145,9 +156,16 @@ func (m *Monitor) CalcEvents(n *element.Node, data *EventData) {
 					if m.Focus.Selected > -1 {
 						if m.Focus.Nodes[m.Focus.Selected].Properties.Id != n.Properties.Id {
 							m.Focus.Nodes[m.Focus.Selected].Blur()
+							for i, v := range m.Focus.Nodes {
+								if v.Properties.Id == n.Properties.Id {
+									m.Focus.Selected = i
+									n.Focus()
+									m.Focus.LastClickWasFocused = true
+									break
+								}
+							}
 						} else {
 							m.Focus.LastClickWasFocused = true
-
 						}
 					} else {
 						selectedIndex := -1
@@ -157,10 +175,18 @@ func (m *Monitor) CalcEvents(n *element.Node, data *EventData) {
 							}
 						}
 						if selectedIndex == -1 {
+							if n.TabIndex == 9999999 {
+								// Add the last digits of the properties.id to make the elements sort in order
+								numStr := strings.TrimFunc(n.Properties.Id, func(r rune) bool {
+									return !unicode.IsDigit(r) // Remove non-digit characters
+								})
+								prid, _ := strconv.Atoi(numStr)
+								n.TabIndex += prid
+							}
 							m.Focus.Nodes = append([]*element.Node{n}, m.Focus.Nodes...)
-							// sort.Slice(m.Focus.Nodes, func(i, j int) bool {
-							// 	return m.Focus.Nodes[i].TabIndex < m.Focus.Nodes[j].TabIndex // Ascending order by TabIndex
-							// })
+							sort.Slice(m.Focus.Nodes, func(i, j int) bool {
+								return m.Focus.Nodes[i].TabIndex < m.Focus.Nodes[j].TabIndex // Ascending order by TabIndex
+							})
 							for i, v := range m.Focus.Nodes {
 								if v.Properties.Id == n.Properties.Id {
 									selectedIndex = i
@@ -263,24 +289,27 @@ func (m *Monitor) CalcEvents(n *element.Node, data *EventData) {
 					n.InnerText = n.Value
 					eventList = append(eventList, "keypress")
 				}
-				if data.Key == 258 && data.KeyState {
-					// Tab
-					mfsLen := len(m.Focus.Nodes)
-					if mfsLen > 0 {
-						store := m.Focus.Selected
-						m.Focus.Selected += 1
-						if m.Focus.Selected >= mfsLen {
-							m.Focus.Selected = 0
-						}
-						if store != m.Focus.Selected {
-							if store > -1 {
-								m.Focus.Nodes[store].Blur()
-							}
-							m.Focus.Nodes[m.Focus.Selected].Focus()
-						}
-					}
+			}
 
+			// !ISSUE: Tab fires multiple events
+			if data.Key == 258 && data.KeyState && !m.Focus.LastClickWasFocused {
+				// Tab
+				mfsLen := len(m.Focus.Nodes)
+				if mfsLen > 0 {
+					store := m.Focus.Selected
+					m.Focus.Selected += 1
+					if m.Focus.Selected >= mfsLen {
+						m.Focus.Selected = 0
+					}
+					if store != m.Focus.Selected {
+						if store > -1 {
+							m.Focus.Nodes[store].Blur()
+						}
+						m.Focus.Nodes[m.Focus.Selected].Focus()
+						m.Focus.LastClickWasFocused = true
+					}
 				}
+
 			}
 
 		} else {

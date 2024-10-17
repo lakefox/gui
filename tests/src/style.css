@@ -48,6 +48,9 @@ html {
     cursor: pointer;
     /* padding: 20px; */
 }
+.a:focus {
+    background-color: red;
+}
 #cont {
     position: relative;
 }
