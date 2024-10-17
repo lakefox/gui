@@ -14,6 +14,7 @@ import (
 	"gui/cstyle/plugins/flex"
 	"gui/cstyle/plugins/inline"
 	"gui/cstyle/plugins/textAlign"
+	"gui/cstyle/transformers/background"
 	flexprep "gui/cstyle/transformers/flex"
 	marginblock "gui/cstyle/transformers/margin-block"
 	"gui/cstyle/transformers/ol"
@@ -95,6 +96,7 @@ func New(adapterFunction *adapter.Adapter) Window {
 	css.AddTransformer(ol.Init())
 	// css.AddTransformer(textInline.Init())
 	css.AddTransformer(text.Init())
+	css.AddTransformer(background.Init())
 
 	el := element.Node{}
 	document := el.CreateElement("ROOT")

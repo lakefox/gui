@@ -377,7 +377,6 @@ var namedColors = map[string]ic.RGBA{
 
 func CalculateBackgroundColor(styles map[string]string) ic.RGBA {
 	// Extract the "background-color" or "background" property from the styles
-	// !ISSUE: Because background-color over-rules background if a :focus selector just has background then it can't change the bg
 	backgroundColor, ok := styles["background-color"]
 	if !ok {
 		backgroundColor, ok = styles["background"]

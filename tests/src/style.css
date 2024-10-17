@@ -24,6 +24,10 @@ div#box {
     color: blanchedalmond;
     font-size: 100px;
 }
+#box2:hover {
+    width: 200px;
+    height: 200px;
+}
 div#test > h1 {
     font-size: 100px;
     background-color: aqua;
@@ -49,7 +53,7 @@ html {
     /* padding: 20px; */
 }
 .a:focus {
-    background-color: red;
+    background: red;
 }
 #cont {
     position: relative;
