@@ -361,7 +361,6 @@ func (n *Node) Remove() {
 
 // !TODO: Add focus so you can make the scroll bar move with keys and mouse over
 func (n *Node) Focus() {
-	// !ISSUE: REMOVE
 	has := false
 	for _, v := range n.ClassList.Classes {
 		if v == ":focus" {

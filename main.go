@@ -81,11 +81,8 @@ func New(adapterFunction *adapter.Adapter) Window {
 
 	css.StyleTag(mastercss)
 	// This is still apart of computestyle
-	// css.AddPlugin(position.Init())
 	css.AddPlugin(inline.Init())
-	// css.AddPlugin(block.Init())
 	css.AddPlugin(textAlign.Init())
-	// css.AddPlugin(inlineText.Init())
 	css.AddPlugin(flex.Init())
 	css.AddPlugin(crop.Init())
 
@@ -94,7 +91,6 @@ func New(adapterFunction *adapter.Adapter) Window {
 	css.AddTransformer(marginblock.Init())
 	css.AddTransformer(ul.Init())
 	css.AddTransformer(ol.Init())
-	// css.AddTransformer(textInline.Init())
 	css.AddTransformer(text.Init())
 	css.AddTransformer(background.Init())
 
@@ -128,7 +124,6 @@ func (w *Window) Render(doc *element.Node, state *map[string]element.State, shel
 		store = append(store, s[v.Properties.Id])
 		keys = append(keys, v.Properties.Id)
 	}
-	// !ISSUE: Deletes injected elements
 
 	// Create a set of keys to keep
 	keysSet := make(map[string]struct{}, len(keys))

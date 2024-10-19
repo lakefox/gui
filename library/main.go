@@ -4,6 +4,8 @@ import (
 	"image"
 )
 
+// Borrow checker for images
+
 type Shelf struct {
 	Textures       map[string]*image.RGBA
 	References     map[string]bool

@@ -36,6 +36,7 @@ type Focus struct {
 	Selected            int
 	LastClickWasFocused bool
 	Nodes               []*element.Node
+	SoftFocused         *element.Node
 }
 
 func (m *Monitor) RunEvents() bool {
@@ -61,6 +62,9 @@ func (m *Monitor) GetEvents(data *EventData) {
 }
 
 func (m *Monitor) CalcEvents(n *element.Node, data *EventData) {
+	if data.Click {
+		m.Focus.SoftFocused = nil
+	}
 	// loop through state to build events, then use multithreading to complete
 	// map
 	for _, v := range n.Children {
@@ -120,10 +124,28 @@ func (m *Monitor) CalcEvents(n *element.Node, data *EventData) {
 		}
 	}
 
-	var isMouseOver bool
+	var isMouseOver, isFocused bool
 
-	if self.X < float32(data.Position[0]) && self.X+self.Width > float32(data.Position[0]) {
-		if self.Y < float32(data.Position[1]) && self.Y+self.Height > float32(data.Position[1]) {
+	if m.Focus.SoftFocused != nil {
+		isFocused = m.Focus.SoftFocused.Properties.Id == n.Properties.Id
+	} else {
+		isFocused = false
+	}
+
+	if m.Focus.SoftFocused != nil {
+		if isFocused {
+			if data.Key == 265 {
+				// up
+				data.Scroll += 20
+			} else if data.Key == 264 {
+				// Down
+				data.Scroll -= 20
+			}
+		}
+	}
+
+	if (self.X < float32(data.Position[0]) && self.X+self.Width > float32(data.Position[0])) || isFocused {
+		if (self.Y < float32(data.Position[1]) && self.Y+self.Height > float32(data.Position[1])) || isFocused {
 			// Mouse is over element
 			isMouseOver = true
 			if !slices.Contains(n.ClassList.Classes, ":hover") {
@@ -208,6 +230,10 @@ func (m *Monitor) CalcEvents(n *element.Node, data *EventData) {
 				if n.OnClick != nil {
 					n.OnClick(evt)
 				}
+				// Regardless set soft focus to trigger events to the selected element: when non is set default body???
+				if m.Focus.SoftFocused == nil {
+					m.Focus.SoftFocused = n
+				}
 				eventList = append(eventList, "click")
 			}
 
@@ -243,7 +269,6 @@ func (m *Monitor) CalcEvents(n *element.Node, data *EventData) {
 					}
 
 					data.Scroll = 0
-
 					eventList = append(eventList, "scroll")
 				}
 
@@ -279,10 +304,12 @@ func (m *Monitor) CalcEvents(n *element.Node, data *EventData) {
 			}
 
 			// Get the keycode of the pressed key
-			// issue: need to only add the text data and events to focused elements and only
-			// 		  one at a time
+			// !ISSUE: need to only add the text data and events to focused elements
+			// + but the event still gets added to the element like keydown but not innertext or value... maybe
+			// + probally done with soft focus only here bc the rest fire anywhere
 			if data.Key != 0 {
 				if n.ContentEditable {
+					// Sync the innertext and value but idk
 					n.Value = n.InnerText
 					ProcessKeyEvent(n, int(data.Key))
 
@@ -291,7 +318,6 @@ func (m *Monitor) CalcEvents(n *element.Node, data *EventData) {
 				}
 			}
 
-			// !ISSUE: Tab fires multiple events
 			if data.Key == 258 && data.KeyState && !m.Focus.LastClickWasFocused {
 				// Tab
 				mfsLen := len(m.Focus.Nodes)
@@ -351,6 +377,7 @@ func (m *Monitor) CalcEvents(n *element.Node, data *EventData) {
 // ProcessKeyEvent processes key events for text entry.
 func ProcessKeyEvent(n *element.Node, key int) {
 	// Handle key events for text entry
+	fmt.Println(key)
 	switch key {
 	case 8:
 		// Backspace: remove the last character
