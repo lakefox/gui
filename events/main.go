@@ -132,217 +132,212 @@ func (m *Monitor) CalcEvents(n *element.Node, data *EventData) {
 		isFocused = false
 	}
 
-	if m.Focus.SoftFocused != nil {
-		if isFocused {
+	insideX := (self.X < float32(data.Position[0]) && self.X+self.Width > float32(data.Position[0]))
+	insideY := (self.Y < float32(data.Position[1]) && self.Y+self.Height > float32(data.Position[1]))
+	inside := (insideX && insideY)
+
+	arrowScroll := 0
+
+	if isFocused {
+		// This allows for arrow scrolling when off the element and typing
+		if m.Focus.SoftFocused != nil {
 			if data.Key == 265 {
 				// up
-				data.Scroll += 20
+				arrowScroll += 20
 			} else if data.Key == 264 {
 				// Down
-				data.Scroll -= 20
+				arrowScroll -= 20
 			}
+		}
+		// Get the keycode of the pressed key
+		if data.Key != 0 {
+			if n.ContentEditable {
+				// Sync the innertext and value but idk
+				n.Value = n.InnerText
+				ProcessKeyEvent(n, int(data.Key))
+
+				n.InnerText = n.Value
+				eventList = append(eventList, "keypress")
+			}
+		}
+
+		if data.Key == 258 && data.KeyState && !m.Focus.LastClickWasFocused {
+			// Tab
+			mfsLen := len(m.Focus.Nodes)
+			if mfsLen > 0 {
+				store := m.Focus.Selected
+				m.Focus.Selected += 1
+				if m.Focus.Selected >= mfsLen {
+					m.Focus.Selected = 0
+				}
+				if store != m.Focus.Selected {
+					if store > -1 {
+						m.Focus.Nodes[store].Blur()
+					}
+					m.Focus.Nodes[m.Focus.Selected].Focus()
+					m.Focus.LastClickWasFocused = true
+				}
+			}
+
 		}
 	}
 
-	if (self.X < float32(data.Position[0]) && self.X+self.Width > float32(data.Position[0])) || isFocused {
-		if (self.Y < float32(data.Position[1]) && self.Y+self.Height > float32(data.Position[1])) || isFocused {
-			// Mouse is over element
-			isMouseOver = true
-			if !slices.Contains(n.ClassList.Classes, ":hover") {
-				n.ClassList.Add(":hover")
+	if inside || isFocused {
+		// Mouse is over element
+		isMouseOver = true
+		if !slices.Contains(n.ClassList.Classes, ":hover") {
+			n.ClassList.Add(":hover")
+		}
+
+		if data.Click && !evt.MouseDown {
+			evt.MouseDown = true
+			evt.MouseUp = false
+			if n.OnMouseDown != nil {
+				n.OnMouseDown(evt)
 			}
+			eventList = append(eventList, "mousedown")
+		}
 
-			if data.Click && !evt.MouseDown {
-				evt.MouseDown = true
-				evt.MouseUp = false
-				if n.OnMouseDown != nil {
-					n.OnMouseDown(evt)
-				}
-				eventList = append(eventList, "mousedown")
+		if !data.Click && !evt.MouseUp {
+			evt.MouseUp = true
+			evt.MouseDown = false
+			evt.Click = false
+			if n.OnMouseUp != nil {
+				n.OnMouseUp(evt)
 			}
+			eventList = append(eventList, "mouseup")
+		}
 
-			if !data.Click && !evt.MouseUp {
-				evt.MouseUp = true
-				evt.MouseDown = false
-				evt.Click = false
-				if n.OnMouseUp != nil {
-					n.OnMouseUp(evt)
-				}
-				eventList = append(eventList, "mouseup")
-			}
+		if data.Click && !evt.Click {
+			evt.Click = true
 
-			if data.Click && !evt.Click {
-				evt.Click = true
-
-				if n.TabIndex > -1 {
-					if m.Focus.Selected > -1 {
-						if m.Focus.Nodes[m.Focus.Selected].Properties.Id != n.Properties.Id {
-							m.Focus.Nodes[m.Focus.Selected].Blur()
-							for i, v := range m.Focus.Nodes {
-								if v.Properties.Id == n.Properties.Id {
-									m.Focus.Selected = i
-									n.Focus()
-									m.Focus.LastClickWasFocused = true
-									break
-								}
+			if n.TabIndex > -1 {
+				if m.Focus.Selected > -1 {
+					if m.Focus.Nodes[m.Focus.Selected].Properties.Id != n.Properties.Id {
+						m.Focus.Nodes[m.Focus.Selected].Blur()
+						for i, v := range m.Focus.Nodes {
+							if v.Properties.Id == n.Properties.Id {
+								m.Focus.Selected = i
+								n.Focus()
+								m.Focus.LastClickWasFocused = true
+								break
 							}
-						} else {
-							m.Focus.LastClickWasFocused = true
 						}
 					} else {
-						selectedIndex := -1
+						m.Focus.LastClickWasFocused = true
+					}
+				} else {
+					selectedIndex := -1
+					for i, v := range m.Focus.Nodes {
+						if v.Properties.Id == n.Properties.Id {
+							selectedIndex = i
+						}
+					}
+					if selectedIndex == -1 {
+						if n.TabIndex == 9999999 {
+							// Add the last digits of the properties.id to make the elements sort in order
+							numStr := strings.TrimFunc(n.Properties.Id, func(r rune) bool {
+								return !unicode.IsDigit(r) // Remove non-digit characters
+							})
+							prid, _ := strconv.Atoi(numStr)
+							n.TabIndex += prid
+						}
+						m.Focus.Nodes = append([]*element.Node{n}, m.Focus.Nodes...)
+						sort.Slice(m.Focus.Nodes, func(i, j int) bool {
+							return m.Focus.Nodes[i].TabIndex < m.Focus.Nodes[j].TabIndex // Ascending order by TabIndex
+						})
 						for i, v := range m.Focus.Nodes {
 							if v.Properties.Id == n.Properties.Id {
 								selectedIndex = i
 							}
 						}
-						if selectedIndex == -1 {
-							if n.TabIndex == 9999999 {
-								// Add the last digits of the properties.id to make the elements sort in order
-								numStr := strings.TrimFunc(n.Properties.Id, func(r rune) bool {
-									return !unicode.IsDigit(r) // Remove non-digit characters
-								})
-								prid, _ := strconv.Atoi(numStr)
-								n.TabIndex += prid
-							}
-							m.Focus.Nodes = append([]*element.Node{n}, m.Focus.Nodes...)
-							sort.Slice(m.Focus.Nodes, func(i, j int) bool {
-								return m.Focus.Nodes[i].TabIndex < m.Focus.Nodes[j].TabIndex // Ascending order by TabIndex
-							})
-							for i, v := range m.Focus.Nodes {
-								if v.Properties.Id == n.Properties.Id {
-									selectedIndex = i
-								}
-							}
-						}
-
-						m.Focus.Selected = selectedIndex
-						n.Focus()
-						m.Focus.LastClickWasFocused = true
 					}
 
-				} else if m.Focus.Selected > -1 {
-					if m.Focus.Nodes[m.Focus.Selected].Properties.Id != n.Properties.Id && !m.Focus.LastClickWasFocused {
-						m.Focus.Nodes[m.Focus.Selected].Blur()
-						m.Focus.Selected = -1
-					}
-				}
-				if n.OnClick != nil {
-					n.OnClick(evt)
-				}
-				// Regardless set soft focus to trigger events to the selected element: when non is set default body???
-				if m.Focus.SoftFocused == nil {
-					m.Focus.SoftFocused = n
-				}
-				eventList = append(eventList, "click")
-			}
-
-			if data.Context {
-				evt.ContextMenu = true
-				if n.OnContextMenu != nil {
-					n.OnContextMenu(evt)
-				}
-				eventList = append(eventList, "contextmenu")
-			}
-
-			// el.ScrollY = 0
-			if data.Scroll != 0 {
-				// !TODO: for now just emit a event, will have to add el.scrollX
-
-				styledEl, _ := m.CSS.GetStyles(n)
-
-				// !TODO: Add scrolling for dragging over the scroll bar and arrow keys if it is focused
-				// + Working on the focus part, the dragging part will be hard as events has no context of the scrollbars
-
-				if hasAutoOrScroll(styledEl) {
-					n.ScrollTop = int(n.ScrollTop + (-data.Scroll))
-					if n.ScrollTop > n.ScrollHeight {
-						n.ScrollTop = n.ScrollHeight
-					}
-
-					if n.ScrollTop <= 0 {
-						n.ScrollTop = 0
-					}
-
-					if n.OnScroll != nil {
-						n.OnScroll(evt)
-					}
-
-					data.Scroll = 0
-					eventList = append(eventList, "scroll")
+					m.Focus.Selected = selectedIndex
+					n.Focus()
+					m.Focus.LastClickWasFocused = true
 				}
 
-			}
-
-			if !evt.MouseEnter {
-				evt.MouseEnter = true
-				evt.MouseOver = true
-				evt.MouseLeave = false
-				if n.OnMouseEnter != nil {
-					n.OnMouseEnter(evt)
-				}
-				if n.OnMouseOver != nil {
-					n.OnMouseEnter(evt)
-				}
-				eventList = append(eventList, "mouseenter")
-				eventList = append(eventList, "mouseover")
-
-				// Let the adapter know the cursor has changed
-				m.Adapter.DispatchEvent(element.Event{
-					Name: "cursor",
-					Data: self.Cursor,
-				})
-			}
-
-			if evt.X != int(data.Position[0]) && evt.Y != int(data.Position[1]) {
-				evt.X = int(data.Position[0])
-				evt.Y = int(data.Position[1])
-				if n.OnMouseMove != nil {
-					n.OnMouseMove(evt)
-				}
-				eventList = append(eventList, "mousemove")
-			}
-
-			// Get the keycode of the pressed key
-			// !ISSUE: need to only add the text data and events to focused elements
-			// + but the event still gets added to the element like keydown but not innertext or value... maybe
-			// + probally done with soft focus only here bc the rest fire anywhere
-			if data.Key != 0 {
-				if n.ContentEditable {
-					// Sync the innertext and value but idk
-					n.Value = n.InnerText
-					ProcessKeyEvent(n, int(data.Key))
-
-					n.InnerText = n.Value
-					eventList = append(eventList, "keypress")
+			} else if m.Focus.Selected > -1 {
+				if m.Focus.Nodes[m.Focus.Selected].Properties.Id != n.Properties.Id && !m.Focus.LastClickWasFocused {
+					m.Focus.Nodes[m.Focus.Selected].Blur()
+					m.Focus.Selected = -1
 				}
 			}
+			if n.OnClick != nil {
+				n.OnClick(evt)
+			}
+			// Regardless set soft focus to trigger events to the selected element: when non is set default body???
+			if m.Focus.SoftFocused == nil {
+				m.Focus.SoftFocused = n
+			}
+			eventList = append(eventList, "click")
+		}
 
-			if data.Key == 258 && data.KeyState && !m.Focus.LastClickWasFocused {
-				// Tab
-				mfsLen := len(m.Focus.Nodes)
-				if mfsLen > 0 {
-					store := m.Focus.Selected
-					m.Focus.Selected += 1
-					if m.Focus.Selected >= mfsLen {
-						m.Focus.Selected = 0
-					}
-					if store != m.Focus.Selected {
-						if store > -1 {
-							m.Focus.Nodes[store].Blur()
-						}
-						m.Focus.Nodes[m.Focus.Selected].Focus()
-						m.Focus.LastClickWasFocused = true
-					}
+		if data.Context {
+			evt.ContextMenu = true
+			if n.OnContextMenu != nil {
+				n.OnContextMenu(evt)
+			}
+			eventList = append(eventList, "contextmenu")
+		}
+
+		// el.ScrollY = 0
+		if (data.Scroll != 0 && (inside)) || arrowScroll != 0 {
+			// !TODO: for now just emit a event, will have to add el.scrollX
+			data.Scroll += arrowScroll
+			styledEl, _ := m.CSS.GetStyles(n)
+
+			// !TODO: Add scrolling for dragging over the scroll bar
+			// + the dragging part will be hard as events has no context of the scrollbars
+
+			if hasAutoOrScroll(styledEl) {
+				n.ScrollTop = int(n.ScrollTop + (-data.Scroll))
+				if n.ScrollTop > n.ScrollHeight {
+					n.ScrollTop = n.ScrollHeight
 				}
 
+				if n.ScrollTop <= 0 {
+					n.ScrollTop = 0
+				}
+
+				if n.OnScroll != nil {
+					n.OnScroll(evt)
+				}
+
+				data.Scroll = 0
+				eventList = append(eventList, "scroll")
 			}
 
-		} else {
-			isMouseOver = false
-			if slices.Contains(n.ClassList.Classes, ":hover") {
-				n.ClassList.Remove(":hover")
+		}
+
+		if !evt.MouseEnter {
+			evt.MouseEnter = true
+			evt.MouseOver = true
+			evt.MouseLeave = false
+			if n.OnMouseEnter != nil {
+				n.OnMouseEnter(evt)
 			}
+			if n.OnMouseOver != nil {
+				n.OnMouseEnter(evt)
+			}
+			eventList = append(eventList, "mouseenter")
+			eventList = append(eventList, "mouseover")
+
+			// Let the adapter know the cursor has changed
+			m.Adapter.DispatchEvent(element.Event{
+				Name: "cursor",
+				Data: self.Cursor,
+			})
+		}
+
+		if evt.X != int(data.Position[0]) && evt.Y != int(data.Position[1]) {
+			evt.X = int(data.Position[0])
+			evt.Y = int(data.Position[1])
+			if n.OnMouseMove != nil {
+				n.OnMouseMove(evt)
+			}
+			eventList = append(eventList, "mousemove")
 		}
 	} else {
 		isMouseOver = false
