@@ -57,6 +57,8 @@ func Init() cstyle.Transformer {
 
 			}
 
+			// !TODO: Make X scroll bar
+
 			// Y scrollbar
 
 			if (n.Style["overflow-y"] == "scroll" || n.Style["overflow-y"] == "auto") && n.ScrollHeight > 0 {

@@ -43,8 +43,6 @@ import (
 	"golang.org/x/net/html"
 )
 
-// _ "net/http/pprof"
-
 //go:embed master.css
 var mastercss string
 

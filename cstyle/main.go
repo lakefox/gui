@@ -77,7 +77,6 @@ func (c *CSS) StyleSheet(path string) {
 		c.StyleMap[k] = append(c.StyleMap[k], v...)
 	}
 
-	// c.ProcessStyles(styles)
 	c.StyleSheets = append(c.StyleSheets, styles)
 }
 
@@ -283,25 +282,6 @@ func (c *CSS) AddTransformer(transformer Transformer) {
 	c.Transformers = append(c.Transformers, transformer)
 }
 
-func CheckNode(n *element.Node, state *map[string]element.State) {
-	s := *state
-	self := s[n.Properties.Id]
-
-	fmt.Println(n.TagName, n.Properties.Id)
-	fmt.Printf("ID: %v\n", n.Id)
-	fmt.Printf("EM: %v\n", self.EM)
-	fmt.Printf("Parent: %v\n", n.Parent.TagName)
-	fmt.Printf("Classes: %v\n", n.ClassList.Classes)
-	fmt.Printf("Text: %v\n", n.InnerText)
-	fmt.Printf("X: %v, Y: %v, Z: %v\n", self.X, self.Y, self.Z)
-	fmt.Printf("Width: %v, Height: %v\n", self.Width, self.Height)
-	fmt.Printf("Styles: %v\n", n.Style)
-	fmt.Printf("Margin: %v\n", self.Margin)
-	fmt.Printf("Padding: %v\n", self.Padding)
-	// fmt.Printf("Background: %v\n", self.Background)
-	// fmt.Printf("Border: %v\n\n\n", self.Border)
-}
-
 func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State, shelf *library.Shelf) *element.Node {
 	// Head is not renderable
 	if utils.IsParent(*n, "head") {
@@ -312,7 +292,6 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State,
 	s := *state
 	self := s[n.Properties.Id]
 	parent := s[n.Parent.Properties.Id]
-	// self.Textures = []string{}
 
 	// Cache the style map
 	style := n.Style
