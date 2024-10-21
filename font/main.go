@@ -291,7 +291,6 @@ func getSystemFonts() []string {
 	}
 
 	sortByLength(fontPaths)
-
 	return fontPaths
 }
 
@@ -360,12 +359,8 @@ func Render(t *element.Text) (*image.RGBA, int) {
 	if t.LineHeight == 0 {
 		t.LineHeight = t.EM + 3
 	}
-	var width int
-	if t.Last {
-		width = MeasureText(t, t.Text)
-	} else {
-		width = MeasureText(t, t.Text+" ")
-	}
+
+	width := MeasureText(t, t.Text+" ")
 
 	// Use fully transparent color for the background
 	img := image.NewRGBA(image.Rect(0, 0, width, t.LineHeight))
@@ -407,6 +402,7 @@ func drawString(t element.Text, dr *font.Drawer, v string, lineWidth int, img *i
 		baseLineY := underlinePosition.Y
 		fnt := *t.Font
 		descent := fnt.Metrics().Descent
+		// !ISSUE: underline doesn't work anymore.....
 		if t.Underlined {
 			underlinePosition.Y = baseLineY + descent
 			underlinePosition.Y = (underlinePosition.Y / 100) * 97

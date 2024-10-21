@@ -542,6 +542,10 @@ func genTextNode(n *element.Node, state *map[string]element.State, css *CSS, she
 
 	col := color.Parse(n.Style, "font")
 
+	if n.Style["text-decoration-color"] == "" {
+		n.Style["text-decoration-color"] = n.Style["color"]
+	}
+
 	// self.Color = col
 
 	text.Color = col
@@ -558,7 +562,7 @@ func genTextNode(n *element.Node, state *map[string]element.State, css *CSS, she
 	text.EM = int(self.EM)
 	text.Width = int(parent.Width)
 	text.Text = n.InnerText
-	text.Last = n.GetAttribute("last") == "true"
+	// text.Last = n.GetAttribute("last") == "true"
 
 	if n.Style["word-spacing"] == "" {
 		text.WordSpacing = font.MeasureSpace(&text)
@@ -577,11 +581,7 @@ func genTextNode(n *element.Node, state *map[string]element.State, css *CSS, she
 		if _, found := lookup[key]; !found {
 			self.Textures = append(self.Textures, key)
 		}
-		if text.Last {
-			width = font.MeasureText(&text, text.Text)
-		} else {
-			width = font.MeasureText(&text, text.Text+" ")
-		}
+		width = font.MeasureText(&text, text.Text+" ")
 	} else {
 		var data *image.RGBA
 		data, width = font.Render(&text)

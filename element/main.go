@@ -158,7 +158,7 @@ type Text struct {
 	EM                  int
 	X                   int
 	LoadedFont          string
-	Last                bool
+	// Last                bool
 }
 
 type Shadow struct {
