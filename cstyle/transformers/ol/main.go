@@ -35,10 +35,19 @@ func Init() cstyle.Transformer {
 				dot.Style = c.QuickStyles(&dot)
 				dot.Style["display"] = "block"
 
-				bold, italic := false, false
+				italic := false
 
 				if n.Style["font-weight"] == "bold" {
-					bold = true
+					n.Style["font-weight"] = "700"
+				}
+				if n.Style["font-weight"] == "bolder" {
+					n.Style["font-weight"] = "900"
+				}
+				if n.Style["font-weight"] == "lighter" {
+					n.Style["font-weight"] = "200"
+				}
+				if n.Style["font-weight"] == "normal" {
+					n.Style["font-weight"] = "400"
 				}
 
 				if n.Style["font-style"] == "italic" {
@@ -52,9 +61,10 @@ func Init() cstyle.Transformer {
 				fs := utils.ConvertToPixels(n.Style["font-size"], 16, c.Width)
 				em := fs
 
-				fid := n.Style["font-family"] + fmt.Sprint(em, bold, italic)
+				fid := n.Style["font-family"] + fmt.Sprint(em, n.Style["font-weight"], italic)
 				if c.Fonts[fid] == nil {
-					f, _ := font.LoadFont(n.Style["font-family"], int(em), bold, italic)
+					weight, _ := strconv.Atoi(n.Style["font-weight"])
+					f, _ := font.LoadFont(n.Style["font-family"], int(em), weight, italic)
 					c.Fonts[fid] = f
 				}
 				fnt := c.Fonts[fid]

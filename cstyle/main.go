@@ -479,10 +479,19 @@ func genTextNode(n *element.Node, state *map[string]element.State, css *CSS, she
 
 	text := element.Text{}
 
-	bold, italic := false, false
+	italic := false
 	// !ISSUE: needs bolder and the 100 -> 900
 	if n.Style["font-weight"] == "bold" {
-		bold = true
+		n.Style["font-weight"] = "700"
+	}
+	if n.Style["font-weight"] == "bolder" {
+		n.Style["font-weight"] = "900"
+	}
+	if n.Style["font-weight"] == "lighter" {
+		n.Style["font-weight"] = "200"
+	}
+	if n.Style["font-weight"] == "normal" {
+		n.Style["font-weight"] = "400"
 	}
 
 	if n.Style["font-style"] == "italic" {
@@ -492,10 +501,11 @@ func genTextNode(n *element.Node, state *map[string]element.State, css *CSS, she
 	if css.Fonts == nil {
 		css.Fonts = map[string]imgFont.Face{}
 	}
-	fid := n.Style["font-family"] + fmt.Sprint(self.EM, bold, italic)
+	fid := n.Style["font-family"] + fmt.Sprint(self.EM, n.Style["font-weight"], italic)
 	if css.Fonts[fid] == nil {
 		fmt.Println(fid)
-		f, _ := font.LoadFont(n.Style["font-family"], int(self.EM), bold, italic)
+		weight, _ := strconv.Atoi(n.Style["font-weight"])
+		f, _ := font.LoadFont(n.Style["font-family"], int(self.EM), weight, italic)
 		css.Fonts[fid] = f
 	}
 	fnt := css.Fonts[fid]

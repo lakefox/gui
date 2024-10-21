@@ -236,7 +236,7 @@ func View(data *Window, width, height int) {
 	}
 	fid := "Georgia 16px false false"
 	if data.CSS.Fonts[fid] == nil {
-		f, _ := font.LoadFont("Georgia", 16, false, false)
+		f, _ := font.LoadFont("Georgia", 16, 400, false)
 		data.CSS.Fonts[fid] = f
 	}
 
@@ -332,6 +332,8 @@ func View(data *Window, width, height int) {
 		newHash, _ := hashStruct(&data.Document.Children[0])
 
 		if !bytes.Equal(hash, newHash) || resize {
+			// Updating the document here allow new element to be included into the event loop
+			monitor.Document = &data.Document
 			hash = newHash
 			// fmt.Println("########################")
 			lastChange := time.Now()

@@ -20,7 +20,8 @@ import (
 )
 
 // LoadSystemFont loads a font from the system fonts directory or loads a specific font by name
-func GetFontPath(fontName string, bold, italic bool) string {
+func GetFontPath(fontName string, bold int, italic bool) string {
+	fmt.Println("#######")
 	if len(fontName) == 0 {
 		fontName = "serif"
 	}
@@ -28,21 +29,20 @@ func GetFontPath(fontName string, bold, italic bool) string {
 	fonts := strings.Split(fontName, ",")
 	for _, font := range fonts {
 		font = strings.TrimSpace(font)
-		fontPath := tryLoadSystemFont(font, bold, italic)
+		fontPath := tryLoadSystemFontWithBestWeight(font, bold, italic)
 
 		if fontPath != "" {
 			return fontPath
 		}
 
 		// Check special font families only if it's the first font in the list
-
 		switch font {
 		case "sans-serif":
-			fontPath = tryLoadSystemFont("Arial", bold, italic)
+			fontPath = tryLoadSystemFontWithBestWeight("Arial", bold, italic)
 		case "monospace":
-			fontPath = tryLoadSystemFont("Andale Mono", bold, italic)
+			fontPath = tryLoadSystemFontWithBestWeight("Andale Mono", bold, italic)
 		case "serif":
-			fontPath = tryLoadSystemFont("Georgia", bold, italic)
+			fontPath = tryLoadSystemFontWithBestWeight("Georgia", bold, italic)
 		}
 
 		if fontPath != "" {
@@ -52,16 +52,11 @@ func GetFontPath(fontName string, bold, italic bool) string {
 	}
 
 	// Default to serif if none of the specified fonts are found
-	return tryLoadSystemFont("Georgia", bold, italic)
+	return tryLoadSystemFontWithBestWeight("Georgia", bold, italic)
 }
 
-var allFonts = getSystemFonts()
-
-func tryLoadSystemFont(fontName string, bold, italic bool) string {
+func tryLoadSystemFontWithBestWeight(fontName string, desiredWeight int, italic bool) string {
 	font := fontName
-	if bold {
-		font += " Bold"
-	}
 	if italic {
 		font += " Italic"
 	}
@@ -71,28 +66,136 @@ func tryLoadSystemFont(fontName string, bold, italic bool) string {
 		slash = "\\"
 	}
 
-	for _, v := range allFonts {
-		if strings.Contains(strings.ToLower(v), strings.ToLower(slash+font)) {
-			return v
-		}
-	}
-
-	font = fontName
-	if bold {
-		font += "b"
-	}
+	availableWeights := getAvailableWeights(fontName, italic)
+	closestWeight := findClosestWeight(availableWeights, desiredWeight)
+	fmt.Println(fontName, availableWeights, desiredWeight, closestWeight)
+	// Get the closest weight name and attempt to load the font
+	weightName := getWeightName(closestWeight)
+	fontWithWeight := fontName + " " + weightName
+	fontWithWeight = strings.TrimSpace(fontWithWeight)
 	if italic {
-		font += "i"
+		fontWithWeight += " Italic"
 	}
-
+	fmt.Println(fontWithWeight)
 	for _, v := range allFonts {
-		if strings.Contains(strings.ToLower(v), strings.ToLower(slash+font)) {
+		if strings.Contains(strings.ToLower(v), strings.ToLower(slash+fontWithWeight)) {
 			return v
 		}
 	}
 
 	return ""
 }
+
+func getAvailableWeights(fontName string, italic bool) []int {
+	weightMappings := []int{100, 200, 300, 400, 500, 600, 700, 800, 900}
+	availableWeights := []int{}
+
+	for _, weight := range weightMappings {
+		weightName := getWeightName(weight)
+		fontWithWeight := strings.TrimSpace(fontName + " " + weightName)
+		if italic {
+			fontWithWeight += " Italic"
+		}
+		if tryLoadFontExists(fontWithWeight) {
+			availableWeights = append(availableWeights, weight)
+		}
+	}
+
+	return availableWeights
+}
+
+func tryLoadFontExists(fontWithWeight string) bool {
+	slash := "/"
+	if runtime.GOOS == "windows" {
+		slash = "\\"
+	}
+
+	for _, v := range allFonts {
+		if strings.Contains(strings.ToLower(v), strings.ToLower(slash+fontWithWeight)) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func findClosestWeight(availableWeights []int, desiredWeight int) int {
+	if len(availableWeights) == 0 {
+		return 400 // Default to "Regular" if no weights are available
+	}
+
+	closest := availableWeights[0]
+	for _, weight := range availableWeights {
+		if abs(weight-desiredWeight) < abs(closest-desiredWeight) {
+			closest = weight
+		}
+	}
+	return closest
+}
+
+func getWeightName(weight int) string {
+	switch weight {
+	case 100:
+		return "Thin"
+	case 200:
+		return "ExtraLight"
+	case 300:
+		return "Light"
+	case 400:
+		return ""
+	case 500:
+		return "Medium"
+	case 600:
+		return "SemiBold"
+	case 700:
+		return "Bold"
+	case 800:
+		return "ExtraBold"
+	case 900:
+		return "Black"
+	default:
+		return ""
+	}
+}
+
+var allFonts = getSystemFonts()
+
+// func tryLoadSystemFont(fontName string, bold, italic bool) string {
+// 	font := fontName
+// 	if bold {
+// 		font += " Bold"
+// 	}
+// 	if italic {
+// 		font += " Italic"
+// 	}
+// 	slash := "/"
+
+// 	if runtime.GOOS == "windows" {
+// 		slash = "\\"
+// 	}
+
+// 	for _, v := range allFonts {
+// 		if strings.Contains(strings.ToLower(v), strings.ToLower(slash+font)) {
+// 			return v
+// 		}
+// 	}
+
+// 	font = fontName
+// 	if bold {
+// 		font += "b"
+// 	}
+// 	if italic {
+// 		font += "i"
+// 	}
+
+// 	for _, v := range allFonts {
+// 		if strings.Contains(strings.ToLower(v), strings.ToLower(slash+font)) {
+// 			return v
+// 		}
+// 	}
+
+// 	return ""
+// }
 
 func sortByLength(strings []string) {
 	sort.Slice(strings, func(i, j int) bool {
@@ -119,10 +222,9 @@ func GetFontSize(css map[string]string) float32 {
 	return fs
 }
 
-func LoadFont(fontName string, fontSize int, bold, italic bool) (font.Face, error) {
+func LoadFont(fontName string, fontSize int, bold int, italic bool) (font.Face, error) {
 	// Use a TrueType font file for the specified font name
 	fontFile := GetFontPath(fontName, bold, italic)
-	fmt.Println("fontFile", fontFile)
 
 	// Read the font file
 	fontData, err := os.ReadFile(fontFile)
@@ -219,7 +321,6 @@ func getMacFontPaths() []string {
 	// User Fonts
 	userFontsDir := filepath.Join(os.Getenv("HOME"), "Library/Fonts")
 	getFontsRecursively(userFontsDir, &fontPaths)
-
 	return fontPaths
 }
 
