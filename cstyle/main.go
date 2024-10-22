@@ -480,7 +480,7 @@ func genTextNode(n *element.Node, state *map[string]element.State, css *CSS, she
 	text := element.Text{}
 
 	italic := false
-	// !ISSUE: needs bolder and the 100 -> 900
+
 	if n.Style["font-weight"] == "bold" {
 		n.Style["font-weight"] = "700"
 	}
@@ -503,7 +503,6 @@ func genTextNode(n *element.Node, state *map[string]element.State, css *CSS, she
 	}
 	fid := n.Style["font-family"] + fmt.Sprint(self.EM, n.Style["font-weight"], italic)
 	if css.Fonts[fid] == nil {
-		fmt.Println(fid)
 		weight, _ := strconv.Atoi(n.Style["font-weight"])
 		f, _ := font.LoadFont(n.Style["font-family"], int(self.EM), weight, italic)
 		css.Fonts[fid] = f

@@ -1,7 +1,6 @@
 package font
 
 import (
-	"fmt"
 	"gui/element"
 	"image"
 	"image/color"
@@ -21,7 +20,6 @@ import (
 
 // LoadSystemFont loads a font from the system fonts directory or loads a specific font by name
 func GetFontPath(fontName string, bold int, italic bool) string {
-	fmt.Println("#######")
 	if len(fontName) == 0 {
 		fontName = "serif"
 	}
@@ -68,7 +66,7 @@ func tryLoadSystemFontWithBestWeight(fontName string, desiredWeight int, italic 
 
 	availableWeights := getAvailableWeights(fontName, italic)
 	closestWeight := findClosestWeight(availableWeights, desiredWeight)
-	fmt.Println(fontName, availableWeights, desiredWeight, closestWeight)
+
 	// Get the closest weight name and attempt to load the font
 	weightName := getWeightName(closestWeight)
 	fontWithWeight := fontName + " " + weightName
@@ -76,7 +74,7 @@ func tryLoadSystemFontWithBestWeight(fontName string, desiredWeight int, italic 
 	if italic {
 		fontWithWeight += " Italic"
 	}
-	fmt.Println(fontWithWeight)
+
 	for _, v := range allFonts {
 		if strings.Contains(strings.ToLower(v), strings.ToLower(slash+fontWithWeight)) {
 			return v
