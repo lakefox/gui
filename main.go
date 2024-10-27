@@ -375,7 +375,7 @@ func View(data *Window, width, height int) {
 			shelf.Clean()
 		}
 
-		monitor.RunEvents()
+		monitor.RunEvents(data.Document.Children[0], rd)
 		// if monitor.Focus != nil {
 		// 	fmt.Println("FOCUS")
 		// 	monitor.Focus.Focus()

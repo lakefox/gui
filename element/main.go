@@ -68,6 +68,9 @@ type State struct {
 	Crop         Crop
 	Hidden       bool
 	ScrollHeight int
+	// !NOTE: Target is the event targets prid so cstyle needs to map that, then when the event runner runs it logs events to the prid and then
+	// + go down the tree and if prid is in there run cb
+	Target string
 }
 
 type Crop struct {

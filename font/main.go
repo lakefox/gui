@@ -400,7 +400,6 @@ func drawString(t element.Text, dr *font.Drawer, v string, lineWidth int, img *i
 		baseLineY := underlinePosition.Y
 		fnt := *t.Font
 		descent := fnt.Metrics().Descent
-		// !ISSUE: underline doesn't work anymore.....
 		if t.Underlined {
 			underlinePosition.Y = baseLineY + descent
 			underlinePosition.Y = (underlinePosition.Y / 100) * 97

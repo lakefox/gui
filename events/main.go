@@ -39,7 +39,7 @@ type Focus struct {
 	SoftFocused         *element.Node
 }
 
-func (m *Monitor) RunEvents() bool {
+func (m *Monitor) RunEvents(n *element.Node, rd []element.State) bool {
 	eventRan := false
 	for _, evt := range *m.History {
 		if len(evt.List) > 0 {
