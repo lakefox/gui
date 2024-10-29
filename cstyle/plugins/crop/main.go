@@ -31,9 +31,16 @@ func Init() cstyle.Plugin {
 					if scrollAmt > 1 {
 						diff := 1 - (scrollAmt - 1)
 						p := s[v.Children[0].Properties.Id]
-						// !ISSUE: Scroll bar height is too small
+
+						if diff < 0 {
+							diff *= -1
+						}
+
 						p.Height = self.Height * diff
-						p.Y += float32(scrollAmt)
+
+						p.Y = self.Y + ((self.Height - p.Height) * (float32(scrollTop) / (((maxY - minY) + self.Padding.Bottom + self.Padding.Top) - (self.Height))))
+
+						// Not sure what this does anymore if I comment it out nothing changes but I put it here for a reason
 						if self.Y+self.Height < p.Y+p.Height {
 							p.Y = (self.Y + self.Height) - p.Height
 						} else if p.Y < self.Y {
