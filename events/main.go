@@ -39,6 +39,7 @@ type Focus struct {
 	SoftFocused         *element.Node
 }
 
+// this could take the real document and apply the events calculated to it
 func (m *Monitor) RunEvents(n *element.Node, rd []element.State) bool {
 	eventRan := false
 	for _, evt := range *m.History {
@@ -61,6 +62,8 @@ func (m *Monitor) GetEvents(data *EventData) {
 	m.CalcEvents(m.Document, data)
 }
 
+// It does make sense that events would be attached to the state and not the document (the fake document)
+
 func (m *Monitor) CalcEvents(n *element.Node, data *EventData) {
 	if data.Click {
 		m.Focus.SoftFocused = nil
@@ -70,6 +73,11 @@ func (m *Monitor) CalcEvents(n *element.Node, data *EventData) {
 	for _, v := range n.Children {
 		m.CalcEvents(v, data)
 	}
+
+	// events := map[string]Event{}
+	// for k, v := range *m.State {
+	// 	event[k] =
+	// }
 
 	if n.TabIndex > -1 {
 		if m.Focus.Nodes != nil {

@@ -16,22 +16,21 @@
     </head>
     <body>
         <h1 tabindex="1" class="a">THIS IS A TEST</h1>
-        <!-- <input type="text" name="" id="" value="test" /> -->
-        <!-- <br /> -->
-        <!-- <h1 class="a">THIS IS A TEST</h1> -->
-        <!-- <h1 class="a">THIS IS A TEST<br />tesxt</h1> -->
-        <!-- <div>
+        <input type="text" name="" id="" value="test" />
+        <br />
+        <h1 class="a">THIS IS A TEST</h1>
+        <h1 class="a">THIS IS A TEST with a br<br />tesxt</h1>
+        <div>
             this is a test og the text element and <span>span tag</span> inline
         </div>
         <ol>
             <li>point</li>
             <li>point</li>
             <li>point</li>
-        </ol> -->
-        <!-- border-left: solid 10px aliceblue; -->
-        <!-- border-right: solid 20px red; -->
-        <!-- border-bottom: solid 10px grey; -->
-        <!-- <div
+        </ol>
+
+        <!-- !ISSUE: the scrollable div does not take into account the top and bottom borders of this elemenet -->
+        <div
             style="
                 font-family: serif;
                 background: green;
@@ -39,12 +38,13 @@
                 height: 200px;
                 padding: 30px;
                 margin: 10px;
-                border: solid 200px aqua;
+                border-top: solid 200px aqua;
+                border-bottom: solid 200px aqua;
                 border-left: solid 200px red;
                 border-right: dashed 200px purple;
                 border-radius: 0px;
             "
-        ></div> -->
+        ></div>
 
         <div
             style="
@@ -109,29 +109,6 @@
                 overflow-y: auto;
             "
         >
-            <!-- <grim-scrollbar
-                style="
-                    position: absolute;
-                    top: 0;
-                    right: 0;
-                    width: 40px;
-                    height: 100%;
-                    background: green;
-                "
-            >
-                <grim-thumb
-                    style="
-                        position: absolute;
-                        top: 10px;
-                        left: 0;
-                        width: 40px;
-                        height: 20px;
-                        background: purple;
-                        z-index: 10;
-                        cursor: pointer;
-                    "
-                ></grim-thumb>
-            </grim-scrollbar> -->
             Lorem ipsum a dolor sit amet consectetur adipisicing elit. Quaerat
             cum quos inventore nostrum iusto vitae
             <span>testing a long span of text</span> voluptas, non laudantium
