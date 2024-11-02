@@ -6,6 +6,7 @@ import (
 	"gui/selector"
 	ic "image/color"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -53,24 +54,25 @@ type Node struct {
 
 type State struct {
 	// Id         string
-	X            float32
-	Y            float32
-	Z            float32
-	Width        float32
-	Height       float32
-	Border       Border
-	Textures     []string
-	EM           float32
-	Background   ic.RGBA
-	Margin       MarginPadding
-	Padding      MarginPadding
-	Cursor       string
-	Crop         Crop
-	Hidden       bool
-	ScrollHeight int
+	X               float32
+	Y               float32
+	Z               float32
+	Width           float32
+	Height          float32
+	Border          Border
+	Textures        []string
+	EM              float32
+	Background      ic.RGBA
+	Margin          MarginPadding
+	Padding         MarginPadding
+	Cursor          string
+	Crop            Crop
+	Hidden          bool
+	ScrollHeight    int
+	ContentEditable bool
+	Value           string
 	// !NOTE: Target is the event targets prid so cstyle needs to map that, then when the event runner runs it logs events to the prid and then
 	// + go down the tree and if prid is in there run cb
-	Target string
 }
 
 type Crop struct {
@@ -104,8 +106,10 @@ type MarginPadding struct {
 }
 
 func (c *ClassList) Add(class string) {
-	c.Classes = append(c.Classes, class)
-	c.Value = strings.Join(c.Classes, " ")
+	if !slices.Contains(c.Classes, class) {
+		c.Classes = append(c.Classes, class)
+		c.Value = strings.Join(c.Classes, " ")
+	}
 }
 
 func (c *ClassList) Remove(class string) {
@@ -392,29 +396,32 @@ func (n *Node) ScrollTo(x, y int) {
 }
 
 type Event struct {
-	X           int
-	Y           int
-	KeyCode     int
-	Scroll      int
-	Key         string
-	CtrlKey     bool
-	MetaKey     bool
-	ShiftKey    bool
-	AltKey      bool
-	Click       bool
-	ContextMenu bool
-	MouseDown   bool
-	MouseUp     bool
-	MouseEnter  bool
-	MouseLeave  bool
-	MouseOver   bool
-	KeyUp       bool
-	KeyDown     bool
-	KeyPress    bool
-	Input       bool
-	Target      *Node
-	Name        string
-	Data        interface{}
+	X             int
+	Y             int
+	KeyCode       int
+	Scroll        int
+	Key           string
+	CtrlKey       bool
+	MetaKey       bool
+	ShiftKey      bool
+	AltKey        bool
+	Click         bool
+	ContextMenu   bool
+	MouseDown     bool
+	MouseUp       bool
+	MouseEnter    bool
+	MouseLeave    bool
+	MouseOver     bool
+	KeyUp         bool
+	KeyDown       bool
+	KeyPress      bool
+	Input         bool
+	Target        *Node
+	Name          string
+	Data          interface{}
+	Value         string
+	AddClasses    []string
+	RemoveClasses []string
 }
 
 type EventList struct {

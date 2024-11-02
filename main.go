@@ -245,11 +245,10 @@ func View(data *Window, width, height int) {
 	// !ISSUE: Adding the styles at run time works but first its better if we don't recalculate things
 	// + but also the event handler has no context of psuedo elements like the scroll bar so we can't do cursor changes or mousedown
 	monitor := events.Monitor{
-		History:  &map[string]element.EventList{},
-		Adapter:  data.Adapter,
-		State:    &state,
-		Document: &data.Document,
-		CSS:      &data.CSS,
+		History: &map[string]element.EventList{},
+		Adapter: data.Adapter,
+		State:   &state,
+		CSS:     &data.CSS,
 	}
 
 	data.Adapter.AddEventListener("windowresize", func(e element.Event) {
@@ -333,7 +332,6 @@ func View(data *Window, width, height int) {
 
 		if !bytes.Equal(hash, newHash) || resize {
 			// Updating the document here allow new element to be included into the event loop
-			monitor.Document = &data.Document
 			hash = newHash
 			// fmt.Println("########################")
 			lastChange := time.Now()
@@ -375,7 +373,7 @@ func View(data *Window, width, height int) {
 			shelf.Clean()
 		}
 
-		monitor.RunEvents(data.Document.Children[0], rd)
+		monitor.RunEvents(data.Document.Children[0])
 		// if monitor.Focus != nil {
 		// 	fmt.Println("FOCUS")
 		// 	monitor.Focus.Focus()

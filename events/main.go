@@ -5,12 +5,7 @@ import (
 	adapter "gui/adapters"
 	"gui/cstyle"
 	"gui/element"
-	"sort"
-	"strconv"
 	"strings"
-	"unicode"
-
-	"slices"
 )
 
 type EventData struct {
@@ -23,13 +18,11 @@ type EventData struct {
 }
 
 type Monitor struct {
-	Document  *element.Node
-	State     *map[string]element.State
-	EventList *element.EventList
-	Adapter   *adapter.Adapter
-	History   *map[string]element.EventList
-	CSS       *cstyle.CSS
-	Focus     Focus
+	State   *map[string]element.State
+	Adapter *adapter.Adapter
+	History *map[string]element.EventList
+	CSS     *cstyle.CSS
+	Focus   Focus
 }
 
 type Focus struct {
@@ -40,385 +33,281 @@ type Focus struct {
 }
 
 // this could take the real document and apply the events calculated to it
-func (m *Monitor) RunEvents(n *element.Node, rd []element.State) bool {
-	eventRan := false
-	for _, evt := range *m.History {
-		if len(evt.List) > 0 {
-			for _, v := range evt.List {
-				if len(evt.Event.Target.Properties.EventListeners[v]) > 0 {
-					for _, handler := range evt.Event.Target.Properties.EventListeners[v] {
-						handler(evt.Event)
-						eventRan = true
-					}
-				}
-			}
-		}
-	}
-	return eventRan
-}
+func (m *Monitor) RunEvents(n *element.Node) {
 
-func (m *Monitor) GetEvents(data *EventData) {
-	m.Focus.LastClickWasFocused = false
-	m.CalcEvents(m.Document, data)
 }
 
 // It does make sense that events would be attached to the state and not the document (the fake document)
 
-func (m *Monitor) CalcEvents(n *element.Node, data *EventData) {
-	if data.Click {
-		m.Focus.SoftFocused = nil
-	}
-	// loop through state to build events, then use multithreading to complete
-	// map
-	for _, v := range n.Children {
-		m.CalcEvents(v, data)
-	}
-
-	// events := map[string]Event{}
-	// for k, v := range *m.State {
-	// 	event[k] =
-	// }
-
-	if n.TabIndex > -1 {
-		if m.Focus.Nodes != nil {
-			selectedIndex := -1
-			for i, v := range m.Focus.Nodes {
-				if v.Properties.Id == n.Properties.Id {
-					selectedIndex = i
-				}
-			}
-			if selectedIndex == -1 {
-				if n.TabIndex == 9999999 {
-					// Add the last digits of the properties.id to make the elements sort in order
-					numStr := strings.TrimFunc(n.Properties.Id, func(r rune) bool {
-						return !unicode.IsDigit(r) // Remove non-digit characters
-					})
-					prid, _ := strconv.Atoi(numStr)
-					n.TabIndex += prid
-				}
-				m.Focus.Nodes = append([]*element.Node{n}, m.Focus.Nodes...)
-			}
-		} else {
-			m.Focus = Focus{}
-			m.Focus.Selected = -1
-			m.Focus.Nodes = append(m.Focus.Nodes, n)
-		}
-	}
-	sort.Slice(m.Focus.Nodes, func(i, j int) bool {
-		return m.Focus.Nodes[i].TabIndex < m.Focus.Nodes[j].TabIndex // Ascending order by TabIndex
-	})
-
-	mHistory := *m.History
-	eventList := []string{}
-	evt := mHistory[n.Properties.Id].Event
-
+func (m *Monitor) GetEvents(data *EventData) {
 	s := *m.State
-	self := s[n.Properties.Id]
 
-	if evt.Target == nil {
-		if len(data.Position) < 2 {
-			data.Position = []int{0, 0}
+	eventMap := map[string][]element.Event{}
+
+	for k, self := range s {
+		if data.Click {
+			m.Focus.SoftFocused = nil
 		}
-		evt = element.Event{
-			X:          data.Position[0],
-			Y:          data.Position[1],
-			MouseUp:    true,
-			MouseLeave: true,
-			Target:     n,
-		}
-		(*m.History)[n.Properties.Id] = element.EventList{
-			Event: evt,
-			List:  []string{},
-		}
-	}
 
-	var isMouseOver, isFocused bool
+		var isMouseOver, isFocused bool
 
-	if m.Focus.SoftFocused != nil {
-		isFocused = m.Focus.SoftFocused.Properties.Id == n.Properties.Id
-	} else {
-		isFocused = false
-	}
-
-	insideX := (self.X < float32(data.Position[0]) && self.X+self.Width > float32(data.Position[0]))
-	insideY := (self.Y < float32(data.Position[1]) && self.Y+self.Height > float32(data.Position[1]))
-	inside := (insideX && insideY)
-
-	arrowScroll := 0
-
-	if isFocused {
-		// This allows for arrow scrolling when off the element and typing
 		if m.Focus.SoftFocused != nil {
-			if data.Key == 265 {
-				// up
-				arrowScroll += 20
-			} else if data.Key == 264 {
-				// Down
-				arrowScroll -= 20
-			}
-		}
-		// Get the keycode of the pressed key
-		if data.Key != 0 {
-			if n.ContentEditable {
-				// Sync the innertext and value but idk
-				n.Value = n.InnerText
-				ProcessKeyEvent(n, int(data.Key))
-
-				n.InnerText = n.Value
-				eventList = append(eventList, "keypress")
-			}
+			isFocused = m.Focus.SoftFocused.Properties.Id == k
+		} else {
+			isFocused = false
 		}
 
-		if data.Key == 258 && data.KeyState && !m.Focus.LastClickWasFocused {
-			// Tab
-			mfsLen := len(m.Focus.Nodes)
-			if mfsLen > 0 {
-				store := m.Focus.Selected
-				m.Focus.Selected += 1
-				if m.Focus.Selected >= mfsLen {
-					m.Focus.Selected = 0
+		evt := element.Event{}
+
+		if eventMap[k] == nil {
+			eventMap[k] = []element.Event{}
+		}
+
+		insideX := (self.X < float32(data.Position[0]) && self.X+self.Width > float32(data.Position[0]))
+		insideY := (self.Y < float32(data.Position[1]) && self.Y+self.Height > float32(data.Position[1]))
+		inside := (insideX && insideY)
+
+		arrowScroll := 0
+
+		if isFocused {
+			// This allows for arrow scrolling when off the element and typing
+			if m.Focus.SoftFocused != nil {
+				if data.Key == 265 {
+					// up
+					arrowScroll += 20
+				} else if data.Key == 264 {
+					// Down
+					arrowScroll -= 20
 				}
-				if store != m.Focus.Selected {
-					if store > -1 {
-						m.Focus.Nodes[store].Blur()
+			}
+			// Get the keycode of the pressed key
+			if data.Key != 0 {
+				if self.ContentEditable {
+					// Sync the innertext and value but idk
+					// !ISSUE: This may not work
+					ProcessKeyEvent(self, int(data.Key))
+
+					evt.Value = self.Value
+				}
+			}
+
+			if data.Key == 258 && data.KeyState && !m.Focus.LastClickWasFocused {
+				// Tab
+				mfsLen := len(m.Focus.Nodes)
+				if mfsLen > 0 {
+					store := m.Focus.Selected
+					m.Focus.Selected += 1
+					if m.Focus.Selected >= mfsLen {
+						m.Focus.Selected = 0
 					}
-					m.Focus.Nodes[m.Focus.Selected].Focus()
-					m.Focus.LastClickWasFocused = true
-				}
-			}
-
-		}
-	}
-
-	if inside || isFocused {
-		// Mouse is over element
-		isMouseOver = true
-		if !slices.Contains(n.ClassList.Classes, ":hover") {
-			n.ClassList.Add(":hover")
-		}
-
-		if data.Click && !evt.MouseDown {
-			evt.MouseDown = true
-			evt.MouseUp = false
-			if n.OnMouseDown != nil {
-				n.OnMouseDown(evt)
-			}
-			eventList = append(eventList, "mousedown")
-		}
-
-		if !data.Click && !evt.MouseUp {
-			evt.MouseUp = true
-			evt.MouseDown = false
-			evt.Click = false
-			if n.OnMouseUp != nil {
-				n.OnMouseUp(evt)
-			}
-			eventList = append(eventList, "mouseup")
-		}
-
-		if data.Click && !evt.Click {
-			evt.Click = true
-
-			if n.TabIndex > -1 {
-				if m.Focus.Selected > -1 {
-					if m.Focus.Nodes[m.Focus.Selected].Properties.Id != n.Properties.Id {
-						m.Focus.Nodes[m.Focus.Selected].Blur()
-						for i, v := range m.Focus.Nodes {
-							if v.Properties.Id == n.Properties.Id {
-								m.Focus.Selected = i
-								n.Focus()
-								m.Focus.LastClickWasFocused = true
-								break
-							}
+					if store != m.Focus.Selected {
+						if store > -1 {
+							m.Focus.Nodes[store].Blur()
 						}
-					} else {
+						m.Focus.Nodes[m.Focus.Selected].Focus()
 						m.Focus.LastClickWasFocused = true
 					}
-				} else {
-					selectedIndex := -1
-					for i, v := range m.Focus.Nodes {
-						if v.Properties.Id == n.Properties.Id {
-							selectedIndex = i
-						}
-					}
-					if selectedIndex == -1 {
-						if n.TabIndex == 9999999 {
-							// Add the last digits of the properties.id to make the elements sort in order
-							numStr := strings.TrimFunc(n.Properties.Id, func(r rune) bool {
-								return !unicode.IsDigit(r) // Remove non-digit characters
-							})
-							prid, _ := strconv.Atoi(numStr)
-							n.TabIndex += prid
-						}
-						m.Focus.Nodes = append([]*element.Node{n}, m.Focus.Nodes...)
-						sort.Slice(m.Focus.Nodes, func(i, j int) bool {
-							return m.Focus.Nodes[i].TabIndex < m.Focus.Nodes[j].TabIndex // Ascending order by TabIndex
-						})
-						for i, v := range m.Focus.Nodes {
-							if v.Properties.Id == n.Properties.Id {
-								selectedIndex = i
-							}
-						}
-					}
-
-					m.Focus.Selected = selectedIndex
-					n.Focus()
-					m.Focus.LastClickWasFocused = true
 				}
 
-			} else if m.Focus.Selected > -1 {
-				if m.Focus.Nodes[m.Focus.Selected].Properties.Id != n.Properties.Id && !m.Focus.LastClickWasFocused {
-					m.Focus.Nodes[m.Focus.Selected].Blur()
-					m.Focus.Selected = -1
-				}
 			}
-			if n.OnClick != nil {
-				n.OnClick(evt)
-			}
-			// Regardless set soft focus to trigger events to the selected element: when non is set default body???
-			if m.Focus.SoftFocused == nil {
-				m.Focus.SoftFocused = n
-			}
-			eventList = append(eventList, "click")
 		}
 
-		if data.Context {
-			evt.ContextMenu = true
-			if n.OnContextMenu != nil {
-				n.OnContextMenu(evt)
-			}
-			eventList = append(eventList, "contextmenu")
-		}
+		if inside || isFocused {
+			// Mouse is over element
+			isMouseOver = true
 
-		// el.ScrollY = 0
-		if (data.Scroll != 0 && (inside)) || arrowScroll != 0 {
-			// !TODO: for now just emit a event, will have to add el.scrollX
-			data.Scroll += arrowScroll
-			styledEl, _ := m.CSS.GetStyles(n)
-
-			// !TODO: Add scrolling for dragging over the scroll bar
-			// + the dragging part will be hard as events has no context of the scrollbars
-
-			if hasAutoOrScroll(styledEl) {
-				n.ScrollTop = int(n.ScrollTop + (-data.Scroll))
-				if n.ScrollTop > n.ScrollHeight {
-					n.ScrollTop = n.ScrollHeight
-				}
-
-				if n.ScrollTop <= 0 {
-					n.ScrollTop = 0
-				}
-
-				if n.OnScroll != nil {
-					n.OnScroll(evt)
-				}
-
-				data.Scroll = 0
-				eventList = append(eventList, "scroll")
+			if evt.AddClasses == nil {
+				evt.AddClasses = []string{}
 			}
 
+			evt.AddClasses = append(evt.AddClasses, ":hover")
+
+			if data.Click && !evt.MouseDown {
+				evt.MouseDown = true
+				evt.MouseUp = false
+			}
+
+			if !data.Click && !evt.MouseUp {
+				evt.MouseUp = true
+				evt.MouseDown = false
+				evt.Click = false
+			}
+
+			if data.Click && !evt.Click {
+				evt.Click = true
+
+				// if n.TabIndex > -1 {
+				// 	if m.Focus.Selected > -1 {
+				// 		if m.Focus.Nodes[m.Focus.Selected].Properties.Id != k {
+				// 			m.Focus.Nodes[m.Focus.Selected].Blur()
+				// 			for i, v := range m.Focus.Nodes {
+				// 				if v.Properties.Id == k {
+				// 					m.Focus.Selected = i
+				// 					m.Focus.LastClickWasFocused = true
+				// 					break
+				// 				}
+				// 			}
+				// 		} else {
+				// 			m.Focus.LastClickWasFocused = true
+				// 		}
+				// 	} else {
+				// 		selectedIndex := -1
+				// 		for i, v := range m.Focus.Nodes {
+				// 			if v.Properties.Id == k {
+				// 				selectedIndex = i
+				// 			}
+				// 		}
+				// 		if selectedIndex == -1 {
+				// 			if n.TabIndex == 9999999 {
+				// 				// Add the last digits of the properties.id to make the elements sort in order
+				// 				numStr := strings.TrimFunc(k, func(r rune) bool {
+				// 					return !unicode.IsDigit(r) // Remove non-digit characters
+				// 				})
+				// 				prid, _ := strconv.Atoi(numStr)
+				// 				n.TabIndex += prid
+				// 			}
+				// 			m.Focus.Nodes = append([]*element.Node{n}, m.Focus.Nodes...)
+				// 			sort.Slice(m.Focus.Nodes, func(i, j int) bool {
+				// 				return m.Focus.Nodes[i].TabIndex < m.Focus.Nodes[j].TabIndex // Ascending order by TabIndex
+				// 			})
+				// 			for i, v := range m.Focus.Nodes {
+				// 				if v.Properties.Id == k {
+				// 					selectedIndex = i
+				// 				}
+				// 			}
+				// 		}
+
+				// 		m.Focus.Selected = selectedIndex
+				// 		m.Focus.LastClickWasFocused = true
+				// 	}
+
+				// } else if m.Focus.Selected > -1 {
+				// 	if m.Focus.Nodes[m.Focus.Selected].Properties.Id != k && !m.Focus.LastClickWasFocused {
+				// 		m.Focus.Nodes[m.Focus.Selected].Blur()
+				// 		m.Focus.Selected = -1
+				// 	}
+				// }
+
+				// Regardless set soft focus to trigger events to the selected element: when non is set default body???
+				// if m.Focus.SoftFocused == nil {
+				// 	m.Focus.SoftFocused = n
+				// }
+			}
+
+			if data.Context {
+				evt.ContextMenu = true
+			}
+
+			// el.ScrollY = 0
+			// if (data.Scroll != 0 && (inside)) || arrowScroll != 0 {
+			// 	// !TODO: for now just emit a event, will have to add el.scrollX
+			// 	data.Scroll += arrowScroll
+			// 	styledEl, _ := m.CSS.GetStyles(n)
+
+			// 	// !TODO: Add scrolling for dragging over the scroll bar
+			// 	// + the dragging part will be hard as events has no context of the scrollbars
+
+			// 	if hasAutoOrScroll(styledEl) {
+			// 		n.ScrollTop = int(n.ScrollTop + (-data.Scroll))
+			// 		if n.ScrollTop > n.ScrollHeight {
+			// 			n.ScrollTop = n.ScrollHeight
+			// 		}
+
+			// 		if n.ScrollTop <= 0 {
+			// 			n.ScrollTop = 0
+			// 		}
+
+			// 		if n.OnScroll != nil {
+			// 			n.OnScroll(evt)
+			// 		}
+
+			// 		data.Scroll = 0
+			// 		eventList = append(eventList, "scroll")
+			// 	}
+
+			// }
+
+			if !evt.MouseEnter {
+				evt.MouseEnter = true
+				evt.MouseOver = true
+				evt.MouseLeave = false
+
+				// Let the adapter know the cursor has changed
+				// m.Adapter.DispatchEvent(element.Event{
+				// 	Name: "cursor",
+				// 	Data: self.Cursor,
+				// })
+			}
+
+			if evt.X != int(data.Position[0]) && evt.Y != int(data.Position[1]) {
+				evt.X = int(data.Position[0])
+				evt.Y = int(data.Position[1])
+
+			}
+		} else {
+			isMouseOver = false
+			if evt.RemoveClasses == nil {
+				evt.RemoveClasses = []string{}
+			}
+
+			evt.RemoveClasses = append(evt.RemoveClasses, ":hover")
 		}
 
-		if !evt.MouseEnter {
-			evt.MouseEnter = true
-			evt.MouseOver = true
-			evt.MouseLeave = false
-			if n.OnMouseEnter != nil {
-				n.OnMouseEnter(evt)
-			}
-			if n.OnMouseOver != nil {
-				n.OnMouseEnter(evt)
-			}
-			eventList = append(eventList, "mouseenter")
-			eventList = append(eventList, "mouseover")
-
-			// Let the adapter know the cursor has changed
-			m.Adapter.DispatchEvent(element.Event{
-				Name: "cursor",
-				Data: self.Cursor,
-			})
+		if !isMouseOver && !evt.MouseLeave {
+			evt.MouseEnter = false
+			evt.MouseOver = false
+			evt.MouseLeave = true
+			// n.Properties.Hover = false
 		}
 
-		if evt.X != int(data.Position[0]) && evt.Y != int(data.Position[1]) {
-			evt.X = int(data.Position[0])
-			evt.Y = int(data.Position[1])
-			if n.OnMouseMove != nil {
-				n.OnMouseMove(evt)
-			}
-			eventList = append(eventList, "mousemove")
-		}
-	} else {
-		isMouseOver = false
-		if slices.Contains(n.ClassList.Classes, ":hover") {
-			n.ClassList.Remove(":hover")
-		}
+		eventMap[k] = append(eventMap[k], evt)
 	}
 
-	// fmt.Println(isMouseOver)
-
-	if !isMouseOver && !evt.MouseLeave {
-		evt.MouseEnter = false
-		evt.MouseOver = false
-		evt.MouseLeave = true
-		n.Properties.Hover = false
-		if n.OnMouseLeave != nil {
-			n.OnMouseLeave(evt)
-		}
-		eventList = append(eventList, "mouseleave")
-	}
-
-	if len(n.Properties.Events) > 0 {
-		eventList = append(eventList, n.Properties.Events...)
-	}
-
-	(*m.History)[n.Properties.Id] = element.EventList{
-		Event: evt,
-		List:  eventList,
-	}
+	fmt.Println(eventMap["ROOT"])
 }
 
 // ProcessKeyEvent processes key events for text entry.
-func ProcessKeyEvent(n *element.Node, key int) {
+func ProcessKeyEvent(self element.State, key int) {
 	// Handle key events for text entry
-	fmt.Println(key)
 	switch key {
 	case 8:
 		// Backspace: remove the last character
-		if len(n.Value) > 0 {
-			n.Value = n.Value[:len(n.Value)-1]
-			n.InnerText = n.InnerText[:len(n.InnerText)-1]
+		if len(self.Value) > 0 {
+			self.Value = self.Value[:len(self.Value)-1]
+			// n.InnerText = n.InnerText[:len(n.InnerText)-1]
 		}
 
 	case 65:
-		// Select All: set the entire text as selected
-		if key == 17 || key == 345 {
-			n.Properties.Selected = []float32{0, float32(len(n.Value))}
-		} else {
-			// Otherwise, append 'A' to the text
-			n.Value += "A"
-		}
+		// !TODO: ctrl a
+		// // Select All: set the entire text as selected
+		// if key == 17 || key == 345 {
+		// 	n.Properties.Selected = []float32{0, float32(len(n.Value))}
+		// } else {
+		// 	// Otherwise, append 'A' to the text
+		// 	n.Value += "A"
+		// }
 
 	case 67:
 		// Copy: copy the selected text (in this case, print it)
-		if key == 17 || key == 345 {
-			fmt.Println("Copy:", n.Value)
-		} else {
-			// Otherwise, append 'C' to the text
-			n.Value += "C"
-		}
+		// if key == 17 || key == 345 {
+		// 	fmt.Println("Copy:", n.Value)
+		// } else {
+		// 	// Otherwise, append 'C' to the text
+		// 	n.Value += "C"
+		// }
 
 	case 86:
 		// Paste: paste the copied text (in this case, set it to "Pasted")
-		if key == 17 || key == 345 {
-			n.Value = "Pasted"
-		} else {
-			// Otherwise, append 'V' to the text
-			n.Value += "V"
-		}
+		// if key == 17 || key == 345 {
+		// 	n.Value = "Pasted"
+		// } else {
+		// 	// Otherwise, append 'V' to the text
+		// 	n.Value += "V"
+		// }
 
 	default:
 		// Record other key presses
-		n.Value += string(rune(key))
+		self.Value += string(rune(key))
 	}
 }
 

@@ -400,6 +400,8 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State,
 	self.Width = width
 	self.Height = height
 
+	self.ContentEditable = n.ContentEditable
+
 	(*state)[n.Properties.Id] = self
 
 	if !utils.ChildrenHaveText(n) && len(n.InnerText) > 0 {
@@ -425,6 +427,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State,
 		}
 	}
 
+	self.Value = n.InnerText
 	(*state)[n.Properties.Id] = self
 	(*state)[n.Parent.Properties.Id] = parent
 	self.ScrollHeight = 0
