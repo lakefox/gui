@@ -7,10 +7,11 @@ import (
 	"gui/library"
 	"gui/utils"
 	"image"
-	ic "image/color"
+	colour "image/color"
 	"math"
 	"strconv"
 	"strings"
+	"sync"
 )
 
 func Parse(cssProperties map[string]string, self, parent element.State) (element.Border, error) {
@@ -174,7 +175,14 @@ func Draw(n *element.State, shelf *library.Shelf) {
 		// Format: widthheightborderdatatopleftbottomright
 		// borderdata: widthstylecolorradius
 		// 50020020solid#fff520solid#fff520solid#fff520solid#fff520solid#fff
-		key := strconv.Itoa(int(n.Width)) + strconv.Itoa(int(n.Height)) + (strconv.Itoa(int(n.Border.Top.Width)) + n.Border.Top.Style + utils.RGBAtoString(n.Border.Top.Color) + strconv.Itoa(int(n.Border.Radius.TopLeft))) + (strconv.Itoa(int(n.Border.Left.Width)) + n.Border.Left.Style + utils.RGBAtoString(n.Border.Left.Color) + strconv.Itoa(int(n.Border.Radius.BottomLeft))) + (strconv.Itoa(int(n.Border.Bottom.Width)) + n.Border.Bottom.Style + utils.RGBAtoString(n.Border.Bottom.Color) + strconv.Itoa(int(n.Border.Radius.BottomRight))) + (strconv.Itoa(int(n.Border.Right.Width)) + n.Border.Right.Style + utils.RGBAtoString(n.Border.Right.Color) + strconv.Itoa(int(n.Border.Radius.TopRight)))
+		var keyBuilder strings.Builder
+		keyBuilder.WriteString(strconv.Itoa(int(n.Width)))
+		keyBuilder.WriteString(strconv.Itoa(int(n.Height)))
+		keyBuilder.WriteString(strconv.Itoa(int(n.Border.Top.Width)) + n.Border.Top.Style + utils.RGBAtoString(n.Border.Top.Color) + strconv.Itoa(int(n.Border.Radius.TopLeft)))
+		keyBuilder.WriteString(strconv.Itoa(int(n.Border.Left.Width)) + n.Border.Left.Style + utils.RGBAtoString(n.Border.Left.Color) + strconv.Itoa(int(n.Border.Radius.BottomLeft)))
+		keyBuilder.WriteString(strconv.Itoa(int(n.Border.Bottom.Width)) + n.Border.Bottom.Style + utils.RGBAtoString(n.Border.Bottom.Color) + strconv.Itoa(int(n.Border.Radius.BottomRight)))
+		keyBuilder.WriteString(strconv.Itoa(int(n.Border.Right.Width)) + n.Border.Right.Style + utils.RGBAtoString(n.Border.Right.Color) + strconv.Itoa(int(n.Border.Radius.TopRight)))
+		key := keyBuilder.String()
 		exists := shelf.Check(key)
 
 		if exists {
@@ -188,23 +196,42 @@ func Draw(n *element.State, shelf *library.Shelf) {
 				n.Textures = append(n.Textures, key)
 			}
 		} else {
-			ctx := canvas.NewCanvas(int(n.X+
-				n.Width+n.Border.Left.Width+n.Border.Right.Width),
-				int(n.Y+n.Height+n.Border.Top.Width+n.Border.Bottom.Width))
-			ctx.StrokeStyle = ic.RGBA{0, 0, 0, 255}
+			var wg sync.WaitGroup
+
 			if n.Border.Top.Width > 0 {
-				drawBorderSide(ctx, "top", n.Border.Top, n)
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					topCtx := drawBorderSide("top", n.Border.Top, n)
+					n.Textures = append(n.Textures, shelf.Set(key+"_top", topCtx.Context))
+				}()
 			}
 			if n.Border.Right.Width > 0 {
-				drawBorderSide(ctx, "right", n.Border.Right, n)
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					rightCtx := drawBorderSide("right", n.Border.Right, n)
+					n.Textures = append(n.Textures, shelf.Set(key+"_right", rightCtx.Context))
+				}()
 			}
 			if n.Border.Bottom.Width > 0 {
-				drawBorderSide(ctx, "bottom", n.Border.Bottom, n)
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					bottomCtx := drawBorderSide("bottom", n.Border.Bottom, n)
+					n.Textures = append(n.Textures, shelf.Set(key+"_bottom", bottomCtx.Context))
+				}()
 			}
 			if n.Border.Left.Width > 0 {
-				drawBorderSide(ctx, "left", n.Border.Left, n)
+				wg.Add(1)
+				go func() {
+					defer wg.Done()
+					leftCtx := drawBorderSide("left", n.Border.Left, n)
+					n.Textures = append(n.Textures, shelf.Set(key+"_left", leftCtx.Context))
+				}()
 			}
-			n.Textures = append(n.Textures, shelf.Set(key, ctx.Context))
+
+			wg.Wait()
 		}
 
 	}
@@ -212,27 +239,14 @@ func Draw(n *element.State, shelf *library.Shelf) {
 	// fmt.Println(time.Since(lastChange))
 }
 
-func drawBorderSide(ctx *canvas.Canvas, side string, border element.BorderSide, s *element.State) {
-	switch border.Style {
-	case "solid":
-		drawSolidBorder(ctx, side, border, s)
-	case "dashed":
-		drawDashedBorder(ctx, side, border, s)
-	case "dotted":
-		drawDottedBorder(ctx, side, border, s)
-	case "double":
-		drawDoubleBorder(ctx, side, border, s)
-	case "groove":
-		drawGrooveBorder(ctx, side, border, s)
-	case "ridge":
-		drawRidgeBorder(ctx, side, border, s)
-	case "inset":
-		drawInsetBorder(ctx, side, border, s)
-	case "outset":
-		drawOutsetBorder(ctx, side, border, s)
-	default:
-		drawSolidBorder(ctx, side, border, s)
-	}
+func drawBorderSide(side string, border element.BorderSide, s *element.State) *canvas.Canvas {
+	ctx := canvas.NewCanvas(int(s.X+s.Width+s.Border.Left.Width+s.Border.Right.Width),
+		int(s.Y+s.Height+s.Border.Top.Width+s.Border.Bottom.Width))
+	ctx.StrokeStyle = colour.RGBA{0, 0, 0, 255}
+
+	drawBorder(ctx, side, border, s)
+
+	return ctx
 }
 
 // Helper function to determine if a component is a width value
@@ -243,9 +257,6 @@ func isWidthComponent(component string, suffixes []string) bool {
 		}
 	}
 	return false
-}
-func degToRad(degrees float64) float64 {
-	return degrees * (math.Pi / 180.0)
 }
 
 func drawSolidBorder(ctx *canvas.Canvas, side string, border element.BorderSide, s *element.State) {
@@ -737,4 +748,16 @@ func LineCircleIntersection(lineStart image.Point, angle float64, circleCenter i
 	}
 
 	return intersectionPoints
+}
+
+func drawBorder(ctx *canvas.Canvas, side string, border element.BorderSide, s *element.State) {
+	switch border.Style {
+	case "solid":
+		drawSolidBorder(ctx, side, border, s)
+	case "dashed":
+		drawDashedBorder(ctx, side, border, s)
+	// ... (other border styles)
+	default:
+		drawSolidBorder(ctx, side, border, s)
+	}
 }

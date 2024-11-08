@@ -12,14 +12,15 @@ func GetInitCSSSelectors(node *html.Node, selectors []string) []string {
 	if node.Type == html.ElementNode {
 		selectors = append(selectors, node.Data)
 		for _, attr := range node.Attr {
-			if attr.Key == "class" {
+			switch attr.Key {
+			case "class":
 				classes := strings.Split(attr.Val, " ")
 				for _, class := range classes {
 					selectors = append(selectors, "."+class)
 				}
-			} else if attr.Key == "id" {
+			case "id":
 				selectors = append(selectors, "#"+attr.Val)
-			} else {
+			default:
 				selectors = append(selectors, "["+attr.Key+"=\""+attr.Val+"\"]")
 			}
 		}

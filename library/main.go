@@ -33,20 +33,16 @@ func (s *Shelf) Get(key string) (*image.RGBA, bool) {
 
 // Check marks the reference as true if the texture exists.
 func (s *Shelf) Check(key string) bool {
-	if _, exists := s.Textures[key]; exists {
-		s.References[key] = true
-		return true
-	}
-	return false
+	_, exists := s.Textures[key]
+	return exists && (s.References[key])
 }
 
 func (s *Shelf) Bounds(key string) []int {
-	if _, exists := s.Textures[key]; exists {
-		b := s.Textures[key].Bounds()
+	if texture, exists := s.Textures[key]; exists {
+		b := texture.Bounds()
 		return []int{b.Dx(), b.Dy()}
-	} else {
-		return []int{0, 0}
 	}
+	return []int{0, 0}
 }
 
 func (s *Shelf) Delete(key string) {
