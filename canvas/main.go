@@ -8,7 +8,6 @@ import (
 	"math"
 	"runtime"
 	"sort"
-	"sync"
 
 	"github.com/golang/freetype/truetype"
 	"golang.org/x/image/font"
@@ -99,8 +98,6 @@ func (c *Canvas) LineTo(x, y int) {
 }
 
 func generatePoints(p1, p2 image.Point, lineWidth int) []image.Point {
-	var points []image.Point
-
 	dx := p2.X - p1.X
 	dy := p2.Y - p1.Y
 
@@ -117,16 +114,21 @@ func generatePoints(p1, p2 image.Point, lineWidth int) []image.Point {
 	perpendicularX := -yIncrement * halfWidth / math.Sqrt(xIncrement*xIncrement+yIncrement*yIncrement)
 	perpendicularY := xIncrement * halfWidth / math.Sqrt(xIncrement*xIncrement+yIncrement*yIncrement)
 
+	numPoints := (steps + 1) * (lineWidth + 1)
+	points := make([]image.Point, numPoints)
+	index := 0
+
 	for i := 0; i <= steps; i++ {
 		// centerPoint := image.Point{int(math.Round(x)), int(math.Round(y))}
 		// Generate points across the width of the line
 		for lw := -halfWidth; lw <= halfWidth; lw++ {
 			offsetX := perpendicularX * lw / halfWidth
 			offsetY := perpendicularY * lw / halfWidth
-			points = append(points, image.Point{
+			points[index] = image.Point{
 				X: int(math.Round(x + offsetX)),
 				Y: int(math.Round(y + offsetY)),
-			})
+			}
+			index++
 		}
 		x += xIncrement
 		y += yIncrement
@@ -1010,25 +1012,13 @@ func fillPolygon(img *image.RGBA, points []image.Point, col color.RGBA) {
 		return
 	}
 
-	var wg sync.WaitGroup
-	cpus := runtime.NumCPU()
-	chunkSize := (len(keys) + cpus - 1) / cpus // Adjusted to ensure all keys are included
+	numWorkers := runtime.NumCPU()
+	jobs := make(chan int, len(keys))
+	results := make(chan bool, len(keys))
 
-	for i := 0; i < cpus; i++ {
-		start := i * chunkSize
-		end := start + chunkSize
-		if start > len(keys)-1 {
-			continue
-		}
-		if end > len(keys) {
-			end = len(keys) - 1
-		}
-
-		wg.Add(1)
-		go func(start, end int) {
-			defer wg.Done()
-			for _, y := range keys[start:end] {
-
+	for i := 0; i < numWorkers; i++ {
+		go func() {
+			for y := range jobs {
 				row := grid[y]
 				if len(row) > 0 {
 					row = removeDuplicatesSorted(row)
@@ -1070,14 +1060,20 @@ func fillPolygon(img *image.RGBA, points []image.Point, col color.RGBA) {
 							img.Set(x, y, col)
 						}
 					}
-
 				}
-
+				results <- true
 			}
-		}(start, end)
+		}()
 	}
 
-	wg.Wait()
+	for _, y := range keys {
+		jobs <- y
+	}
+	close(jobs)
+
+	for i := 0; i < len(keys); i++ {
+		<-results
+	}
 }
 
 func removeDuplicatesSorted(intSlice []int) []int {
