@@ -15,9 +15,14 @@ func main() {
 	// defaults read ~/Library/Preferences/.GlobalPreferences.plist
 	// !ISSUE: Flex2 doesn't work anymore
 	window := gui.Open("./src/index.html", raylib.Init())
+
 	// document := window.Document
 
 	// body := document.QuerySelector("body")
+
+	// body.AddEventListener("click", func(e element.Event) {
+	// 	fmt.Println("click", e.Target.Properties.Id)
+	// })
 
 	// tgt(body)
 

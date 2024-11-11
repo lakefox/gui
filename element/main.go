@@ -53,7 +53,6 @@ type Node struct {
 }
 
 type State struct {
-	// Id         string
 	X               float32
 	Y               float32
 	Z               float32
@@ -71,8 +70,7 @@ type State struct {
 	ScrollHeight    int
 	ContentEditable bool
 	Value           string
-	// !NOTE: Target is the event targets prid so cstyle needs to map that, then when the event runner runs it logs events to the prid and then
-	// + go down the tree and if prid is in there run cb
+	TabIndex        int
 }
 
 type Crop struct {
@@ -396,32 +394,31 @@ func (n *Node) ScrollTo(x, y int) {
 }
 
 type Event struct {
-	X             int
-	Y             int
-	KeyCode       int
-	Scroll        int
-	Key           string
-	CtrlKey       bool
-	MetaKey       bool
-	ShiftKey      bool
-	AltKey        bool
-	Click         bool
-	ContextMenu   bool
-	MouseDown     bool
-	MouseUp       bool
-	MouseEnter    bool
-	MouseLeave    bool
-	MouseOver     bool
-	KeyUp         bool
-	KeyDown       bool
-	KeyPress      bool
-	Input         bool
-	Target        *Node
-	Name          string
-	Data          interface{}
-	Value         string
-	AddClasses    []string
-	RemoveClasses []string
+	X           int
+	Y           int
+	KeyCode     int
+	Scroll      int
+	Key         string
+	CtrlKey     bool
+	MetaKey     bool
+	ShiftKey    bool
+	AltKey      bool
+	Click       bool
+	ContextMenu bool
+	MouseDown   bool
+	MouseUp     bool
+	MouseEnter  bool
+	MouseLeave  bool
+	MouseOver   bool
+	KeyUp       bool
+	KeyDown     bool
+	KeyPress    bool
+	Input       bool
+	Target      *Node
+	Name        string
+	Data        interface{}
+	Value       string
+	Hover       bool
 }
 
 type EventList struct {
