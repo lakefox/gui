@@ -1,7 +1,6 @@
 package events
 
 import (
-	"fmt"
 	adapter "gui/adapters"
 	"gui/cstyle"
 	"gui/element"
@@ -243,10 +242,10 @@ func (m *Monitor) GetEvents(data *EventData) {
 		if m.Focus.SoftFocused == k || inside {
 			if data.Key == 265 {
 				// up
-				arrowScroll += 20
+				arrowScroll += 50
 			} else if data.Key == 264 {
 				// Down
-				arrowScroll -= 20
+				arrowScroll -= 50
 			}
 		}
 
@@ -301,7 +300,6 @@ func (m *Monitor) GetEvents(data *EventData) {
 
 			if data.Click && !evt.Click {
 				evt.Click = true
-				fmt.Println(k, inside, isFocused)
 
 				if self.TabIndex > -1 {
 					if m.Focus.Selected > -1 {
