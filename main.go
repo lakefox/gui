@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	_ "embed"
 	"encoding/json"
-	"fmt"
 	adapter "gui/adapters"
 	"gui/canvas"
 	"gui/cstyle"
@@ -26,7 +25,6 @@ import (
 	"gui/scripts"
 	"gui/scripts/a"
 	"image"
-	"time"
 
 	"gui/element"
 	"gui/events"
@@ -314,6 +312,7 @@ func View(data *Window, width, height int) {
 
 	// Main game loop
 	for !shouldStop {
+		// lastChange := time.Now()
 
 		if !shouldStop && debug {
 			shouldStop = true
@@ -340,7 +339,7 @@ func View(data *Window, width, height int) {
 			// Updating the document here allow new element to be included into the event loop
 			hash = newHash
 			// fmt.Println("########################")
-			lastChange := time.Now()
+			// lastChange := time.Now()
 			// lastChange1 := time.Now()
 
 			newDoc := AddStyles(data.CSS, data.Document.Children[0], &data.Document)
@@ -375,7 +374,7 @@ func View(data *Window, width, height int) {
 			// fmt.Println("Add HTML: ", time.Since(lastChange1))
 
 			data.Scripts.Run(&data.Document)
-			fmt.Println("#", time.Since(lastChange))
+			// fmt.Println("#", time.Since(lastChange))
 			shelf.Clean()
 		}
 
@@ -385,6 +384,8 @@ func View(data *Window, width, height int) {
 		// 	monitor.Focus.Focus()
 		// }
 		data.Adapter.Render(rd)
+		// fmt.Println("#", time.Since(lastChange))
+
 	}
 }
 

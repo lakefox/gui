@@ -1,6 +1,7 @@
 package events
 
 import (
+	"fmt"
 	adapter "gui/adapters"
 	"gui/cstyle"
 	"gui/element"
@@ -25,6 +26,12 @@ type Monitor struct {
 	EventMap map[string]element.Event
 	CSS      *cstyle.CSS
 	Focus    Focus
+	Drag     Drag
+}
+
+type Drag struct {
+	Position []int
+	Node     string
 }
 
 type Focus struct {
@@ -206,20 +213,31 @@ func (m *Monitor) GetEvents(data *EventData) {
 			m.Focus.Nodes = append(m.Focus.Nodes, v.Id)
 		}
 	}
+	if m.Drag.Position == nil {
+		m.Drag = Drag{Position: []int{-1, -1}}
+	}
+
+	if m.Drag.Position != nil {
+		if m.Drag.Position[0] > -1 && m.Drag.Position[1] > -1 {
+			// data.Scroll = -int(math.Sqrt(math.Pow(float64(data.Position[0]-m.Drag.Position[0]), 2) + math.Pow(float64(data.Position[1]-m.Drag.Position[1]), 2)))
+			// !ISSUE: Y only also does only fire on only draggable
+			data.Scroll = -int(float64(data.Position[1] - m.Drag.Position[1]))
+			// data.Scroll = -int(float64(data.Position[1]-m.Drag.Position[1]) * 0.1)
+			// fmt.Println(data.Scroll)
+		}
+	}
 
 	var softFocus string
 
 	for k, self := range s {
 		var isMouseOver, isFocused bool
 
-		if m.Focus.SoftFocused != "" {
+		if m.Focus.Selected > -1 {
+			isFocused = m.Focus.Nodes[m.Focus.Selected] == k
+		} else if m.Focus.SoftFocused != "" {
 			isFocused = m.Focus.SoftFocused == k
 		} else {
-			if m.Focus.Selected > -1 {
-				isFocused = m.Focus.Nodes[m.Focus.Selected] == k
-			} else {
-				isFocused = false
-			}
+			isFocused = false
 		}
 
 		evt, ok := m.EventMap[k]
@@ -290,16 +308,35 @@ func (m *Monitor) GetEvents(data *EventData) {
 			if data.Click && !evt.MouseDown {
 				evt.MouseDown = true
 				evt.MouseUp = false
+				if m.Drag.Position[0] == -1 && m.Drag.Position[1] == -1 {
+					if strings.Contains(k, "grim-thumb") {
+						m.Drag = Drag{Position: data.Position}
+						fmt.Println(self.ScrollHeight)
+
+					}
+					if strings.Contains(k, "grim-scrollbar") {
+						fmt.Println(self.ScrollHeight)
+					}
+				}
 			}
 
 			if !data.Click && !evt.MouseUp {
 				evt.MouseUp = true
 				evt.MouseDown = false
 				evt.Click = false
+				m.Drag = Drag{Position: []int{-1, -1}}
+
 			}
 
 			if data.Click && !evt.Click {
 				evt.Click = true
+
+				if !inside && !(self.TabIndex > -1) {
+					if m.Focus.SoftFocused == k {
+						m.Focus.SoftFocused = ""
+						softFocus = ""
+					}
+				}
 
 				if self.TabIndex > -1 {
 					if m.Focus.Selected > -1 {
@@ -362,7 +399,8 @@ func (m *Monitor) GetEvents(data *EventData) {
 						}
 					}
 				}
-				if inside {
+
+				if inside && m.Focus.Selected == -1 {
 					if softFocus == "" {
 						softFocus = k
 					} else {

@@ -89,7 +89,7 @@ func NewWindowManager(a *adapter.Adapter) *WindowManager {
 // OpenWindow opens the window
 func (wm *WindowManager) OpenWindow(width, height int32) {
 	rl.InitWindow(width, height, "")
-	rl.SetTargetFPS(30)
+	rl.SetTargetFPS(120)
 	wm.Width = width
 	wm.Height = height
 	// Enable window resizing

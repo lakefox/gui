@@ -89,6 +89,7 @@ func Init() cstyle.Plugin {
 						diff := ((child.Y - float32(scrollTop)) + child.Height) - (self.Y + self.Height)
 						height = int(child.Height) - int(diff)
 					}
+					// !ISSUE: Elements disappear when out of view during the resize, because the element is cropped to much
 					child.Crop = element.Crop{
 						X:      0,
 						Y:      yCrop,
