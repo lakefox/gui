@@ -1,7 +1,6 @@
 package events
 
 import (
-	"fmt"
 	adapter "gui/adapters"
 	"gui/cstyle"
 	"gui/element"
@@ -106,6 +105,13 @@ func (m *Monitor) RunEvents(n *element.Node) bool {
 		eventListeners = append(eventListeners, "mouseleave")
 	}
 
+	if evt.MouseMove {
+		if n.OnMouseLeave != nil {
+			n.OnMouseLeave(evt)
+		}
+		eventListeners = append(eventListeners, "mouseleave")
+	}
+
 	if evt.Hover {
 		n.ClassList.Add(":hover")
 	} else {
@@ -127,9 +133,13 @@ func (m *Monitor) RunEvents(n *element.Node) bool {
 
 		// !TODO: Add scrolling for dragging over the scroll bar
 		if hasAutoOrScroll(styledEl) {
-			n.ScrollTop = int(n.ScrollTop + (-evt.Scroll))
-			if n.ScrollTop > n.ScrollHeight {
-				n.ScrollTop = n.ScrollHeight
+			s := *m.State
+			self := s[n.Properties.Id]
+			containerHeight := self.Height
+
+			// This is the scroll scaling equation if it is less than the scroll height then let it add the next scroll amount
+			if (int((float32(int(n.ScrollTop+(-evt.Scroll)))/((containerHeight/float32(n.ScrollHeight))*containerHeight))*containerHeight) + int(containerHeight)) <= n.ScrollHeight {
+				n.ScrollTop = int(n.ScrollTop + (-evt.Scroll))
 			}
 
 			if n.ScrollTop <= 0 {
@@ -216,15 +226,17 @@ func (m *Monitor) GetEvents(data *EventData) {
 	if m.Drag.Position == nil {
 		m.Drag = Drag{Position: []int{-1, -1}}
 	}
-
+	drag := false
 	if m.Drag.Position != nil {
 		if m.Drag.Position[0] > -1 && m.Drag.Position[1] > -1 {
-			// data.Scroll = -int(math.Sqrt(math.Pow(float64(data.Position[0]-m.Drag.Position[0]), 2) + math.Pow(float64(data.Position[1]-m.Drag.Position[1]), 2)))
 			// !ISSUE: Y only also does only fire on only draggable
-			data.Scroll = -int(float64(data.Position[1] - m.Drag.Position[1]))
-			// data.Scroll = -int(float64(data.Position[1]-m.Drag.Position[1]) * 0.1)
-			// fmt.Println(data.Scroll)
+			drag = true
+			// data.Click = false
 		}
+	}
+
+	if data.Position == nil {
+		return
 	}
 
 	var softFocus string
@@ -244,11 +256,6 @@ func (m *Monitor) GetEvents(data *EventData) {
 
 		if !ok {
 			evt = element.Event{}
-		}
-
-		if evt.X != int(data.Position[0]) && evt.Y != int(data.Position[1]) {
-			evt.X = int(data.Position[0])
-			evt.Y = int(data.Position[1])
 		}
 
 		insideX := (self.X < float32(data.Position[0]) && self.X+self.Width > float32(data.Position[0]))
@@ -311,12 +318,12 @@ func (m *Monitor) GetEvents(data *EventData) {
 				if m.Drag.Position[0] == -1 && m.Drag.Position[1] == -1 {
 					if strings.Contains(k, "grim-thumb") {
 						m.Drag = Drag{Position: data.Position}
-						fmt.Println(self.ScrollHeight)
+						// fmt.Println(self.ScrollHeight)
 
 					}
-					if strings.Contains(k, "grim-scrollbar") {
-						fmt.Println(self.ScrollHeight)
-					}
+					// if strings.Contains(k, "grim-scrollbar") {
+					// 	fmt.Println(self.ScrollHeight)
+					// }
 				}
 			}
 
@@ -421,13 +428,16 @@ func (m *Monitor) GetEvents(data *EventData) {
 				evt.ContextMenu = true
 			}
 
-			if (data.Scroll != 0 && (inside)) || arrowScroll != 0 {
+			if (data.Scroll != 0 && (inside)) || arrowScroll != 0 || drag {
 				// !TODO: for now just emit a event, will have to add el.scrollX
+				if drag {
+					data.Scroll = (evt.Y - data.Position[1])
+				}
 				evt.Scroll = data.Scroll + arrowScroll
 				arrowScroll = 0
 			}
 
-			if !evt.MouseEnter {
+			if !evt.MouseEnter && inside {
 				evt.MouseEnter = true
 				evt.MouseOver = true
 				evt.MouseLeave = false
@@ -437,6 +447,14 @@ func (m *Monitor) GetEvents(data *EventData) {
 					Name: "cursor",
 					Data: self.Cursor,
 				})
+			}
+
+			if inside {
+				evt.MouseMove = true
+				evt.X = data.Position[0]
+				evt.Y = data.Position[1]
+			} else {
+				evt.MouseMove = true
 			}
 
 		} else {
@@ -449,6 +467,11 @@ func (m *Monitor) GetEvents(data *EventData) {
 			evt.MouseOver = false
 			evt.MouseLeave = true
 			// n.Properties.Hover = false
+		}
+
+		if evt.X != int(data.Position[0]) && evt.Y != int(data.Position[1]) {
+			evt.X = int(data.Position[0])
+			evt.Y = int(data.Position[1])
 		}
 
 		m.EventMap[k] = evt

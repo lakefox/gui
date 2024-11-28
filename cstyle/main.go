@@ -459,12 +459,11 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State,
 		}
 	}
 
-	self.ScrollHeight += int(self.Padding.Bottom)
 	if style["height"] == "" {
 		self.Height += self.Padding.Bottom
 	}
 
-	self.ScrollHeight -= int(self.Height)
+	self.ScrollHeight += int(self.Padding.Bottom)
 
 	(*state)[n.Properties.Id] = self
 

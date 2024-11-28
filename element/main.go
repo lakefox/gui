@@ -410,6 +410,7 @@ type Event struct {
 	MouseEnter  bool
 	MouseLeave  bool
 	MouseOver   bool
+	MouseMove   bool
 	KeyUp       bool
 	KeyDown     bool
 	KeyPress    bool

@@ -22,30 +22,18 @@ func Init() cstyle.Plugin {
 			self := s[n.Properties.Id]
 
 			scrollTop := findScroll(n)
-			minY, maxY := findBounds(n, state)
 
-			scrollAmt := ((maxY - minY) + self.Padding.Bottom + self.Padding.Top) / self.Height
+			containerHeight := self.Height
+			contentHeight := float32(self.ScrollHeight)
 
 			for _, v := range n.Children {
 				if v.TagName == "grim-scrollbar" {
-					if scrollAmt > 1 {
-						diff := 1 - (scrollAmt - 1)
+					if containerHeight < contentHeight {
 						p := s[v.Children[0].Properties.Id]
 
-						if diff < 0 {
-							diff *= -1
-						}
+						p.Height = (containerHeight / contentHeight) * containerHeight
 
-						p.Height = self.Height * diff
-
-						p.Y = self.Y + ((self.Height - p.Height) * (float32(scrollTop) / (((maxY - minY) + self.Padding.Bottom + self.Padding.Top) - (self.Height))))
-
-						// Not sure what this does anymore if I comment it out nothing changes but I put it here for a reason
-						if self.Y+self.Height < p.Y+p.Height {
-							p.Y = (self.Y + self.Height) - p.Height
-						} else if p.Y < self.Y {
-							p.Y = self.Y
-						}
+						p.Y = self.Y + float32(scrollTop)
 
 						(*state)[v.Children[0].Properties.Id] = p
 					} else {
@@ -58,6 +46,12 @@ func Init() cstyle.Plugin {
 					}
 					break
 				}
+			}
+
+			scrollTop = int((float32(scrollTop) / ((containerHeight / contentHeight) * containerHeight)) * containerHeight)
+
+			if containerHeight > contentHeight {
+				return
 			}
 
 			if n.Style["overflow-y"] == "hidden" || n.Style["overflow-y"] == "clip" {
