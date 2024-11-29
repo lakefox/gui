@@ -292,7 +292,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State,
 	self := s[n.Properties.Id]
 	plugins := c.Plugins
 	parent := s[n.Parent.Properties.Id]
-
+	// fmt.Println(n.Properties.Id)
 	// Cache the style map
 	style := n.Style
 
@@ -397,9 +397,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State,
 
 	self.X = x
 	self.Y = y
-	// this is used for the event look to kep track of heirarchy
-	// !ISSUE: This messes up the z index
-	// self.Z += parent.Z + 1
+
 	self.Width = width
 	self.Height = height
 
@@ -471,6 +469,10 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State,
 		if v.Selector(n) {
 			v.Handler(n, state)
 		}
+	}
+
+	if n.Properties.Id == "input7" {
+		fmt.Println(n.Properties.Id, self.Width, self.Border)
 	}
 
 	return n

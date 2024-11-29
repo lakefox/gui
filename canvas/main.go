@@ -6,9 +6,7 @@ import (
 	"image/draw"
 	"io/ioutil"
 	"math"
-	"runtime"
 	"sort"
-	"sync"
 
 	"github.com/golang/freetype/truetype"
 	"golang.org/x/image/font"
@@ -563,12 +561,6 @@ func (c *Canvas) ArcTo(x1, y1, x2, y2, r float64, counterclockwise bool) {
 	}
 
 }
-func degToRad(degrees float64) float64 {
-	return degrees * (math.Pi / 180.0)
-}
-func radToDeg(radians float64) float64 {
-	return radians * (180.0 / math.Pi)
-}
 
 // BezierCurveTo adds a cubic Bezier curve to the path
 func (c *Canvas) BezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y float64) {
@@ -854,50 +846,6 @@ func drawLine(img *image.RGBA, p1, p2 image.Point, col color.RGBA, lineWidth flo
 	}
 }
 
-// Function to check if a point is within the bounds of the image
-func inBounds(img *image.RGBA, p image.Point) bool {
-	return p.X >= 0 && p.X < img.Bounds().Dx() && p.Y >= 0 && p.Y < img.Bounds().Dy()
-}
-
-// Flood fill algorithm to fill a polygon from a starting point
-func floodFill(img *image.RGBA, start image.Point, fillColor color.RGBA) {
-	// Get the original color at the starting point
-	targetColor := img.At(start.X, start.Y).(color.RGBA)
-
-	// If the target color is the same as the fill color, do nothing
-	if targetColor == fillColor {
-		return
-	}
-
-	// Stack-based flood fill (to avoid stack overflow with recursive approach)
-	stack := []image.Point{start}
-
-	for len(stack) > 0 {
-		// Pop the last point from the stack
-		p := stack[len(stack)-1]
-		stack = stack[:len(stack)-1]
-
-		// Check if the point is within the image bounds
-		if !inBounds(img, p) {
-			continue
-		}
-
-		// Get the color of the current point
-		currentColor := img.At(p.X, p.Y).(color.RGBA)
-
-		// If the color matches the target color, fill it with the new color
-		if currentColor == targetColor {
-			img.SetRGBA(p.X, p.Y, fillColor)
-
-			// Add neighboring points to the stack
-			stack = append(stack, image.Point{X: p.X + 1, Y: p.Y})
-			stack = append(stack, image.Point{X: p.X - 1, Y: p.Y})
-			stack = append(stack, image.Point{X: p.X, Y: p.Y + 1})
-			stack = append(stack, image.Point{X: p.X, Y: p.Y - 1})
-		}
-	}
-}
-
 func rotatePoints(points []image.Point, center image.Point, rad float64) []image.Point {
 	rotatedPoints := make([]image.Point, len(points))
 
@@ -982,103 +930,171 @@ func FindPointInsidePolygon(polygon []image.Point) image.Point {
 	return polygon[0]
 }
 
-func fillPolygon(img *image.RGBA, points []image.Point, col color.RGBA) {
-	if len(points) < 3 {
-		return
-	}
+// Fill triangle using scanline method
+func fillTriangle(img *image.RGBA, p1, p2, p3 image.Point, col color.RGBA) {
+	// Sort points by Y-coordinate to get top to bottom ordering
+	points := []image.Point{p1, p2, p3}
+	sort.Slice(points, func(i, j int) bool {
+		return points[i].Y < points[j].Y
+	})
 
-	w := img.Bounds().Dx()
-	h := img.Bounds().Dy()
-	grid := make(map[int][]int)
+	// Find the minimum and maximum Y-values
+	minY := int(points[0].Y)
+	maxY := int(points[2].Y)
 
-	for i := 0; i < len(points); i++ {
-		y := points[i].Y
-		x := points[i].X
-		if y >= 0 && y < h && x >= 0 && x < w {
-			grid[y] = append(grid[y], x)
-		}
-	}
+	// Loop through each Y-coordinate from minY to maxY
+	for y := minY; y <= maxY; y++ {
+		// Find the intersections of the scanline with the triangle
+		xIntersect := []float64{}
 
-	keys := make([]int, 0, len(grid))
-	for k := range grid {
-		keys = append(keys, k)
-	}
+		// Check for each side of the triangle
+		for i := 0; i < 3; i++ {
+			p1 := points[i]
+			p2 := points[(i+1)%3]
 
-	sort.Ints(keys)
-
-	if len(keys) == 0 {
-		return
-	}
-
-	var wg sync.WaitGroup
-	cpus := runtime.NumCPU()
-	chunkSize := (len(keys) + cpus - 1) / cpus // Adjusted to ensure all keys are included
-
-	for i := 0; i < cpus; i++ {
-		start := i * chunkSize
-		end := start + chunkSize
-		if start > len(keys)-1 {
-			continue
-		}
-		if end > len(keys) {
-			end = len(keys) - 1
-		}
-
-		wg.Add(1)
-		go func(start, end int) {
-			defer wg.Done()
-			for _, y := range keys[start:end] {
-
-				row := grid[y]
-				if len(row) > 0 {
-					row = removeDuplicatesSorted(row)
-					pairs := [][]int{}
-					// pairs is start, index, end, index
-					pairs = append(pairs, []int{})
-					pairs[0] = []int{row[0], 0}
-					for i := 1; i < len(row); i++ {
-						pi := len(pairs) - 1
-						currPair := pairs[pi]
-						a := currPair[0]
-						ai := currPair[1]
-						b := row[i]
-						// fmt.Println((b - (i - ai)), a)
-						if (b - (i - ai)) != a {
-							if len(currPair) == 4 {
-								c := currPair[2]
-								ci := currPair[3]
-								if b-(i-ci) == c {
-									pairs[pi][2] = b
-									pairs[pi][3] = i
-								} else {
-									pairs = append(pairs, []int{b, i})
-								}
-							} else {
-								pairs[pi] = append(pairs[pi], b)
-								pairs[pi] = append(pairs[pi], i)
-							}
-						}
-					}
-					pi := len(pairs) - 1
-					if len(pairs[pi]) < 4 {
-						pairs[pi] = append(pairs[pi], row[len(row)-1])
-						pairs[pi] = append(pairs[pi], len(row)-1)
-					}
-					// fmt.Println(y, pairs)
-					for _, v := range pairs {
-						for x := v[0]; x <= v[2]; x++ {
-							img.Set(x, y, col)
-						}
-					}
-
-				}
-
+			// Check if the scanline intersects the edge (p1, p2)
+			if (p1.Y <= y && p2.Y > y) || (p2.Y <= y && p1.Y > y) {
+				// Calculate intersection point
+				intersectX := p1.X + (y-p1.Y)*(p2.X-p1.X)/(p2.Y-p1.Y)
+				xIntersect = append(xIntersect, float64(intersectX))
 			}
-		}(start, end)
+		}
+
+		// Sort the intersection points
+		sort.Float64s(xIntersect)
+
+		// Fill between the intersections
+		for i := 0; i < len(xIntersect); i += 2 {
+			for x := int(math.Ceil(xIntersect[i])); x < int(math.Floor(xIntersect[i+1])); x++ {
+				img.Set(x, y, col)
+			}
+		}
+	}
+}
+
+// Triangulate the polygon into triangles (fan method)
+func triangulatePolygon(points []image.Point) [][]image.Point {
+	// Assume the polygon is convex or use any triangulation method like ear-clipping
+	// Using the first point as the center of the fan
+	var triangles [][]image.Point
+	center := points[0]
+
+	// Triangulate by creating triangles with the first point (fan method)
+	for i := 1; i < len(points)-1; i++ {
+		triangles = append(triangles, []image.Point{center, points[i], points[i+1]})
 	}
 
-	wg.Wait()
+	return triangles
 }
+
+// Fill Polygon using triangulation
+func fillPolygon(img *image.RGBA, points []image.Point, col color.RGBA) {
+	// Triangulate the polygon
+	triangles := triangulatePolygon(points)
+
+	// Fill each triangle
+	for _, triangle := range triangles {
+		fillTriangle(img, triangle[0], triangle[1], triangle[2], col)
+	}
+}
+
+// func fillPolygon(img *image.RGBA, points []image.Point, col color.RGBA) {
+// 	if len(points) < 3 {
+// 		return
+// 	}
+
+// 	w := img.Bounds().Dx()
+// 	h := img.Bounds().Dy()
+// 	grid := make(map[int][]int)
+
+// 	for i := 0; i < len(points); i++ {
+// 		y := points[i].Y
+// 		x := points[i].X
+// 		if y >= 0 && y < h && x >= 0 && x < w {
+// 			grid[y] = append(grid[y], x)
+// 		}
+// 	}
+
+// 	keys := make([]int, 0, len(grid))
+// 	for k := range grid {
+// 		keys = append(keys, k)
+// 	}
+
+// 	sort.Ints(keys)
+
+// 	if len(keys) == 0 {
+// 		return
+// 	}
+
+// 	var wg sync.WaitGroup
+// 	cpus := runtime.NumCPU()
+// 	chunkSize := (len(keys) + cpus - 1) / cpus // Adjusted to ensure all keys are included
+
+// 	for i := 0; i < cpus; i++ {
+// 		start := i * chunkSize
+// 		end := start + chunkSize
+// 		if start > len(keys)-1 {
+// 			continue
+// 		}
+// 		if end > len(keys) {
+// 			end = len(keys) - 1
+// 		}
+
+// 		wg.Add(1)
+// 		go func(start, end int) {
+// 			defer wg.Done()
+// 			for _, y := range keys[start:end] {
+
+// 				row := grid[y]
+// 				if len(row) > 0 {
+// 					row = removeDuplicatesSorted(row)
+// 					pairs := [][]int{}
+// 					// pairs is start, index, end, index
+// 					pairs = append(pairs, []int{})
+// 					pairs[0] = []int{row[0], 0}
+// 					for i := 1; i < len(row); i++ {
+// 						pi := len(pairs) - 1
+// 						currPair := pairs[pi]
+// 						a := currPair[0]
+// 						ai := currPair[1]
+// 						b := row[i]
+// 						// fmt.Println((b - (i - ai)), a)
+// 						if (b - (i - ai)) != a {
+// 							if len(currPair) == 4 {
+// 								c := currPair[2]
+// 								ci := currPair[3]
+// 								if b-(i-ci) == c {
+// 									pairs[pi][2] = b
+// 									pairs[pi][3] = i
+// 								} else {
+// 									pairs = append(pairs, []int{b, i})
+// 								}
+// 							} else {
+// 								pairs[pi] = append(pairs[pi], b)
+// 								pairs[pi] = append(pairs[pi], i)
+// 							}
+// 						}
+// 					}
+// 					pi := len(pairs) - 1
+// 					if len(pairs[pi]) < 4 {
+// 						pairs[pi] = append(pairs[pi], row[len(row)-1])
+// 						pairs[pi] = append(pairs[pi], len(row)-1)
+// 					}
+// 					// fmt.Println(y, pairs)
+// 					for _, v := range pairs {
+// 						for x := v[0]; x <= v[2]; x++ {
+// 							img.Set(x, y, col)
+// 						}
+// 					}
+
+// 				}
+
+// 			}
+// 		}(start, end)
+// 	}
+
+// 	wg.Wait()
+// }
 
 func removeDuplicatesSorted(intSlice []int) []int {
 	if len(intSlice) == 0 {

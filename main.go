@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	_ "embed"
 	"encoding/json"
+	"fmt"
 	adapter "gui/adapters"
 	"gui/canvas"
 	"gui/cstyle"
@@ -240,8 +241,6 @@ func View(data *Window, width, height int) {
 
 	newWidth, newHeight := width, height
 
-	// !ISSUE: Adding the styles at run time works but first its better if we don't recalculate things
-	// + but also the event handler has no context of psuedo elements like the scroll bar so we can't do cursor changes or mousedown
 	monitor := events.Monitor{
 		EventMap: make(map[string]element.Event),
 		Adapter:  data.Adapter,
@@ -473,6 +472,7 @@ func parseHTMLFromFile(path string) ([]string, []string, *html.Node) {
 	}
 
 	htmlContent = removeHTMLComments(htmlContent)
+	htmlContent = string(ConvertSelfClosingTags([]byte(htmlContent)))
 
 	doc, _ := html.Parse(strings.NewReader(encapsulateText(removeWhitespaceBetweenTags(htmlContent))))
 
@@ -626,4 +626,39 @@ func hashStruct(s interface{}) ([]byte, error) {
 	hash := hasher.Sum(nil)
 
 	return hash, nil
+}
+
+// ConvertSelfClosingTags converts self-closing tags in the HTML to non-self-closing tags
+func ConvertSelfClosingTags(html []byte) []byte {
+	// Find the <body> section
+	bodyStart := []byte("<body>")
+	bodyEnd := []byte("</body>")
+
+	startIndex := bytes.Index(html, bodyStart)
+	endIndex := bytes.Index(html, bodyEnd)
+
+	if startIndex == -1 || endIndex == -1 {
+		// If <body> or </body> is not found, return the original HTML
+		return html
+	}
+
+	// Extract the <body> content
+	bodyContent := html[startIndex+len(bodyStart) : endIndex]
+
+	// Regular expression to match self-closing tags (e.g., <br />, <img />, <hr />, etc.)
+	re := regexp.MustCompile(`<(\w+)([^>]*?)/>`)
+	// Replace the self-closing tag with the non-self-closing form
+	convertedBody := re.ReplaceAllFunc(bodyContent, func(match []byte) []byte {
+		// Extract the tag name and the attributes
+		tagName := strings.Split(string(match), " ")[0][1:]
+		attributes := string(match[len(tagName)+2 : len(match)-2])
+		// Rebuild the tag as non-self-closing
+		if attributes == "" {
+			return []byte(fmt.Sprintf("<%s></%s>", tagName, tagName))
+		}
+		return []byte(fmt.Sprintf("<%s %s></%s>", tagName, attributes, tagName))
+	})
+
+	// Reassemble the HTML with the modified body
+	return append(append(html[:startIndex+len(bodyStart)], convertedBody...), html[endIndex:]...)
 }

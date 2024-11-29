@@ -40,11 +40,14 @@ type Focus struct {
 	SoftFocused         string
 }
 
-// this could take the real document and apply the events calculated to it
+// !ISSUE: Events fire multiple times find a way to prevent sending repeat events at 120 fps also during drag click gets fired for every element moused over
 func (m *Monitor) RunEvents(n *element.Node) bool {
 	var scrolled bool
 	for _, v := range n.Children {
-		scrolled = m.RunEvents(v)
+		r := m.RunEvents(v)
+		if r {
+			scrolled = r
+		}
 	}
 
 	evt := m.EventMap[n.Properties.Id]
@@ -131,15 +134,15 @@ func (m *Monitor) RunEvents(n *element.Node) bool {
 	if evt.Scroll != 0 {
 		styledEl, _ := m.CSS.GetStyles(n)
 
-		// !TODO: Add scrolling for dragging over the scroll bar
 		if hasAutoOrScroll(styledEl) {
 			s := *m.State
 			self := s[n.Properties.Id]
 			containerHeight := self.Height
+			n.ScrollTop -= evt.Scroll
 
 			// This is the scroll scaling equation if it is less than the scroll height then let it add the next scroll amount
-			if (int((float32(int(n.ScrollTop+(-evt.Scroll)))/((containerHeight/float32(n.ScrollHeight))*containerHeight))*containerHeight) + int(containerHeight)) <= n.ScrollHeight {
-				n.ScrollTop = int(n.ScrollTop + (-evt.Scroll))
+			if (int((float32(int(n.ScrollTop))/((containerHeight/float32(n.ScrollHeight))*containerHeight))*containerHeight) + int(containerHeight)) >= n.ScrollHeight {
+				n.ScrollTop = (((n.ScrollHeight) - int(containerHeight)) * int(containerHeight)) / n.ScrollHeight
 			}
 
 			if n.ScrollTop <= 0 {
@@ -231,7 +234,6 @@ func (m *Monitor) GetEvents(data *EventData) {
 		if m.Drag.Position[0] > -1 && m.Drag.Position[1] > -1 {
 			// !ISSUE: Y only also does only fire on only draggable
 			drag = true
-			// data.Click = false
 		}
 	}
 
@@ -267,10 +269,10 @@ func (m *Monitor) GetEvents(data *EventData) {
 		if m.Focus.SoftFocused == k || inside {
 			if data.Key == 265 {
 				// up
-				arrowScroll += 50
+				arrowScroll += 20
 			} else if data.Key == 264 {
 				// Down
-				arrowScroll -= 50
+				arrowScroll -= 20
 			}
 		}
 
@@ -318,12 +320,7 @@ func (m *Monitor) GetEvents(data *EventData) {
 				if m.Drag.Position[0] == -1 && m.Drag.Position[1] == -1 {
 					if strings.Contains(k, "grim-thumb") {
 						m.Drag = Drag{Position: data.Position}
-						// fmt.Println(self.ScrollHeight)
-
 					}
-					// if strings.Contains(k, "grim-scrollbar") {
-					// 	fmt.Println(self.ScrollHeight)
-					// }
 				}
 			}
 
@@ -335,7 +332,7 @@ func (m *Monitor) GetEvents(data *EventData) {
 
 			}
 
-			if data.Click && !evt.Click {
+			if data.Click && !evt.Click && !drag {
 				evt.Click = true
 
 				if !inside && !(self.TabIndex > -1) {

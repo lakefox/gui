@@ -21,7 +21,7 @@ func main() {
 	// body := document.QuerySelector("body")
 
 	// body.AddEventListener("click", func(e element.Event) {
-	// 	fmt.Println("click", e.Target.Properties.Id)
+	// 	fmt.Println("click", e.Target.OuterHTML)
 	// })
 
 	// tgt(body)

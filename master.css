@@ -327,6 +327,8 @@ input {
     border: 2px inset;
     user-select: text;
     cursor: auto;
+    height: 1em;
+    width: 153px;
 }
 input[type="search" i] {
     box-sizing: border-box;

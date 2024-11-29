@@ -375,18 +375,18 @@ func drawDashedBorder(ctx *canvas.Canvas, side string, border element.BorderSide
 	case "top":
 		v1 := math.Max(float64(s.Border.Radius.TopLeft), 1)
 		v2 := math.Max(float64(s.Border.Radius.TopRight), 1)
-		genSolidBorder(ctx, width, v1, v2, border, s.Border.Left, s.Border.Right)
+		genDashedBorder(ctx, width, v1, v2, border, s.Border.Left, s.Border.Right, 10, 10)
 	case "right":
 		v1 := math.Max(float64(s.Border.Radius.TopRight), 1)
 		v2 := math.Max(float64(s.Border.Radius.BottomRight), 1)
-		genSolidBorder(ctx, height, v1, v2, border, s.Border.Top, s.Border.Bottom)
+		genDashedBorder(ctx, height, v1, v2, border, s.Border.Top, s.Border.Bottom, 10, 10)
 
 		ctx.Translate(float64(width), 0)
 		ctx.Rotate(math.Pi / 2)
 	case "bottom":
 		v1 := math.Max(float64(s.Border.Radius.BottomLeft), 1)
 		v2 := math.Max(float64(s.Border.Radius.BottomRight), 1)
-		genSolidBorder(ctx, width, v2, v1, border, s.Border.Right, s.Border.Left)
+		genDashedBorder(ctx, width, v2, v1, border, s.Border.Right, s.Border.Left, 10, 10)
 
 		ctx.Translate(float64(width), float64(height))
 		ctx.Rotate(math.Pi)
@@ -394,7 +394,7 @@ func drawDashedBorder(ctx *canvas.Canvas, side string, border element.BorderSide
 		// Top Right
 		v1 := math.Max(float64(s.Border.Radius.TopLeft), 1)
 		v2 := math.Max(float64(s.Border.Radius.BottomLeft), 1)
-		genSolidBorder(ctx, height, v2, v1, border, s.Border.Top, s.Border.Bottom)
+		genDashedBorder(ctx, height, v2, v1, border, s.Border.Top, s.Border.Bottom, 10, 10)
 
 		ctx.Translate(0, float64(height))
 		ctx.Rotate(-math.Pi / 2)
@@ -403,6 +403,100 @@ func drawDashedBorder(ctx *canvas.Canvas, side string, border element.BorderSide
 	// ctx.Stroke()
 	ctx.Reset()
 	ctx.ClosePath()
+}
+
+func genDashedBorder(ctx *canvas.Canvas, width float32, v1, v2 float64, border, side1, side2 element.BorderSide, dashLength, gapLength float32) {
+	s1w, s2w := float32(side1.Width), float32(side2.Width)
+	if s1w < 1 {
+		s1w = 1
+	}
+	if s2w < 1 {
+		s2w = 1
+	}
+
+	// Helper function to draw dashed lines
+	drawDashedLine := func(start, end image.Point, dashLength, gapLength float32) {
+		lineLength := float32(math.Hypot(float64(end.X-start.X), float64(end.Y-start.Y)))
+		dashCount := int(lineLength / (dashLength + gapLength))
+		direction := image.Point{X: end.X - start.X, Y: end.Y - start.Y}
+
+		// Normalize the direction vector
+		directionLength := float32(math.Hypot(float64(direction.X), float64(direction.Y)))
+		direction = image.Point{X: int(float32(direction.X) / directionLength * dashLength), Y: int(float32(direction.Y) / directionLength * dashLength)}
+
+		for i := 0; i < dashCount; i++ {
+			dashStart := image.Point{X: start.X + direction.X*i, Y: start.Y + direction.Y*i}
+			dashEnd := image.Point{X: dashStart.X + direction.X, Y: dashStart.Y + direction.Y}
+
+			// Only draw the dash if it's within the bounds
+			if (i % 2) == 0 {
+				ctx.MoveTo(dashStart.X, dashStart.Y)
+				ctx.LineTo(dashEnd.X, dashEnd.Y)
+			}
+		}
+	}
+
+	startAngleLeft := FindBorderStopAngle(image.Point{X: 0, Y: 0}, image.Point{X: int(s1w), Y: int(border.Width)}, image.Point{X: int(v1), Y: int(v1)}, v1)
+
+	ctx.Arc(v1, v1, v1, -math.Pi/2, startAngleLeft[0]-math.Pi, false) // top arc left
+	lineStart := ctx.Path[len(ctx.Path)-1]
+
+	anglePercent := ((startAngleLeft[0] - math.Pi) - (-math.Pi / 2)) / ((-math.Pi) - (-math.Pi / 2))
+	midBorderWidth := math.Max(math.Abs(float64(border.Width)-float64(s1w)), math.Min(float64(border.Width), float64(s1w)))
+
+	bottomBorderEnd := FindPointOnLine(image.Point{X: 0, Y: 0}, lineStart, midBorderWidth)
+
+	var lineEnd, parallelLineStart, parallelLineEnd image.Point
+	if v1 <= float64(border.Width) {
+		lineEnd = image.Point{X: int(s1w), Y: int(border.Width)}
+		parallelLineStart = lineEnd
+	} else {
+		controlPoint1 := FindQuadraticControlPoint(image.Point{X: int(v1), Y: int(border.Width)}, bottomBorderEnd, image.Point{X: int(s1w), Y: int(v1)}, anglePercent)
+
+		endPoints := canvas.QuadraticBezier(image.Point{X: int(v1), Y: int(border.Width)}, controlPoint1, image.Point{X: int(s1w), Y: int(v1)})
+
+		var index int
+		lineEnd, index, _ = FindClosestPoint(endPoints, bottomBorderEnd)
+		parallelLineStart = endPoints[0]
+		ctx.Path = append(ctx.Path, endPoints[:index]...)
+	}
+
+	// Draw dashed top border part 1
+	drawDashedLine(lineStart, lineEnd, dashLength, gapLength)
+
+	// These are the parallel lines part 1
+	ctx.MoveTo(int(float64(width)-(v2)), 0)
+	ctx.LineTo(int(v1), 0)
+
+	// Start the second corner
+	ctx.MoveTo(int(float64(width)-(v2)), 0)
+
+	startAngleRight := FindBorderStopAngle(image.Point{X: int(width), Y: 0}, image.Point{X: int(width - s2w), Y: int(border.Width)}, image.Point{X: int(float64(width) - v2), Y: int(v2)}, v2)
+	ctx.Arc(float64(width)-v2, v2, v2, -math.Pi/2, startAngleRight[0]-math.Pi, false) // top arc Right
+	lineStart = ctx.Path[len(ctx.Path)-1]
+	anglePercent = math.Abs(((startAngleRight[0] - math.Pi) - (-math.Pi / 2)) / ((-math.Pi) - (-math.Pi / 2)))
+	midBorderWidth = math.Max(math.Abs(float64(border.Width)-float64(s2w)), math.Min(float64(border.Width), float64(s2w)))
+
+	bottomBorderEnd = FindPointOnLine(image.Point{X: int(width), Y: 0}, lineStart, midBorderWidth)
+
+	if v2 <= float64(border.Width) {
+		lineEnd = image.Point{X: int(width - s2w), Y: int(border.Width)}
+		parallelLineEnd = lineEnd
+	} else {
+		controlPoint := FindQuadraticControlPoint(image.Point{X: int(float64(width) - v2), Y: int(border.Width)}, bottomBorderEnd, image.Point{X: int(width - s2w), Y: int(v2)}, anglePercent)
+		endPoints := canvas.QuadraticBezier(image.Point{X: int(float64(width) - v2), Y: int(border.Width)}, controlPoint, image.Point{X: int(width - s2w), Y: int(v2)})
+		var index int
+		lineEnd, index, _ = FindClosestPoint(endPoints, bottomBorderEnd)
+		parallelLineEnd = endPoints[0]
+		ctx.Path = append(ctx.Path, endPoints[:index]...)
+	}
+
+	// Draw dashed top border part 2
+	drawDashedLine(parallelLineStart, parallelLineEnd, dashLength, gapLength)
+
+	// Close the loop with dashed lines
+	ctx.MoveTo(lineStart.X, lineStart.Y)
+	ctx.LineTo(lineEnd.X, lineEnd.Y) // cap the end of the arc (other side)
 }
 
 func drawDottedBorder(ctx *canvas.Canvas, side string, border element.BorderSide, s *element.State) {

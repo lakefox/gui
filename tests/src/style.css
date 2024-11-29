@@ -44,8 +44,8 @@ html {
     line-height: 100px;
     /* border-left: 10px solid blue; */
     /* border-right: 3px solid green; */
-    border-top: 10px solid aqua;
-    border-bottom: 10px solid purple;
+    border: 10px dashed aqua;
+    border-bottom: 10px dashed purple;
     border-radius: 20px;
     text-decoration: underline;
     text-align: center;
@@ -105,4 +105,12 @@ html {
 
 #paragraph::before {
     content: "HI";
+}
+.border {
+    border-top: solid 20px blue;
+    border-bottom: solid 20px orange;
+    border-radius: 180px;
+
+    border-left: 61px solid #0f0;
+    border-right: 50px solid #000;
 }
