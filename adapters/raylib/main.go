@@ -126,6 +126,7 @@ func (wm *WindowManager) LoadTextures(nodes []element.State) {
 				}
 				if (!exists && inLibrary) || !matches {
 					textureLoaded := rl.LoadTextureFromImage(rl.NewImageFromImage(texture))
+					// rl.SetTextureFilter(textureLoaded, rl.FilterBilinear)
 					wm.Textures[key] = &textureLoaded
 				}
 			}

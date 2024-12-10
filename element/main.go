@@ -36,7 +36,7 @@ type Node struct {
 	// !NOTE: ScrollHeight is the amount of scroll left, not the total amount of scroll
 	// + if you  want the smae scrollHeight like js the add the height of the element to it
 	ScrollHeight   int
-	Context        *canvas.Canvas
+	Canvas         *canvas.Canvas
 	PseudoElements map[string]map[string]string
 
 	Value         string
@@ -384,7 +384,7 @@ func (n *Node) GetContext(width, height int) *canvas.Canvas {
 	n.Style["width"] = strconv.Itoa(width) + "px"
 	n.Style["height"] = strconv.Itoa(height) + "px"
 	ctx := canvas.NewCanvas(width, height)
-	n.Context = ctx
+	n.Canvas = ctx
 	return ctx
 }
 

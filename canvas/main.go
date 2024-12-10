@@ -3,1112 +3,324 @@ package canvas
 import (
 	"image"
 	"image/color"
-	"image/draw"
-	"io/ioutil"
 	"math"
-	"sort"
 
-	"github.com/golang/freetype/truetype"
-	"golang.org/x/image/font"
-	"golang.org/x/image/math/fixed"
+	"github.com/fogleman/gg"
 )
 
-// Canvas represents a drawing canvas
+// Canvas represents a drawing surface
 type Canvas struct {
-	Context                  *image.RGBA
-	StrokeStyle              color.RGBA
-	FillStyle                color.RGBA
-	Path                     []image.Point
-	Font                     *truetype.Font
-	LineWidth                float64
-	direction                string
-	filter                   string
-	fontKerning              string
-	fontStretch              string
-	fontVariantCaps          string
-	globalAlpha              float64
-	globalCompositeOperation string
-	imageSmoothingEnabled    bool
-	imageSmoothingQuality    string
-	letterSpacing            float64
-	lineCap                  string
-	lineDashOffset           float64
-	lineJoin                 string
-	miterLimit               float64
-	shadowBlur               float64
-	shadowColor              color.RGBA
-	shadowOffsetX            float64
-	shadowOffsetY            float64
-	textAlign                string
-	textBaseline             string
-	textRendering            string
-	wordSpacing              float64
-	transforms               []map[string]float64
+	Context *gg.Context
+	RGBA    *image.RGBA
 }
 
-type Point struct {
-	X float64
-	Y float64
-}
-
-// NewCanvas creates a new canvas with the specified width and height
+// NewCanvas creates a new canvas with the specified dimensions
 func NewCanvas(width, height int) *Canvas {
-	img := image.NewRGBA(image.Rect(0, 0, width, height))
-	white := color.RGBA{255, 255, 255, 0}
-	draw.Draw(img, img.Bounds(), &image.Uniform{white}, image.Point{}, draw.Src)
-
+	i := image.NewRGBA(image.Rect(0, 0, width, height))
 	return &Canvas{
-		Context:     img,
-		StrokeStyle: color.RGBA{0, 0, 0, 255},
-		FillStyle:   color.RGBA{0, 0, 0, 255},
-		LineWidth:   1.0,
-		globalAlpha: 1.0,
+		Context: gg.NewContextForRGBA(i),
+		RGBA:    i,
 	}
-}
-
-// SetFont sets the font for text rendering
-func (c *Canvas) SetFont(fontPath string) error {
-	fontBytes, err := ioutil.ReadFile(fontPath)
-	if err != nil {
-		return err
-	}
-	f, err := truetype.Parse(fontBytes)
-	if err != nil {
-		return err
-	}
-	c.Font = f
-	return nil
 }
 
 // MoveTo starts a new sub-path at the given (x, y) coordinates
-func (c *Canvas) MoveTo(x, y int) {
-	c.Path = append(c.Path, image.Point{x, y})
+func (c *Canvas) MoveTo(x, y float64) {
+	c.Context.MoveTo(x, y)
 }
 
-// LineTo adds a line to the current path
-func (c *Canvas) LineTo(x, y int) {
-	if len(c.Path) > 0 {
-		p1 := c.Path[len(c.Path)-1]
-		p2 := image.Point{x, y}
-
-		points := generatePoints(p1, p2, int(c.LineWidth))
-		c.Path = append(c.Path, points...)
-	}
+// LineTo adds a straight line to the current path
+func (c *Canvas) LineTo(x, y float64) {
+	c.Context.LineTo(x, y)
 }
 
-func generatePoints(p1, p2 image.Point, lineWidth int) []image.Point {
-	var points []image.Point
+// QuadraticBezierTo adds a cubic Bézier curve to the current path
+func (c *Canvas) QuadraticBezierTo(cp1x, cp1y, cp2x, cp2y, x, y float64) {
+	c.Context.CubicTo(cp1x, cp1y, cp2x, cp2y, x, y)
+}
 
-	dx := p2.X - p1.X
-	dy := p2.Y - p1.Y
+func (c *Canvas) QuadraticBezier(cp1x, cp1y, cp2x, cp2y, x, y float64) {
+	// Get the current point
+	current, _ := c.Context.GetCurrentPoint()
 
-	steps := int(math.Max(math.Abs(float64(dx)), math.Abs(float64(dy))))
-
-	xIncrement := float64(dx) / float64(steps)
-	yIncrement := float64(dy) / float64(steps)
-
-	x := float64(p1.X)
-	y := float64(p1.Y)
-
-	// Calculate perpendicular offsets based on the line width
-	halfWidth := float64(lineWidth) / 2.0
-	perpendicularX := -yIncrement * halfWidth / math.Sqrt(xIncrement*xIncrement+yIncrement*yIncrement)
-	perpendicularY := xIncrement * halfWidth / math.Sqrt(xIncrement*xIncrement+yIncrement*yIncrement)
-
-	for i := 0; i <= steps; i++ {
-		// centerPoint := image.Point{int(math.Round(x)), int(math.Round(y))}
-		// Generate points across the width of the line
-		for lw := -halfWidth; lw <= halfWidth; lw++ {
-			offsetX := perpendicularX * lw / halfWidth
-			offsetY := perpendicularY * lw / halfWidth
-			points = append(points, image.Point{
-				X: int(math.Round(x + offsetX)),
-				Y: int(math.Round(y + offsetY)),
-			})
-		}
-		x += xIncrement
-		y += yIncrement
+	// If the current path doesn't exist, create one
+	if current.X == 0 && current.Y == 0 {
+		c.Context.MoveTo(cp1x, cp1y)
 	}
 
-	return points
+	// Add the quadratic curve
+	c.Context.CubicTo(cp1x, cp1y, cp2x, cp2y, x, y)
+}
+
+// QuadraticCurveTo adds a quadratic Bézier curve to the current path
+func (c *Canvas) QuadraticCurveTo(cpx, cpy, x, y float64) {
+	c.Context.QuadraticTo(cpx, cpy, x, y)
+}
+
+func (c *Canvas) QuadraticCurve(x1, y1, x, y float64) {
+	// Get the current point
+	current, _ := c.Context.GetCurrentPoint()
+
+	// If the current path doesn't exist, create one
+	if current.X == 0 && current.Y == 0 {
+		c.Context.MoveTo(x1, y1)
+	}
+
+	// Add the quadratic curve
+	c.Context.QuadraticTo(x1, y1, x, y)
+}
+
+// ArcTo adds a circular arc to the current path
+func (c *Canvas) ArcTo(x1, y1, x2, y2, radius float64) {
+	// Get the current point (start of the arc)
+	current, _ := c.Context.GetCurrentPoint()
+
+	// Calculate vectors for the current line segment (P0 -> P1) and (P1 -> P2)
+	dx1, dy1 := x1-current.X, y1-current.Y
+	dx2, dy2 := x2-x1, y2-y1
+
+	// Normalize the vectors
+	len1 := math.Hypot(dx1, dy1)
+	len2 := math.Hypot(dx2, dy2)
+
+	// Handle degenerate cases (collinear points or radius too small)
+	if len1 == 0 || len2 == 0 || radius == 0 {
+		// If degenerate, just draw a line to the first point
+		c.Context.LineTo(x1, y1)
+		return
+	}
+
+	// Unit vectors
+	ux1, uy1 := dx1/len1, dy1/len1
+	ux2, uy2 := dx2/len2, dy2/len2
+
+	// Angle between the two vectors
+	cosAngle := ux1*ux2 + uy1*uy2
+	angle := math.Acos(cosAngle)
+
+	// Compute the distance from P1 to the arc's center
+	tanHalfAngle := math.Tan(angle / 2)
+	distance := radius / tanHalfAngle
+
+	// Calculate the arc's center
+	centerX := x1 - ux1*distance
+	centerY := y1 - uy1*distance
+
+	// Calculate start and end angles for the arc
+	startAngle := math.Atan2(current.Y-centerY, current.X-centerX)
+	endAngle := math.Atan2(y1-centerY, x1-centerX)
+
+	// Determine the direction of the arc (clockwise or anticlockwise)
+	// anticlockwise := (ux1*uy2 - uy1*ux2)
+
+	// Add the arc to the path
+	c.Arc(centerX, centerY, radius, startAngle, endAngle)
+}
+
+// Arc draws an arc on the current path
+func (c *Canvas) Arc(x, y, radius, startAngle, endAngle float64) {
+	c.Context.DrawArc(x, y, radius, startAngle, endAngle)
+}
+
+// Rect creates a rectangular path
+func (c *Canvas) Rect(x, y, width, height float64) {
+	c.Context.DrawRectangle(x, y, width, height)
+}
+
+// Fill fills the current path with the current fill style
+func (c *Canvas) Fill() {
+	c.Context.Fill()
+}
+
+// Stroke strokes the current path with the current stroke style
+func (c *Canvas) Stroke() {
+	c.Context.Stroke()
 }
 
 // BeginPath starts a new path
 func (c *Canvas) BeginPath() {
-	c.Path = []image.Point{}
-}
-
-// Stroke draws the current path
-func (c *Canvas) Stroke() {
-	c.runTransforms()
-	color := c.StrokeStyle
-	points := c.Path
-	for i := 0; i < len(points); i++ {
-		xy := points[i]
-		c.Context.Set(xy.X, xy.Y, color)
-	}
-}
-
-// Fill fills the current path
-func (c *Canvas) Fill() {
-	lw := c.LineWidth
-	c.LineWidth = 1
-	c.Stroke()
-	c.LineWidth = lw
-	points := c.Path
-	img := c.Context
-
-	fillPolygon(img, points, c.FillStyle)
-}
-
-func (c *Canvas) Arc(x, y, radius, startAngle, endAngle float64, clockwise bool) {
-	// Set a minimum radius to avoid the arc inverting or collapsing
-	if radius < 1 {
-		radius = 1
-	}
-
-	for ri := 0; ri <= int(c.LineWidth); ri++ {
-		r := radius - float64(ri)
-		var angleStep float64
-		if clockwise {
-			angleStep = (endAngle - startAngle) / float64(EstimateArcPixels(startAngle, endAngle, r))
-		} else {
-			angleStep = (startAngle - endAngle) / float64(EstimateArcPixels(startAngle, endAngle, r))
-		}
-
-		// // Set a minimum step to ensure enough points are calculated
-		// if math.Abs(angleStep) < 0.01 {
-		// 	angleStep = 0.01
-		// }
-
-		var lastX, lastY int
-		for angle := 0.0; math.Abs(angle) < math.Abs(endAngle-startAngle); angle += angleStep {
-			var currentAngle float64
-			if clockwise {
-				currentAngle = startAngle + angle
-			} else {
-				currentAngle = startAngle - angle
-			}
-			p := CalculatePoint(x, y, r, currentAngle)
-			ix := int(p.X)
-			iy := int(p.Y)
-			if ix != lastX || iy != lastY {
-				c.Path = append(c.Path, image.Point{X: ix, Y: iy})
-				lastX = ix
-				lastY = iy
-			}
-		}
-	}
-}
-
-func EstimateArcPixels(startAngle, stopAngle, radius float64) int {
-	// Calculate the central angle in radians
-	centralAngle := math.Abs(stopAngle - startAngle)
-
-	// Ensure the central angle is within the range [0, 2π]
-	if centralAngle < 0 {
-		centralAngle += 2 * math.Pi
-	}
-
-	// Calculate the arc length
-	arcLength := radius * centralAngle
-
-	// Assuming each pixel approximately covers 1 unit length
-	// Adjust the pixel density factor as needed for different resolutions
-	pixelDensityFactor := 0.1 // This can be adjusted based on resolution
-
-	// Estimate the number of pixels along the arc length
-	numPixels := int(math.Round(arcLength / pixelDensityFactor))
-
-	if numPixels < 5 {
-		numPixels = 5
-	}
-
-	return numPixels
-}
-
-// EstimateBezierPoints estimates the required number of points for a cubic Bezier curve
-func EstimateCubicBezierPoints(p0, p1, p2, p3 image.Point) int {
-	// Helper function to calculate distance between two points
-	distance := func(a, b image.Point) float64 {
-		dx := float64(b.X - a.X)
-		dy := float64(b.Y - a.Y)
-		return math.Sqrt(dx*dx + dy*dy)
-	}
-
-	// Estimate the length of the cubic Bezier curve
-	// Sum up the distances between successive control points
-	approxCurveLength := distance(p0, p1) + distance(p1, p2) + distance(p2, p3)
-
-	// Adjust the pixel density factor as needed for different resolutions
-	// The higher the pixelDensityFactor, the fewer points will be used
-	pixelDensityFactor := 0.3 // Default value if the input is invalid
-
-	// Estimate the number of points along the curve length
-	numPoints := int(math.Round(approxCurveLength / pixelDensityFactor))
-
-	return numPoints
-}
-
-// EstimateQuadraticBezierPoints estimates the required number of points for a quadratic Bezier curve
-func EstimateQuadraticBezierPoints(p0, p1, p2 image.Point) int {
-	// Helper function to calculate distance between two points
-	distance := func(a, b image.Point) float64 {
-		dx := float64(b.X - a.X)
-		dy := float64(b.Y - a.Y)
-		return math.Sqrt(dx*dx + dy*dy)
-	}
-
-	// Estimate the length of the quadratic Bezier curve
-	// Sum up the distances between successive control points
-	approxCurveLength := distance(p0, p1) + distance(p1, p2)
-
-	// Adjust the pixel density factor as needed for different resolutions
-	// The higher the pixelDensityFactor, the fewer points will be used
-	pixelDensityFactor := 0.3 // Default value if the input is invalid
-
-	// Estimate the number of points along the curve length
-	numPoints := int(math.Round(approxCurveLength / pixelDensityFactor))
-
-	return numPoints
-}
-
-func CalculatePoint(cx, cy, radius, angle float64) Point {
-	// Calculate x, y coordinates
-	x := cx + radius*math.Cos(angle)
-	y := cy + radius*math.Sin(angle)
-
-	return Point{X: x, Y: y}
-}
-
-// Rect adds a rectangle to the path
-func (c *Canvas) Rect(x, y, width, height int) {
-	c.MoveTo(x, y)
-	c.LineTo(x+width, y)
-	c.LineTo(x+width, y+height)
-	c.LineTo(x, y+height)
-	c.LineTo(x, y)
-}
-
-// FillRect fills a rectangle
-func (c *Canvas) FillRect(x, y, width, height int) {
-	draw.Draw(c.Context, image.Rect(x, y, x+width, y+height), &image.Uniform{c.FillStyle}, image.Point{}, draw.Src)
-}
-
-// StrokeRect strokes a rectangle
-func (c *Canvas) StrokeRect(x, y, width, height int) {
-	c.Rect(x, y, width, height)
-	c.Stroke()
-}
-
-// ClearRect clears a rectangle
-func (c *Canvas) ClearRect(x, y, width, height int) {
-	draw.Draw(c.Context, image.Rect(x, y, x+width, y+height), &image.Uniform{color.RGBA{255, 255, 255, 0}}, image.Point{}, draw.Src)
-}
-
-// FillText draws filled text
-func (c *Canvas) FillText(text string, x, y int, size float64) error {
-	if c.Font == nil {
-		return nil
-	}
-	face := truetype.NewFace(c.Font, &truetype.Options{Size: size})
-	drawer := &font.Drawer{
-		Dst:  c.Context,
-		Src:  &image.Uniform{c.FillStyle},
-		Face: face,
-		Dot:  fixed.Point26_6{X: fixed.I(x), Y: fixed.I(y)},
-	}
-	drawer.DrawString(text)
-	return nil
-}
-
-// StrokeText draws stroked text
-func (c *Canvas) StrokeText(text string, x, y int, size float64) error {
-	return c.FillText(text, x, y, size)
-}
-
-// RoundedRect adds a rounded rectangle to the path
-func (c *Canvas) RoundedRect(x, y, width, height int, radii []int) {
-	halfLine := int(c.LineWidth / 2)
-
-	// Handle different numbers of radii
-	var topLeftRadius, topRightRadius, bottomRightRadius, bottomLeftRadius int
-
-	switch len(radii) {
-	case 1:
-		// All corners have the same radius
-		topLeftRadius = radii[0]
-		topRightRadius = radii[0]
-		bottomRightRadius = radii[0]
-		bottomLeftRadius = radii[0]
-	case 2:
-		// First value for top-left and bottom-right, second for top-right and bottom-left
-		topLeftRadius = radii[0]
-		bottomRightRadius = radii[0]
-		topRightRadius = radii[1]
-		bottomLeftRadius = radii[1]
-	case 4:
-		// Each corner has its own radius
-		topLeftRadius = radii[0]
-		topRightRadius = radii[1]
-		bottomRightRadius = radii[2]
-		bottomLeftRadius = radii[3]
-	default:
-		// If the input is invalid, default to 0 for all radii
-		topLeftRadius = 0
-		topRightRadius = 0
-		bottomRightRadius = 0
-		bottomLeftRadius = 0
-	}
-
-	if topLeftRadius == 0 && topRightRadius == 0 && bottomRightRadius == 0 && bottomLeftRadius == 0 {
-		// Draw a regular rectangle without arcs
-		c.MoveTo(x, y+halfLine)
-		c.LineTo(x+width, y+halfLine) // top
-
-		c.MoveTo(x+width-halfLine, y)
-		c.LineTo(x+width-halfLine, y+height) // right
-
-		c.MoveTo(x+width, y+height-halfLine)
-		c.LineTo(x, y+height-halfLine) // bottom
-
-		c.MoveTo(x+halfLine, y+height)
-		c.LineTo(x+halfLine, y) // left
-		return
-	}
-
-	// Draw top edge and top-right corner
-	c.MoveTo(x+topLeftRadius, y+halfLine)
-	c.LineTo(x+width-topRightRadius, y+halfLine) // top
-	if topRightRadius > 0 {
-		c.Arc(float64(x+width-topRightRadius), float64(y+topRightRadius), float64(topRightRadius), 1.5*math.Pi, 2*math.Pi, true)
-	}
-
-	// Draw right edge and bottom-right corner
-	c.MoveTo(x+width-halfLine, y+topRightRadius)
-	c.LineTo(x+width-halfLine, y+height-bottomRightRadius) // right
-	if bottomRightRadius > 0 {
-		c.Arc(float64(x+width-bottomRightRadius), float64(y+height-bottomRightRadius), float64(bottomRightRadius), 0, 0.5*math.Pi, true)
-	}
-
-	// Draw bottom edge and bottom-left corner
-	c.MoveTo(x+width-bottomRightRadius, y+height-halfLine)
-	c.LineTo(x+bottomLeftRadius, y+height-halfLine) // bottom
-	if bottomLeftRadius > 0 {
-		c.Arc(float64(x+bottomLeftRadius), float64(y+height-bottomLeftRadius), float64(bottomLeftRadius), 0.5*math.Pi, math.Pi, true)
-	}
-
-	// Draw left edge and top-left corner
-	c.MoveTo(x+halfLine, y+height-bottomLeftRadius)
-	c.LineTo(x+halfLine, y+topLeftRadius) // left
-	if topLeftRadius > 0 {
-		c.Arc(float64(x+topLeftRadius), float64(y+topLeftRadius), float64(topLeftRadius), math.Pi, 1.5*math.Pi, true)
-	}
+	c.Context.NewSubPath()
 }
 
 // ClosePath closes the current path
 func (c *Canvas) ClosePath() {
-	if len(c.Path) > 0 {
-		c.Path = append(c.Path, c.Path[0])
-	}
+	c.Context.ClosePath()
 }
 
-// Setters for various properties
-func (c *Canvas) SetDirection(dir string) {
-	c.direction = dir
+// SetFillStyle sets the fill color
+func (c *Canvas) SetFillStyle(r, g, b, a uint8) {
+	c.Context.SetRGBA(float64(r)/255, float64(g)/255, float64(b)/255, float64(a)/255)
 }
 
-func (c *Canvas) SetFillStyle(col color.RGBA) {
-	c.FillStyle = col
+// SetStrokeStyle sets the stroke color
+func (c *Canvas) SetStrokeStyle(r, g, b, a uint8) {
+	c.Context.SetStrokeStyle(gg.NewSolidPattern(color.RGBA{R: r, G: g, B: b, A: a}))
 }
 
-func (c *Canvas) SetFilter(filter string) {
-	c.filter = filter
+// ClearRect clears the specified rectangle area
+func (c *Canvas) ClearRect(x, y, width, height float64) {
+	c.Context.SetRGBA(1, 1, 1, 1) // Assuming white background
+	c.Context.DrawRectangle(x, y, width, height)
+	c.Context.Fill()
 }
 
-func (c *Canvas) SetFontKerning(kerning string) {
-	c.fontKerning = kerning
+// FillRect fills a rectangle with the current fill style
+func (c *Canvas) FillRect(x, y, width, height float64) {
+	c.Rect(x, y, width, height)
+	c.Fill()
 }
 
-func (c *Canvas) SetFontStretch(stretch string) {
-	c.fontStretch = stretch
+// StrokeRect strokes a rectangle with the current stroke style
+func (c *Canvas) StrokeRect(x, y, width, height float64) {
+	c.Rect(x, y, width, height)
+	c.Stroke()
 }
 
-func (c *Canvas) SetFontVariantCaps(caps string) {
-	c.fontVariantCaps = caps
+// Save saves the current drawing state
+func (c *Canvas) Save() {
+	c.Context.Push()
 }
 
-func (c *Canvas) SetGlobalAlpha(alpha float64) {
-	c.globalAlpha = alpha
-}
-
-func (c *Canvas) SetGlobalCompositeOperation(op string) {
-	c.globalCompositeOperation = op
-}
-
-func (c *Canvas) SetImageSmoothingEnabled(enabled bool) {
-	c.imageSmoothingEnabled = enabled
-}
-
-func (c *Canvas) SetImageSmoothingQuality(quality string) {
-	c.imageSmoothingQuality = quality
-}
-
-func (c *Canvas) SetLetterSpacing(spacing float64) {
-	c.letterSpacing = spacing
-}
-
-func (c *Canvas) SetLineCap(cap string) {
-	c.lineCap = cap
-}
-
-func (c *Canvas) SetLineDashOffset(offset float64) {
-	c.lineDashOffset = offset
-}
-
-func (c *Canvas) SetLineJoin(join string) {
-	c.lineJoin = join
-}
-
-func (c *Canvas) SetLineWidth(width float64) {
-	c.LineWidth = width
-}
-
-func (c *Canvas) SetMiterLimit(limit float64) {
-	c.miterLimit = limit
-}
-
-func (c *Canvas) SetShadowBlur(blur float64) {
-	c.shadowBlur = blur
-}
-
-func (c *Canvas) SetShadowColor(col color.RGBA) {
-	c.shadowColor = col
-}
-
-func (c *Canvas) SetShadowOffsetX(offset float64) {
-	c.shadowOffsetX = offset
-}
-
-func (c *Canvas) SetShadowOffsetY(offset float64) {
-	c.shadowOffsetY = offset
-}
-
-func (c *Canvas) SetStrokeStyle(col color.RGBA) {
-	c.StrokeStyle = col
-}
-
-func (c *Canvas) SetTextAlign(align string) {
-	c.textAlign = align
-}
-
-func (c *Canvas) SetTextBaseline(baseline string) {
-	c.textBaseline = baseline
-}
-
-func (c *Canvas) SetTextRendering(rendering string) {
-	c.textRendering = rendering
-}
-
-func (c *Canvas) SetWordSpacing(spacing float64) {
-	c.wordSpacing = spacing
-}
-
-// ArcTo adds an arc to the path with control points and radius
-func (c *Canvas) ArcTo(x1, y1, x2, y2, r float64, counterclockwise bool) {
-	// Calculate the midpoint
-	mx := (x1 + x2) / 2
-	my := (y1 + y2) / 2
-
-	// Calculate the distance between the points
-	d := math.Sqrt(math.Pow(x2-x1, 2) + math.Pow(y2-y1, 2))
-
-	// Check if the given radius is sufficient
-	if d > 2*r {
-		return
-	} else {
-		// Calculate the distance from the midpoint to the circle center
-		h := math.Sqrt(math.Pow(r, 2) - math.Pow(d/2, 2))
-
-		// Calculate the direction vector perpendicular to AB
-		vx := -(y2 - y1)
-		vy := x2 - x1
-
-		// Normalize the direction vector
-		length := math.Sqrt(vx*vx + vy*vy)
-		nx := vx / length
-		ny := vy / length
-
-		// Calculate the two possible centers
-		center1 := Point{X: mx + h*nx, Y: my + h*ny}
-		center2 := Point{X: mx - h*nx, Y: my - h*ny}
-
-		// Calculate the angles for the points A and B relative to the first center
-		angleA1 := math.Atan2(y1-center1.Y, x1-center1.X)
-		angleB1 := math.Atan2(y2-center1.Y, x2-center1.X)
-
-		// Calculate the angles for the points A and B relative to the second center
-		angleA2 := math.Atan2(y1-center2.Y, x1-center2.X)
-		angleB2 := math.Atan2(y2-center2.Y, x2-center2.X)
-
-		if counterclockwise {
-			c.Arc(center1.X, center1.Y, r, angleA1, angleB1, true)
-		} else {
-			c.Arc(center2.X, center2.Y, r, angleA2, angleB2, true)
-
-		}
-
-	}
-
-}
-
-// BezierCurveTo adds a cubic Bezier curve to the path
-func (c *Canvas) BezierCurveTo(cp1x, cp1y, cp2x, cp2y, x, y float64) {
-	// Calculate Bezier curve points and add them to the path
-	steps := 100
-	p0 := c.Path[len(c.Path)-1]
-	for i := 0; i <= steps; i++ {
-		t := float64(i) / float64(steps)
-		mt := 1 - t
-		xPos := math.Pow(mt, 3)*float64(p0.X) + 3*math.Pow(mt, 2)*t*cp1x + 3*mt*math.Pow(t, 2)*cp2x + math.Pow(t, 3)*x
-		yPos := math.Pow(mt, 3)*float64(p0.Y) + 3*math.Pow(mt, 2)*t*cp1y + 3*mt*math.Pow(t, 2)*cp2y + math.Pow(t, 3)*y
-		c.LineTo(int(xPos), int(yPos))
-	}
-}
-
-// QuadraticBezier returns a slice of points on a quadratic Bezier curve
-func QuadraticBezier(p0, p1, p2 image.Point) []image.Point {
-	steps := EstimateQuadraticBezierPoints(p0, p1, p2)
-	points := make([]image.Point, 0, steps+1)
-	for i := 0; i <= steps; i++ {
-		t := float64(i) / float64(steps)
-		x := math.Pow(1-t, 2)*float64(p0.X) + 2*(1-t)*t*float64(p1.X) + math.Pow(t, 2)*float64(p2.X)
-		y := math.Pow(1-t, 2)*float64(p0.Y) + 2*(1-t)*t*float64(p1.Y) + math.Pow(t, 2)*float64(p2.Y)
-		points = append(points, image.Point{X: int(x), Y: int(y)})
-	}
-	return points
-}
-
-// CubicBezier returns a slice of points on a cubic Bezier curve
-func CubicBezier(p0, p1, p2, p3 image.Point) []image.Point {
-	steps := EstimateCubicBezierPoints(p0, p1, p2, p3)
-	points := make([]image.Point, 0, steps+1)
-	for i := 0; i <= steps; i++ {
-		t := float64(i) / float64(steps)
-		x := math.Pow(1-t, 3)*float64(p0.X) + 3*math.Pow(1-t, 2)*t*float64(p1.X) + 3*(1-t)*math.Pow(t, 2)*float64(p2.X) + math.Pow(t, 3)*float64(p3.X)
-		y := math.Pow(1-t, 3)*float64(p0.Y) + 3*math.Pow(1-t, 2)*t*float64(p1.Y) + 3*(1-t)*math.Pow(t, 2)*float64(p2.Y) + math.Pow(t, 3)*float64(p3.Y)
-		points = append(points, image.Point{X: int(x), Y: int(y)})
-	}
-	return points
-}
-
-// Clip sets the clipping region to the current path
-func (c *Canvas) Clip() {
-	// Clip implementation
-}
-
-// !TODO: When making gradients do this:
-// + Since things like gradients are actually images, a pseudo element can be a gradient. also add url()
-// + https://css-tricks.com/almanac/selectors/a/after-and-before/
-
-// CreateConicGradient creates a conic gradient
-func (c *Canvas) CreateConicGradient(startAngle, x, y float64) {
-	// CreateConicGradient implementation
-}
-
-// CreateImageData creates a new blank ImageData object
-func (c *Canvas) CreateImageData(width, height int) *image.RGBA {
-	return image.NewRGBA(image.Rect(0, 0, width, height))
-}
-
-// CreateLinearGradient creates a linear gradient
-func (c *Canvas) CreateLinearGradient(x0, y0, x1, y1 float64) {
-	// CreateLinearGradient implementation
-}
-
-// CreatePattern creates a pattern with an image
-func (c *Canvas) CreatePattern(img image.Image, repetition string) {
-	// CreatePattern implementation
-}
-
-// CreateRadialGradient creates a radial gradient
-func (c *Canvas) CreateRadialGradient(x0, y0, r0, x1, y1, r1 float64) {
-	// CreateRadialGradient implementation
-}
-
-// DrawFocusIfNeeded draws focus ring around element
-func (c *Canvas) DrawFocusIfNeeded() {
-	// DrawFocusIfNeeded implementation
-}
-
-// DrawImage draws an image onto the canvas
-func (c *Canvas) DrawImage(img image.Image, dx, dy int) {
-	draw.Draw(c.Context, img.Bounds().Add(image.Point{dx, dy}), img, image.Point{}, draw.Over)
-}
-
-// Ellipse adds an ellipse to the path
-func (c *Canvas) Ellipse(x, y, radiusX, radiusY, rotation, startAngle, endAngle float64) {
-	// Ellipse implementation
-}
-
-// GetContextAttributes returns the context attributes
-func (c *Canvas) GetContextAttributes() {
-	// GetContextAttributes implementation
-}
-
-// GetImageData gets the image data for the specified rectangle
-func (c *Canvas) GetImageData(sx, sy, sw, sh int) *image.RGBA {
-	return c.Context.SubImage(image.Rect(sx, sy, sx+sw, sy+sh)).(*image.RGBA)
-}
-
-// GetLineDash returns the current line dash pattern
-func (c *Canvas) GetLineDash() {
-	// GetLineDash implementation
-}
-
-// GetTransform returns the current transformation matrix
-func (c *Canvas) GetTransform() {
-	// GetTransform implementation
-}
-
-// IsContextLost returns whether the context is lost
-func (c *Canvas) IsContextLost() bool {
-	return false
-}
-
-// IsPointInPath returns whether the given point is in the current path
-func (c *Canvas) IsPointInPath(x, y float64) bool {
-	// IsPointInPath implementation
-	return false
-}
-
-// IsPointInStroke returns whether the given point is in the current stroke
-func (c *Canvas) IsPointInStroke(x, y float64) bool {
-	// IsPointInStroke implementation
-	return false
-}
-
-// MeasureText measures the width of the given text
-func (c *Canvas) MeasureText(text string) (float64, float64) {
-	if c.Font == nil {
-		return 0, 0
-	}
-	face := truetype.NewFace(c.Font, &truetype.Options{Size: 12})
-	drawer := &font.Drawer{
-		// Dst:  c.Context,
-		// Src:  &image.Uniform{c.FillStyle},
-		Face: face,
-	}
-	bounds, _ := font.BoundString(drawer.Face, text)
-	width := float64((bounds.Max.X - bounds.Min.X).Ceil())
-	height := float64((bounds.Max.Y - bounds.Min.Y).Ceil())
-	return width, height
-}
-
-// PutImageData puts the image data onto the canvas
-func (c *Canvas) PutImageData(img *image.RGBA, dx, dy int) {
-	draw.Draw(c.Context, img.Bounds().Add(image.Point{dx, dy}), img, image.Point{}, draw.Over)
-}
-
-// QuadraticCurveTo adds a quadratic Bezier curve to the path
-func (c *Canvas) QuadraticCurveTo(cpx, cpy, x, y float64) {
-	// QuadraticCurveTo implementation
-}
-
-// Reset resets the canvas state
+// Restore restores the last saved drawing state
 func (c *Canvas) Reset() {
-	// Reset implementation
-	c.transforms = []map[string]float64{}
+	c.Context.Pop()
 }
 
-// ResetTransform resets the transformation matrix
-func (c *Canvas) ResetTransform() {
-	// ResetTransform implementation
-	c.transforms = []map[string]float64{}
-}
-
-// Restore restores the most recently saved canvas state
-func (c *Canvas) Restore() {
-	// Restore implementation
-}
-
-// Rotate rotates the canvas around the given angle
-func (c *Canvas) Rotate(angle float64) {
-	// Rotate implementation
-	c.transforms = append(c.transforms, map[string]float64{
-		"type":    0, // 0 == rotate
-		"radians": angle,
-	})
-}
-
-// Scale scales the canvas by the given factors
-func (c *Canvas) Scale(x, y float64) {
-	// Scale implementation
-}
-
-// SetLineDash sets the line dash pattern
-func (c *Canvas) SetLineDash(dash []float64) {
-	// SetLineDash implementation
-}
-
-// SetTransform sets the transformation matrix
-func (c *Canvas) SetTransform(a, b, c1, d, e, f float64) {
-	// SetTransform implementation
-}
-
-// Transform applies the transformation matrix
-func (c *Canvas) Transform(a, b, c1, d, e, f float64) {
-	// Transform implementation
-}
-
-// Translate translates the canvas by the given distances
+// Translate moves the canvas origin to (x, y)
 func (c *Canvas) Translate(x, y float64) {
-	// Translate implementation
-	c.transforms = append(c.transforms, map[string]float64{
-		"type": 1, // 1 == translate
-		"x":    x,
-		"y":    y,
-	})
+	c.Context.Translate(x, y)
 }
 
-func (c *Canvas) runTransforms() {
-	contextPoint := image.Point{X: 0, Y: 0}
-	for _, t := range c.transforms {
-		switch t["type"] {
-		case 0:
-			// Rotate
-			c.Path = rotatePoints(c.Path, contextPoint, t["radians"])
-		case 1:
-			// Translate
-			for i := 0; i < len(c.Path); i++ {
-				c.Path[i].X += int(t["x"])
-				c.Path[i].Y += int(t["y"])
-			}
-			contextPoint.X += int(t["x"])
-			contextPoint.Y += int(t["y"])
-		}
-	}
+// Scale scales the canvas
+func (c *Canvas) Scale(sx, sy float64) {
+	c.Context.Scale(sx, sy)
 }
 
-// // SavePNG saves the canvas to a PNG file
-// func (c *Canvas) SavePNG(filename string) error {
-// 	file, err := os.Create(filename)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	defer file.Close()
-// 	return png.Encode(file, c.Context)
-// }
+// Rotate rotates the canvas
+func (c *Canvas) Rotate(angle float64) {
+	c.Context.Rotate(angle)
+}
 
-// Helper functions
-func drawLine(img *image.RGBA, p1, p2 image.Point, col color.RGBA, lineWidth float64) {
-	dx := math.Abs(float64(p2.X - p1.X))
-	dy := math.Abs(float64(p2.Y - p1.Y))
-	sx := -1
-	if p1.X < p2.X {
-		sx = 1
+func (c *Canvas) Ellipse(x, y, radiusX, radiusY, rotation, startAngle, endAngle float64, anticlockwise bool) {
+	c.Save()
+	c.Translate(x, y)
+	c.Rotate(rotation)
+	c.Scale(radiusX, radiusY)
+	c.Arc(0, 0, 1, startAngle, endAngle)
+	c.Reset()
+}
+func (c *Canvas) FillText(text string, x, y float64) {
+	c.Context.DrawStringAnchored(text, x, y, 0, 0)
+}
+func (c *Canvas) StrokeText(text string, x, y float64) {
+	c.Context.DrawStringAnchored(text, x, y, 0, 0)
+	c.Context.Stroke()
+}
+func (c *Canvas) SetFont(fontPath string, fontSize float64) error {
+	font, err := gg.LoadFontFace(fontPath, fontSize)
+	if err != nil {
+		return err
 	}
-	sy := -1
-	if p1.Y < p2.Y {
-		sy = 1
-	}
-
-	halfWidth := int(math.Ceil(lineWidth / 2))
-
-	for i := -halfWidth; i <= halfWidth; i++ {
-		xOffset := 0
-		yOffset := 0
-		if dx > dy {
-			yOffset = i
-		} else {
-			xOffset = i
-		}
-
-		x1, y1 := p1.X+xOffset, p1.Y+yOffset
-		x2, y2 := p2.X+xOffset, p2.Y+yOffset
-
-		err := dx - dy // Reset err for each parallel line
-		for {
-			img.Set(x1, y1, col)
-			if x1 == x2 && y1 == y2 {
-				break
-			}
-			e2 := 2 * err // Calculate the double of err
-			if e2 > -dy {
-				err -= dy // Adjust err and move in x direction
-				x1 += sx
-			}
-			if e2 < dx {
-				err += dx // Adjust err and move in y direction
-				y1 += sy
-			}
-		}
+	c.Context.SetFontFace(font)
+	return nil
+}
+func (c *Canvas) SetLineWidth(width float64) {
+	c.Context.SetLineWidth(width)
+}
+func (c *Canvas) SetLineCap(cap string) {
+	switch cap {
+	case "butt":
+		c.Context.SetLineCap(gg.LineCapButt)
+	case "round":
+		c.Context.SetLineCap(gg.LineCapRound)
+	case "square":
+		c.Context.SetLineCap(gg.LineCapSquare)
 	}
 }
 
-func rotatePoints(points []image.Point, center image.Point, rad float64) []image.Point {
-	rotatedPoints := make([]image.Point, len(points))
-
-	// Precompute sine and cosine of the angle
-	cosTheta := math.Cos(rad)
-	sinTheta := math.Sin(rad)
-
-	for i, p := range points {
-		// Translate point to origin
-		translatedX := float64(p.X - center.X)
-		translatedY := float64(p.Y - center.Y)
-
-		// Apply rotation
-		rotatedX := translatedX*cosTheta - translatedY*sinTheta
-		rotatedY := translatedX*sinTheta + translatedY*cosTheta
-
-		// Translate back to original location
-		rotatedPoints[i] = image.Point{
-			X: int(math.Round(rotatedX + float64(center.X))),
-			Y: int(math.Round(rotatedY + float64(center.Y))),
-		}
-	}
-
-	return rotatedPoints
+//	func (c *Canvas) SetLineJoin(join string) {
+//		switch join {
+//		case "miter":
+//			c.Context.SetLineJoin(gg.LineJoinMiter)
+//		case "round":
+//			c.Context.SetLineJoin(gg.LineJoinRound)
+//		case "bevel":
+//			c.Context.SetLineJoin(gg.LineJoinBevel)
+//		}
+//	}
+func (c *Canvas) SetGlobalAlpha(alpha float64) {
+	c.Context.SetRGBA(1, 1, 1, alpha)
+}
+func (c *Canvas) DrawImage(img image.Image, x, y float64) {
+	c.Context.DrawImage(img, int(x), int(y))
 }
 
-// Function to check if a point is within the bounds of the polygon
-func isPointInPolygon(polygon []image.Point, p image.Point) bool {
-	n := len(polygon)
-	intersections := 0
-
-	for i := 0; i < n; i++ {
-		next := (i + 1) % n
-		vi := polygon[i]
-		vj := polygon[next]
-
-		if ((vi.Y > p.Y) != (vj.Y > p.Y)) &&
-			(p.X < (vj.X-vi.X)*(p.Y-vi.Y)/(vj.Y-vi.Y)+vi.X) {
-			intersections++
-		}
-	}
-
-	// A point is inside the polygon if the number of intersections is odd
-	return intersections%2 == 1
+//	func (c *Canvas) SetTransform(a, b, c1, d, e, f float64) {
+//		c.Context.Identity()
+//		c.Context.Transform(a, b, c1, d, e, f)
+//	}
+func (c *Canvas) GetImageData(x, y, width, height int) *image.RGBA {
+	subImage := c.RGBA.SubImage(image.Rect(x, y, x+width, y+height))
+	return subImage.(*image.RGBA)
 }
-
-// FindPointInsidePolygon uses ray-casting to find a point inside the polygon
-func FindPointInsidePolygon(polygon []image.Point) image.Point {
-	// Calculate the centroid of the polygon as a starting point
-	var sumX, sumY int
-	for _, point := range polygon {
-		sumX += point.X
-		sumY += point.Y
-	}
-
-	n := len(polygon)
-	centroid := image.Point{
-		X: sumX / n,
-		Y: sumY / n,
-	}
-
-	// Start with the centroid and check if it's inside the polygon
-	if isPointInPolygon(polygon, centroid) {
-		return centroid
-	}
-
-	// If the centroid isn't inside, iterate toward a vertex
-	for _, vertex := range polygon {
-		// Average the centroid and vertex to get a new point
-		midPoint := image.Point{
-			X: (centroid.X + vertex.X) / 2,
-			Y: (centroid.Y + vertex.Y) / 2,
-		}
-
-		// If this point is inside, return it
-		if isPointInPolygon(polygon, midPoint) {
-			// fmt.Println(midPoint)
-			return midPoint
-		}
-	}
-	// As a fallback, return the first vertex (though this should rarely be needed)
-	return polygon[0]
-}
-
-// Fill triangle using scanline method
-func fillTriangle(img *image.RGBA, p1, p2, p3 image.Point, col color.RGBA) {
-	// Sort points by Y-coordinate to get top to bottom ordering
-	points := []image.Point{p1, p2, p3}
-	sort.Slice(points, func(i, j int) bool {
-		return points[i].Y < points[j].Y
-	})
-
-	// Find the minimum and maximum Y-values
-	minY := int(points[0].Y)
-	maxY := int(points[2].Y)
-
-	// Loop through each Y-coordinate from minY to maxY
-	for y := minY; y <= maxY; y++ {
-		// Find the intersections of the scanline with the triangle
-		xIntersect := []float64{}
-
-		// Check for each side of the triangle
-		for i := 0; i < 3; i++ {
-			p1 := points[i]
-			p2 := points[(i+1)%3]
-
-			// Check if the scanline intersects the edge (p1, p2)
-			if (p1.Y <= y && p2.Y > y) || (p2.Y <= y && p1.Y > y) {
-				// Calculate intersection point
-				intersectX := p1.X + (y-p1.Y)*(p2.X-p1.X)/(p2.Y-p1.Y)
-				xIntersect = append(xIntersect, float64(intersectX))
-			}
-		}
-
-		// Sort the intersection points
-		sort.Float64s(xIntersect)
-
-		// Fill between the intersections
-		for i := 0; i < len(xIntersect); i += 2 {
-			for x := int(math.Ceil(xIntersect[i])); x < int(math.Floor(xIntersect[i+1])); x++ {
-				img.Set(x, y, col)
-			}
+func (c *Canvas) PutImageData(imgData *image.RGBA, x, y int) {
+	bounds := imgData.Bounds()
+	for i := bounds.Min.X; i < bounds.Max.X; i++ {
+		for j := bounds.Min.Y; j < bounds.Max.Y; j++ {
+			c.RGBA.Set(x+i, y+j, imgData.At(i, j))
 		}
 	}
 }
 
-// Triangulate the polygon into triangles (fan method)
-func triangulatePolygon(points []image.Point) [][]image.Point {
-	// Assume the polygon is convex or use any triangulation method like ear-clipping
-	// Using the first point as the center of the fan
-	var triangles [][]image.Point
-	center := points[0]
-
-	// Triangulate by creating triangles with the first point (fan method)
-	for i := 1; i < len(points)-1; i++ {
-		triangles = append(triangles, []image.Point{center, points[i], points[i+1]})
+// RoundedRect draws a rectangle with rounded corners.
+// The `radii` parameter is a slice of four float64 values representing the radius for each corner:
+// [top-left, top-right, bottom-right, bottom-left]. If a radius is 0, the corner will be square.
+func (c *Canvas) RoundedRect(x, y, width, height float64, radii []float64) {
+	if len(radii) != 4 {
+		panic("radii must contain exactly 4 values")
 	}
 
-	return triangles
-}
-
-// Fill Polygon using triangulation
-func fillPolygon(img *image.RGBA, points []image.Point, col color.RGBA) {
-	// Triangulate the polygon
-	triangles := triangulatePolygon(points)
-
-	// Fill each triangle
-	for _, triangle := range triangles {
-		fillTriangle(img, triangle[0], triangle[1], triangle[2], col)
-	}
-}
-
-// func fillPolygon(img *image.RGBA, points []image.Point, col color.RGBA) {
-// 	if len(points) < 3 {
-// 		return
-// 	}
-
-// 	w := img.Bounds().Dx()
-// 	h := img.Bounds().Dy()
-// 	grid := make(map[int][]int)
-
-// 	for i := 0; i < len(points); i++ {
-// 		y := points[i].Y
-// 		x := points[i].X
-// 		if y >= 0 && y < h && x >= 0 && x < w {
-// 			grid[y] = append(grid[y], x)
-// 		}
-// 	}
-
-// 	keys := make([]int, 0, len(grid))
-// 	for k := range grid {
-// 		keys = append(keys, k)
-// 	}
-
-// 	sort.Ints(keys)
-
-// 	if len(keys) == 0 {
-// 		return
-// 	}
-
-// 	var wg sync.WaitGroup
-// 	cpus := runtime.NumCPU()
-// 	chunkSize := (len(keys) + cpus - 1) / cpus // Adjusted to ensure all keys are included
-
-// 	for i := 0; i < cpus; i++ {
-// 		start := i * chunkSize
-// 		end := start + chunkSize
-// 		if start > len(keys)-1 {
-// 			continue
-// 		}
-// 		if end > len(keys) {
-// 			end = len(keys) - 1
-// 		}
-
-// 		wg.Add(1)
-// 		go func(start, end int) {
-// 			defer wg.Done()
-// 			for _, y := range keys[start:end] {
-
-// 				row := grid[y]
-// 				if len(row) > 0 {
-// 					row = removeDuplicatesSorted(row)
-// 					pairs := [][]int{}
-// 					// pairs is start, index, end, index
-// 					pairs = append(pairs, []int{})
-// 					pairs[0] = []int{row[0], 0}
-// 					for i := 1; i < len(row); i++ {
-// 						pi := len(pairs) - 1
-// 						currPair := pairs[pi]
-// 						a := currPair[0]
-// 						ai := currPair[1]
-// 						b := row[i]
-// 						// fmt.Println((b - (i - ai)), a)
-// 						if (b - (i - ai)) != a {
-// 							if len(currPair) == 4 {
-// 								c := currPair[2]
-// 								ci := currPair[3]
-// 								if b-(i-ci) == c {
-// 									pairs[pi][2] = b
-// 									pairs[pi][3] = i
-// 								} else {
-// 									pairs = append(pairs, []int{b, i})
-// 								}
-// 							} else {
-// 								pairs[pi] = append(pairs[pi], b)
-// 								pairs[pi] = append(pairs[pi], i)
-// 							}
-// 						}
-// 					}
-// 					pi := len(pairs) - 1
-// 					if len(pairs[pi]) < 4 {
-// 						pairs[pi] = append(pairs[pi], row[len(row)-1])
-// 						pairs[pi] = append(pairs[pi], len(row)-1)
-// 					}
-// 					// fmt.Println(y, pairs)
-// 					for _, v := range pairs {
-// 						for x := v[0]; x <= v[2]; x++ {
-// 							img.Set(x, y, col)
-// 						}
-// 					}
-
-// 				}
-
-// 			}
-// 		}(start, end)
-// 	}
-
-// 	wg.Wait()
-// }
-
-func removeDuplicatesSorted(intSlice []int) []int {
-	if len(intSlice) == 0 {
-		return intSlice
+	// Clamp each radius to avoid overlap
+	for i := range radii {
+		radii[i] = math.Min(radii[i], math.Min(width/2, height/2))
 	}
 
-	sort.Ints(intSlice)
-	result := []int{intSlice[0]}
+	// Extract radii for each corner
+	topLeft := radii[0]
+	topRight := radii[1]
+	bottomRight := radii[2]
+	bottomLeft := radii[3]
 
-	for i := 1; i < len(intSlice); i++ {
-		if intSlice[i] != intSlice[i-1] {
-			result = append(result, intSlice[i])
-		}
+	// Start at the top-left corner
+	c.Context.MoveTo(x+topLeft, y)
+
+	// Top edge
+	c.Context.LineTo(x+width-topRight, y)
+	// Top-right corner
+	if topRight > 0 {
+		c.Arc(x+width-topRight, y+topRight, topRight, -math.Pi/2, 0)
 	}
 
-	return result
+	// Right edge
+	c.Context.LineTo(x+width, y+height-bottomRight)
+	// Bottom-right corner
+	if bottomRight > 0 {
+		c.Arc(x+width-bottomRight, y+height-bottomRight, bottomRight, 0, math.Pi/2)
+	}
+
+	// Bottom edge
+	c.Context.LineTo(x+bottomLeft, y+height)
+	// Bottom-left corner
+	if bottomLeft > 0 {
+		c.Arc(x+bottomLeft, y+height-bottomLeft, bottomLeft, math.Pi/2, math.Pi)
+	}
+
+	// Left edge
+	c.Context.LineTo(x, y+topLeft)
+	// Top-left corner
+	if topLeft > 0 {
+		c.Arc(x+topLeft, y+topLeft, topLeft, math.Pi, 3*math.Pi/2)
+	}
+
+	// Close the path
+	c.Context.ClosePath()
 }

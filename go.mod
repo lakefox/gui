@@ -13,12 +13,7 @@ require (
 )
 
 require (
+	github.com/fogleman/gg v1.3.0
 	github.com/gen2brain/raylib-go/raylib v0.0.0-20231123174446-48309e2407b7
 	github.com/golang/freetype v0.0.0-20170609003504-e2365dfdc4a0
-)
-
-require (
-	github.com/fogleman/gg v1.3.0
-	github.com/progrium/darwinkit v0.5.0 // indirect
-	golang.org/x/mobile v0.0.0-20241108191957-fa514ef75a0f // indirect
 )

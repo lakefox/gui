@@ -167,14 +167,14 @@ func (w *Window) Render(doc *element.Node, state *map[string]element.State, shel
 					// Only make the drawing if it's not found
 					can := canvas.NewCanvas(wbw, hbw)
 					can.BeginPath()
-					can.FillStyle = self.Background
-					can.LineWidth = 10
-					can.RoundedRect(0, 0, wbw, hbw,
-						[]int{int(self.Border.Radius.TopLeft), int(self.Border.Radius.TopRight), int(self.Border.Radius.BottomRight), int(self.Border.Radius.BottomLeft)})
+					can.SetFillStyle(self.Background.R, self.Background.G, self.Background.B, self.Background.A)
+					can.SetLineWidth(10)
+					can.RoundedRect(0, 0, float64(wbw), float64(hbw),
+						[]float64{float64(self.Border.Radius.TopLeft), float64(self.Border.Radius.TopRight), float64(self.Border.Radius.BottomRight), float64(self.Border.Radius.BottomLeft)})
 					can.Fill()
 					can.ClosePath()
 
-					shelf.Set(key, can.Context)
+					shelf.Set(key, can.RGBA)
 					self.Textures = append([]string{key}, self.Textures...)
 					store[k] = self
 				}

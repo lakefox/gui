@@ -326,7 +326,7 @@ input {
     background-color: white;
     border: 2px inset;
     user-select: text;
-    cursor: auto;
+    cursor: text;
     height: 1em;
     width: 153px;
 }

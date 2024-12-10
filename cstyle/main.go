@@ -413,7 +413,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State,
 
 	// Load canvas into textures
 	if n.TagName == "canvas" {
-		if n.Context != nil {
+		if n.Canvas != nil {
 			found := false
 			key := n.Properties.Id + "canvas"
 			for _, v := range self.Textures {
@@ -421,7 +421,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State,
 					found = true
 				}
 			}
-			can := shelf.Set(key, n.Context.Context)
+			can := shelf.Set(key, n.Canvas.RGBA)
 			if !found {
 				self.Textures = append(self.Textures, can)
 			}
