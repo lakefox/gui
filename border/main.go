@@ -446,31 +446,6 @@ func LineCircleIntersection(lineStart image.Point, angle float64, circleCenter i
 	}
 }
 
-// EndPointFromDirection computes an endpoint that is `distance` units
-// away from the start point in the direction of the line defined by the
-// start and midpoint.
-func EndPointFromDirection(x0, y0, xm, ym, distance float64) (xe, ye float64) {
-	// Compute direction vector from start to midpoint
-	dx := (xm - x0)
-	dy := (ym - y0)
-
-	// Handle the case where start and midpoint are the same
-	if dx == 0 && dy == 0 {
-		// Return a point directly along the x-axis for simplicity
-		return x0 + distance, y0
-	}
-
-	// Normalize the direction vector
-	length := math.Sqrt(dx*dx + dy*dy)
-	ux := dx / length
-	uy := dy / length
-
-	// Calculate the endpoint
-	xe = x0 + ux*distance
-	ye = y0 + uy*distance
-	return
-}
-
 func EndPointFromMidpoint(x1, y1, xm, ym, distance float64, reverse bool) (xe, ye float64) {
 	// Compute direction vector from midpoint to the reference point
 	dx := (x1 - xm)

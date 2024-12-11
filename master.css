@@ -41,6 +41,7 @@ span {
 }
 notaspan {
     display: inline;
+    font-size: 1em;
 }
 text {
     display: inline;
@@ -534,6 +535,8 @@ sup {
 }
 br {
     display: block;
+    font-size: 0;
+    width: 0;
     /* height: 1em; */
 }
 nobr {
