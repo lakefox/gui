@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"gui/element"
 	ic "image/color"
+	"math"
 	"reflect"
 	"strconv"
 	"strings"
@@ -599,4 +600,8 @@ func ParentStyleProp(n *element.Node, prop string, selector func(string) bool) b
 }
 func RGBAtoString(c ic.RGBA) string {
 	return fmt.Sprintf("R%d%d%d%d", c.R, c.G, c.B, c.A)
+}
+
+func Distance(x1, y1, x2, y2 float64) float64 {
+	return math.Sqrt(math.Pow(x2-x1, 2) + math.Pow(y2-y1, 2))
 }

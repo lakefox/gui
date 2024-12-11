@@ -1,6 +1,7 @@
 package border
 
 import (
+	"fmt"
 	"gui/canvas"
 	"gui/color"
 	"gui/element"
@@ -255,11 +256,13 @@ func drawSolidBorder(ctx *canvas.Canvas, side string, border element.BorderSide,
 
 	switch side {
 	case "top":
+		fmt.Println("top")
 		v1 := math.Max(float64(s.Border.Radius.TopLeft), 1)
 		v2 := math.Max(float64(s.Border.Radius.TopRight), 1)
 		genSolidBorder(ctx, width, v1, v2, border, s.Border.Left, s.Border.Right)
 
 	case "right":
+		fmt.Println("right")
 		v1 := math.Max(float64(s.Border.Radius.TopRight), 1)
 		v2 := math.Max(float64(s.Border.Radius.BottomRight), 1)
 		ctx.Translate(width, 0)
@@ -267,6 +270,7 @@ func drawSolidBorder(ctx *canvas.Canvas, side string, border element.BorderSide,
 		genSolidBorder(ctx, height, v1, v2, border, s.Border.Top, s.Border.Bottom)
 
 	case "bottom":
+		fmt.Println("bottom")
 		v1 := math.Max(float64(s.Border.Radius.BottomLeft), 1)
 		v2 := math.Max(float64(s.Border.Radius.BottomRight), 1)
 		ctx.Translate(float64(width), float64(height))
@@ -274,6 +278,7 @@ func drawSolidBorder(ctx *canvas.Canvas, side string, border element.BorderSide,
 		genSolidBorder(ctx, width, v2, v1, border, s.Border.Right, s.Border.Left)
 
 	case "left":
+		fmt.Println("left")
 		v1 := math.Max(float64(s.Border.Radius.TopLeft), 1)
 		v2 := math.Max(float64(s.Border.Radius.BottomLeft), 1)
 		ctx.Translate(0, float64(height))
@@ -284,7 +289,7 @@ func drawSolidBorder(ctx *canvas.Canvas, side string, border element.BorderSide,
 	if border.Width == 1 {
 		ctx.Stroke()
 	} else {
-		ctx.Stroke()
+		ctx.Fill()
 	}
 	ctx.Reset()
 	ctx.ClosePath()
@@ -303,7 +308,8 @@ func genSolidBorder(ctx *canvas.Canvas, width float64, v1, v2 float64, border, s
 		v1,
 	)
 	ctx.Arc(v1, v1, v1, startAngleLeft[0]-math.Pi, -math.Pi/2)
-
+	// Reversed to get startpoint
+	splX, splY := PointAtAngle(v1, v1, v1, startAngleLeft[0]-math.Pi)
 	// top line
 	ctx.LineTo(width-v2, 0)
 
@@ -315,6 +321,7 @@ func genSolidBorder(ctx *canvas.Canvas, width float64, v1, v2 float64, border, s
 		v2,
 	)
 	ctx.Arc(width-v2, v2, v2, -math.Pi/2, startAngleRight[0]-math.Pi)
+	sprX, sprY := PointAtAngle(width-v2, v2, v2, startAngleRight[0]-math.Pi)
 
 	if border.Width == 1 {
 		return
@@ -328,7 +335,7 @@ func genSolidBorder(ctx *canvas.Canvas, width float64, v1, v2 float64, border, s
 
 	d := (math.Abs(float64(border.Width)-s2w) / 2) + min
 
-	xe, ye := EndPointFromDirection(width-(s2w), float64(border.Width), width-(s2w*2), float64(border.Width*2), d)
+	xe, ye := EndPointFromMidpoint(width-(s2w/10), float64(border.Width/10), sprX, sprY, d, true)
 
 	ctx.LineTo(xe, ye)
 
@@ -356,12 +363,13 @@ func genSolidBorder(ctx *canvas.Canvas, width float64, v1, v2 float64, border, s
 	}
 
 	d = (math.Abs(float64(border.Width)-s1w) / 2) + min
-	xe, ye = EndPointFromDirection((s1w * 2), float64(border.Width*2), s1w, float64(border.Width), d)
+	xe, ye = EndPointFromMidpoint((s1w / 10), float64(border.Width/10), splX, splY, d, true)
 
 	sa = AngleInRadians(s1w+xr, float64(border.Width)+yr, xe, ye)
 
 	// Ellipse left
 	ctx.Ellipse(s1w+xr, float64(border.Width)+yr, xr, yr, 0, -math.Pi/2, sa, false)
+	ctx.LineTo(xe, ye)
 
 	// Left flat line
 	ctx.ClosePath()
@@ -463,6 +471,37 @@ func EndPointFromDirection(x0, y0, xm, ym, distance float64) (xe, ye float64) {
 	return
 }
 
+func EndPointFromMidpoint(x1, y1, xm, ym, distance float64, reverse bool) (xe, ye float64) {
+	// Compute direction vector from midpoint to the reference point
+	dx := (x1 - xm)
+	dy := (y1 - ym)
+
+	// Handle the case where midpoint and reference point are the same
+	if dx == 0 && dy == 0 {
+		// Return a point directly along the x-axis for simplicity
+		if reverse {
+			return xm - distance, ym
+		}
+		return xm + distance, ym
+	}
+
+	// Normalize the direction vector
+	length := math.Sqrt(dx*dx + dy*dy)
+	ux := dx / length
+	uy := dy / length
+
+	// Reverse the direction if needed
+	if reverse {
+		ux = -ux
+		uy = -uy
+	}
+
+	// Calculate the endpoint
+	xe = xm + ux*distance
+	ye = ym + uy*distance
+	return
+}
+
 // CalculateInnerRadii calculates the inner radii of a box corner given the outer radii and border widths.
 func CalculateInnerRadii(outerRadius, borderWidthLeft, borderWidthTop float64) (float64, float64) {
 	innerRadiusX := outerRadius - borderWidthLeft
@@ -505,28 +544,10 @@ func EllipsePoint(x, y, radiusX, radiusY, rotation, angle float64) (float64, flo
 	return finalX, finalY
 }
 
-// AngleBetweenBorders calculates the arc angle of a rounded corner
-// formed by two border segments.
-func AngleBetweenBorders(angle1, angle2, borderWidth1, borderWidth2, radius float64) (arcAngle float64) {
-	// Convert angles from degrees to radians
-	angle1Rad := angle1 * math.Pi / 180.0
-	angle2Rad := angle2 * math.Pi / 180.0
+func PointAtAngle(x, y, radius, endAngle float64) (float64, float64) {
+	// Calculate the endpoint coordinates
+	endX := x + radius*math.Cos(endAngle)
+	endY := y + radius*math.Sin(endAngle)
 
-	// Calculate the intersection angle between the two borders
-	intersectionAngle := math.Abs(angle1Rad - angle2Rad)
-
-	// Ensure the angle is within [0, π]
-	if intersectionAngle > math.Pi {
-		intersectionAngle = 2*math.Pi - intersectionAngle
-	}
-
-	// Adjust the arc span considering border widths
-	adjustment1 := math.Atan(borderWidth1 / radius)
-	adjustment2 := math.Atan(borderWidth2 / radius)
-
-	// Calculate the resulting arc angle
-	arcAngleRad := intersectionAngle - adjustment1 - adjustment2
-	// arcAngle = arcAngleRad * 180.0 / math.Pi // Convert back to degrees
-
-	return arcAngleRad
+	return endX, endY
 }

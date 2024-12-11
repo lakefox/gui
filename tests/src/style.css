@@ -109,7 +109,7 @@ html {
 .border {
     border-top: solid 20px blue;
     border-bottom: solid 20px orange;
-    border-radius: 50px;
+    border-radius: 200px;
 
     border-left: 61px solid #0f0;
     border-right: 50px solid #000;
