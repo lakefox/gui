@@ -1,7 +1,6 @@
 package border
 
 import (
-	"fmt"
 	"gui/canvas"
 	"gui/color"
 	"gui/element"
@@ -217,7 +216,7 @@ func drawBorderSide(ctx *canvas.Canvas, side string, border element.BorderSide, 
 	case "solid":
 		drawSolidBorder(ctx, side, border, s)
 	case "dashed":
-		// drawDashedBorder(ctx, side, border, s)
+		drawDashedBorder(ctx, side, border, s)
 	case "dotted":
 		// drawDottedBorder(ctx, side, border, s)
 	case "double":
@@ -256,13 +255,11 @@ func drawSolidBorder(ctx *canvas.Canvas, side string, border element.BorderSide,
 
 	switch side {
 	case "top":
-		fmt.Println("top")
 		v1 := math.Max(float64(s.Border.Radius.TopLeft), 1)
 		v2 := math.Max(float64(s.Border.Radius.TopRight), 1)
 		genSolidBorder(ctx, width, v1, v2, border, s.Border.Left, s.Border.Right)
 
 	case "right":
-		fmt.Println("right")
 		v1 := math.Max(float64(s.Border.Radius.TopRight), 1)
 		v2 := math.Max(float64(s.Border.Radius.BottomRight), 1)
 		ctx.Translate(width, 0)
@@ -270,7 +267,6 @@ func drawSolidBorder(ctx *canvas.Canvas, side string, border element.BorderSide,
 		genSolidBorder(ctx, height, v1, v2, border, s.Border.Top, s.Border.Bottom)
 
 	case "bottom":
-		fmt.Println("bottom")
 		v1 := math.Max(float64(s.Border.Radius.BottomLeft), 1)
 		v2 := math.Max(float64(s.Border.Radius.BottomRight), 1)
 		ctx.Translate(float64(width), float64(height))
@@ -278,7 +274,6 @@ func drawSolidBorder(ctx *canvas.Canvas, side string, border element.BorderSide,
 		genSolidBorder(ctx, width, v2, v1, border, s.Border.Right, s.Border.Left)
 
 	case "left":
-		fmt.Println("left")
 		v1 := math.Max(float64(s.Border.Radius.TopLeft), 1)
 		v2 := math.Max(float64(s.Border.Radius.BottomLeft), 1)
 		ctx.Translate(0, float64(height))
@@ -295,33 +290,54 @@ func drawSolidBorder(ctx *canvas.Canvas, side string, border element.BorderSide,
 	ctx.ClosePath()
 }
 
+func drawDashedBorder(ctx *canvas.Canvas, side string, border element.BorderSide, s *element.State) {
+	ctx.SetFillStyle(border.Color.R, border.Color.G, border.Color.B, border.Color.A)
+
+	width := float64(s.Width + s.Border.Left.Width + s.Border.Right.Width)
+	height := float64(s.Height + s.Border.Top.Width + s.Border.Bottom.Width)
+
+	ctx.BeginPath()
+	ctx.Save()
+
+	switch side {
+	case "top":
+		v1 := math.Max(float64(s.Border.Radius.TopLeft), 1)
+		v2 := math.Max(float64(s.Border.Radius.TopRight), 1)
+		genDashedBorder(ctx, width, v1, v2, border, s.Border.Left, s.Border.Right)
+
+	case "right":
+		v1 := math.Max(float64(s.Border.Radius.TopRight), 1)
+		v2 := math.Max(float64(s.Border.Radius.BottomRight), 1)
+		ctx.Translate(width, 0)
+		ctx.Rotate(math.Pi / 2)
+		genDashedBorder(ctx, height, v1, v2, border, s.Border.Top, s.Border.Bottom)
+
+	case "bottom":
+		v1 := math.Max(float64(s.Border.Radius.BottomLeft), 1)
+		v2 := math.Max(float64(s.Border.Radius.BottomRight), 1)
+		ctx.Translate(float64(width), float64(height))
+		ctx.Rotate(math.Pi)
+		genDashedBorder(ctx, width, v2, v1, border, s.Border.Right, s.Border.Left)
+
+	case "left":
+		v1 := math.Max(float64(s.Border.Radius.TopLeft), 1)
+		v2 := math.Max(float64(s.Border.Radius.BottomLeft), 1)
+		ctx.Translate(0, float64(height))
+		ctx.Rotate(-math.Pi / 2)
+		genDashedBorder(ctx, height, v2, v1, border, s.Border.Bottom, s.Border.Top)
+	}
+
+	// ctx.Stroke()
+	ctx.Reset()
+	ctx.ClosePath()
+}
+
 func genSolidBorder(ctx *canvas.Canvas, width float64, v1, v2 float64, border, side1, side2 element.BorderSide) {
 	s1w := math.Max(float64(side1.Width), 1)
 	s2w := math.Max(float64(side2.Width), 1)
 
 	ctx.SetLineWidth(1)
-	// Top-left corner arc
-	startAngleLeft := FindBorderStopAngle(
-		image.Point{X: 0, Y: 0},
-		image.Point{X: int(s1w), Y: int(border.Width)},
-		image.Point{X: int(v1), Y: int(v1)},
-		v1,
-	)
-	ctx.Arc(v1, v1, v1, startAngleLeft[0]-math.Pi, -math.Pi/2)
-	// Reversed to get startpoint
-	splX, splY := PointAtAngle(v1, v1, v1, startAngleLeft[0]-math.Pi)
-	// top line
-	ctx.LineTo(width-v2, 0)
-
-	// Top-right corner arc
-	startAngleRight := FindBorderStopAngle(
-		image.Point{X: int(width), Y: 0},
-		image.Point{X: int(width - s2w), Y: int(border.Width)},
-		image.Point{X: int(width - v2), Y: int(v2)},
-		v2,
-	)
-	ctx.Arc(width-v2, v2, v2, -math.Pi/2, startAngleRight[0]-math.Pi)
-	sprX, sprY := PointAtAngle(width-v2, v2, v2, startAngleRight[0]-math.Pi)
+	splX, splY, sprX, sprY := genTopLine(ctx, s1w, s2w, float64(border.Width), v1, v2, width, 0, 0, 0)
 
 	if border.Width == 1 {
 		return
@@ -374,6 +390,49 @@ func genSolidBorder(ctx *canvas.Canvas, width float64, v1, v2 float64, border, s
 	// Left flat line
 	ctx.ClosePath()
 
+}
+
+func genDashedBorder(ctx *canvas.Canvas, width float64, v1, v2 float64, border, side1, side2 element.BorderSide) {
+	s1w := math.Max(float64(side1.Width), 1)
+	s2w := math.Max(float64(side2.Width), 1)
+
+	ctx.BeginPath()
+	genSolidBorder(ctx, width, v1, v2, border, side1, side2)
+	ctx.Clip()
+
+	ctx.Context.SetLineCapSquare()
+	// !ISSUE: Doesn't fill up the clipping region, also this is a CSS prop
+	w := math.Max(float64(border.Width), math.Max(s1w, s2w))
+	ctx.SetLineWidth(w)
+	ctx.SetLineDash(50)
+	genTopLine(ctx, s1w, s2w, float64(border.Width), v1, v2, width, s1w/2, float64(border.Width)/2, s2w/2)
+	ctx.Stroke()
+}
+
+func genTopLine(ctx *canvas.Canvas, s1w, s2w, borderWidth, v1, v2, width, o1, o2, o3 float64) (float64, float64, float64, float64) {
+	// Top-left corner arc
+	startAngleLeft := FindBorderStopAngle(
+		image.Point{X: 0, Y: 0},
+		image.Point{X: int(s1w), Y: int(borderWidth)},
+		image.Point{X: int(v1), Y: int(v1)},
+		v1-o1,
+	)
+	ctx.Arc(v1, v1, v1-o1, startAngleLeft[0]-math.Pi, -math.Pi/2)
+	// Reversed to get startpoint
+	splX, splY := PointAtAngle(v1, v1, v1-o1, startAngleLeft[0]-math.Pi)
+	// top line
+	ctx.LineTo(width-v2-o3, o3)
+
+	// Top-right corner arc
+	startAngleRight := FindBorderStopAngle(
+		image.Point{X: int(width), Y: 0},
+		image.Point{X: int(width - s2w), Y: int(borderWidth)},
+		image.Point{X: int(width - v2), Y: int(v2)},
+		v2-o3,
+	)
+	ctx.Arc(width-v2, v2, v2-o3, -math.Pi/2, startAngleRight[0]-math.Pi)
+	sprX, sprY := PointAtAngle(width-v2, v2, v2-o3, startAngleRight[0]-math.Pi)
+	return splX, splY, sprX, sprY
 }
 
 func FindBorderStopAngle(origin, crossPoint, circleCenter image.Point, radius float64) []float64 {

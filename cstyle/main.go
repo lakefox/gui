@@ -187,11 +187,6 @@ func (c *CSS) GetStyles(n *element.Node) (map[string]string, map[string]map[stri
 		styleMaps = append(styleMaps, c.StyleMap[v]...)
 	}
 
-	// !NOTE: might break something.. I forgot why its here, but commenting it out fixes the focus sooo
-	// sort.Slice(styleMaps, func(i, j int) bool {
-	// 	return styleMaps[i].SheetNumber < styleMaps[j].SheetNumber
-	// })
-
 	for _, styleMap := range styleMaps {
 		parts := styleMap.Selector
 		currentElement := n
@@ -292,7 +287,7 @@ func (c *CSS) ComputeNodeStyle(n *element.Node, state *map[string]element.State,
 	self := s[n.Properties.Id]
 	plugins := c.Plugins
 	parent := s[n.Parent.Properties.Id]
-	// fmt.Println(n.Properties.Id)
+
 	// Cache the style map
 	style := n.Style
 

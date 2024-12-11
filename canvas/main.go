@@ -137,6 +137,11 @@ func (c *Canvas) Stroke() {
 }
 
 // BeginPath starts a new path
+func (c *Canvas) Clip() {
+	c.Context.Clip()
+}
+
+// BeginPath starts a new path
 func (c *Canvas) BeginPath() {
 	c.Context.NewSubPath()
 }
@@ -154,6 +159,10 @@ func (c *Canvas) SetFillStyle(r, g, b, a uint8) {
 // SetStrokeStyle sets the stroke color
 func (c *Canvas) SetStrokeStyle(r, g, b, a uint8) {
 	c.Context.SetStrokeStyle(gg.NewSolidPattern(color.RGBA{R: r, G: g, B: b, A: a}))
+}
+
+func (c *Canvas) SetLineDash(dashes ...float64) {
+	c.Context.SetDash(dashes...)
 }
 
 // ClearRect clears the specified rectangle area
@@ -183,6 +192,7 @@ func (c *Canvas) Save() {
 // Restore restores the last saved drawing state
 func (c *Canvas) Reset() {
 	c.Context.Pop()
+	c.Context.ResetClip()
 }
 
 // Translate moves the canvas origin to (x, y)
